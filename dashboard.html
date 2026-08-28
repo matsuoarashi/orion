@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ダッシュボード | 洋食オリオン 小川町店</title>
+<style>
+  :root{ --wood:#6b3f1c; --wood-d:#4e2d12; --cream:#fdf6e8; --cream-d:#e8dcc2;
+         --enji:#93332a; --midori:#2c4f39; --ink:#3a2a18; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif;
+       background:linear-gradient(#7a4b22,#5c3413);min-height:100vh;color:var(--ink);
+       display:flex;justify-content:center;padding:14px}
+  .app{width:100%;max-width:640px;display:flex;flex-direction:column;gap:12px}
+  header{display:flex;justify-content:space-between;align-items:center;color:#f3ddb0;padding:2px 2px}
+  header .t small{display:block;font-size:10px;letter-spacing:4px;color:#c8a866}
+  header .t b{font-size:22px;letter-spacing:6px}
+  .store{background:var(--cream);color:var(--ink);border:2px solid var(--wood-d);
+       border-radius:10px;padding:6px 12px;font-weight:bold;font-size:14px;letter-spacing:2px}
+  .demoBanner{display:none;background:#f4e08a;border:2px solid #b89a2a;border-radius:10px;
+       padding:8px 12px;font-size:12px;font-weight:bold;text-align:center}
+  .tabs{display:flex;gap:8px}
+  .tabs button{flex:1;padding:10px;border-radius:10px;border:2px solid var(--wood-d);
+       background:var(--cream-d);font-size:14px;font-weight:bold;color:var(--ink)}
+  .tabs button.on{background:var(--midori);color:#fff;border-color:var(--midori)}
+  .datebar{display:flex;align-items:center;gap:8px;background:var(--cream);border-radius:12px;
+       border:3px solid var(--wood-d);padding:8px 10px;justify-content:space-between}
+  .datebar button{border:2px solid var(--wood-d);background:var(--cream-d);border-radius:8px;
+       padding:6px 14px;font-size:16px;font-weight:bold}
+  .datebar .d{font-size:15px;font-weight:bold;letter-spacing:1px}
+  .datebar .today-btn{font-size:12px;padding:6px 8px}
+  .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .card{background:var(--cream);border-radius:14px;padding:12px 14px;border:3px solid var(--wood-d)}
+  .card h2{font-size:12px;letter-spacing:3px;color:var(--midori);margin-bottom:6px}
+  .big{font-size:30px;font-weight:bold;font-variant-numeric:tabular-nums;line-height:1.1}
+  .big small{font-size:13px;font-weight:normal}
+  .sub{font-size:12px;color:#6b5a40;margin-top:4px;line-height:1.6}
+  .wide{grid-column:1/-1}
+  .goal{height:14px;background:var(--cream-d);border-radius:7px;overflow:hidden;margin-top:8px;border:1px solid #c9b891}
+  .goal i{display:block;height:100%;background:var(--midori)}
+  table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+  td,th{padding:5px 3px;border-bottom:1px dashed #c9b891;text-align:right;white-space:nowrap}
+  td:first-child,th:first-child{text-align:left}
+  th{color:var(--midori);font-size:11px}
+  .bar{display:flex;align-items:flex-end;gap:3px;height:110px;margin-top:8px}
+  .bar div{flex:1;background:var(--enji);border-radius:3px 3px 0 0;position:relative;min-height:2px}
+  .bar div.today{background:var(--midori)}
+  .bar span{position:absolute;bottom:-16px;left:0;right:0;font-size:8px;text-align:center;color:#6b5a40}
+  .camGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px}
+  .camGrid .c{background:var(--cream-d);border-radius:10px;padding:8px 4px;text-align:center}
+  .camGrid .c b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
+  .camGrid .c span{font-size:10px;color:#6b5a40}
+  .err{background:#fff3f0;border-radius:12px;padding:14px;color:#8d2f26;display:none;font-size:13px;line-height:1.7}
+  footer{text-align:center;color:#c8a866;font-size:11px;padding-bottom:8px}
+  footer button{background:none;border:1px solid #a98d5c;color:#e8d5ac;border-radius:8px;padding:6px 14px;font-size:12px;margin:6px 4px 0}
+  .hide{display:none}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="t"><small>洋食オリオン</small><b>ダッシュボード</b></div>
+    <span class="store">小川町店</span>
+  </header>
+  <div class="demoBanner" id="demoBanner">⚠ デモデータ表示中(「↻ 実データ」で戻ります)</div>
+  <div class="err" id="err"></div>
+
+  <div class="tabs">
+    <button id="tab-day" class="on" onclick="setTab('day')">日次</button>
+    <button id="tab-week" onclick="setTab('week')">週次</button>
+    <button id="tab-month" onclick="setTab('month')">月次</button>
+  </div>
+
+  <!-- ===== 日次 ===== -->
+  <div id="view-day">
+    <div class="datebar">
+      <button onclick="moveDate(-1)">◀</button>
+      <span class="d" id="dateLabel">-</span>
+      <span>
+        <button class="today-btn" onclick="goToday()">今日へ</button>
+        <button onclick="moveDate(1)">▶</button>
+      </span>
+    </div>
+    <div style="height:10px"></div>
+    <div class="cards">
+      <div class="card"><h2>食数</h2><div class="big" id="dMeals">-</div>
+        <div class="sub" id="dGoal"></div>
+        <div class="goal"><i id="goalBar" style="width:0%"></i></div></div>
+      <div class="card"><h2>売上</h2><div class="big" id="dSales">-</div>
+        <div class="sub" id="dCount"></div></div>
+      <div class="card"><h2>客単価</h2><div class="big" id="dAvg">-</div>
+        <div class="sub">計画 945円</div></div>
+      <div class="card"><h2>ドリンク率</h2><div class="big" id="dDrink">-</div>
+        <div class="sub">計画 30%</div></div>
+
+      <div class="card wide"><h2>店内 / 持ち帰り</h2>
+        <table id="modeTable"></table></div>
+
+      <div class="card wide"><h2>直近14日の食数(緑=表示中の日)</h2>
+        <div class="bar" id="chart"></div><div style="height:16px"></div></div>
+
+      <div class="card wide"><h2>店頭カメラ(人流)</h2>
+        <div class="camGrid" id="camGrid"></div>
+        <div class="sub" id="camNote"></div></div>
+
+      <div class="card"><h2>時間帯別 会計数</h2><div class="sub" id="dHours" style="font-size:13px"></div></div>
+      <div class="card"><h2>商品別 売れ数(上位)</h2><div class="sub" id="dItemsMini" style="font-size:13px"></div></div>
+
+      <div class="card wide"><h2>商品別 売れ数(この日・全品)</h2><table id="dItems"></table></div>
+    </div>
+  </div>
+
+  <!-- ===== 週次 ===== -->
+  <div id="view-week" class="hide">
+    <div class="cards"><div class="card wide"><h2>週次集計(月曜始まり・直近12週)</h2>
+      <table id="weekTable"></table></div></div>
+  </div>
+
+  <!-- ===== 月次 ===== -->
+  <div id="view-month" class="hide">
+    <div class="cards"><div class="card wide"><h2>月次集計</h2>
+      <table id="monthTable"></table>
+      <div class="sub">※営業日=会計が1件以上あった日</div></div></div>
+  </div>
+
+  <footer>
+    <span id="ts"></span><br>
+    <button onclick="load()">↻ 実データ</button>
+    <button onclick="loadDemo()">デモデータ</button>
+  </footer>
+</div>
+
+<script>
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbzFNl4UM3fkoANru-agWmuOox-h3cS1yJmx4UZxpGFemEBnAUv45Gdp1VOvtCqOVUg/exec";
+const GOAL_MEALS = 60;
+
+const $ = id => document.getElementById(id);
+const yen = n => (n||0).toLocaleString() + "円";
+let DATA = null, viewDate = null;
+
+function setTab(t){
+  ["day","week","month"].forEach(x=>{
+    $("view-"+x).classList.toggle("hide", x!==t);
+    $("tab-"+x).classList.toggle("on", x===t);
+  });
+}
+function dayByDate(dt){ return DATA.daily.find(d=>d.date===dt) || null; }
+function dateAdd(dt, n){
+  const [y,m,d] = dt.split("/").map(Number);
+  const dd = new Date(y, m-1, d + n);
+  const p = x => String(x).padStart(2,"0");
+  return dd.getFullYear()+"/"+p(dd.getMonth()+1)+"/"+p(dd.getDate());
+}
+function youbi(dt){
+  const [y,m,d] = dt.split("/").map(Number);
+  return ["日","月","火","水","木","金","土"][new Date(y,m-1,d).getDay()];
+}
+function fmtWait(sec){
+  if(!sec) return "-";
+  return Math.floor(sec/60) + "分" + String(sec%60).padStart(2,"0") + "秒";
+}
+function moveDate(n){ viewDate = dateAdd(viewDate, n); renderDay(); }
+function goToday(){ viewDate = DATA.todayKey; renderDay(); }
+
+function renderDay(){
+  const d = dayByDate(viewDate) || {count:0,meals:0,drinks:0,sales:0,eatin:0,togo:0,
+    salesEatin:0,salesTogo:0,mealsEatin:0,mealsTogo:0,items:{},hours:{},camera:null};
+  $("dateLabel").textContent = `${viewDate}(${youbi(viewDate)})${viewDate===DATA.todayKey?" 本日":""}`;
+  $("dMeals").innerHTML = d.meals + '<small> 食</small>';
+  $("dSales").textContent = yen(d.sales);
+  $("dAvg").textContent = d.count ? yen(Math.round(d.sales/d.count)) : "-";
+  $("dDrink").textContent = d.count ? Math.round(100*d.drinks/d.count) + "%" : "-";
+  $("dCount").textContent = `${d.count}会計`;
+  $("dGoal").textContent = `目標 ${GOAL_MEALS}食まであと ${Math.max(0, GOAL_MEALS - d.meals)}食`;
+  $("goalBar").style.width = Math.min(100, 100*d.meals/GOAL_MEALS) + "%";
+
+  // 店内/持ち帰りテーブル
+  const se = d.salesEatin, st = d.salesTogo;
+  const hasModeData = (se + st > 0) || d.count === 0;
+  $("modeTable").innerHTML =
+    "<tr><th></th><th>会計数</th><th>食数</th><th>売上</th><th>客単価</th><th>売上構成比</th></tr>" +
+    `<tr><td>店内</td><td>${d.eatin}</td><td>${d.mealsEatin??"-"}</td><td>${yen(se)}</td>`+
+    `<td>${d.eatin?yen(Math.round(se/d.eatin)):"-"}</td>`+
+    `<td>${d.sales?Math.round(100*se/d.sales)+"%":"-"}</td></tr>`+
+    `<tr><td>持ち帰り</td><td>${d.togo}</td><td>${d.mealsTogo??"-"}</td><td>${yen(st)}</td>`+
+    `<td>${d.togo?yen(Math.round(st/d.togo)):"-"}</td>`+
+    `<td>${d.sales?Math.round(100*st/d.sales)+"%":"-"}</td></tr>` +
+    (!hasModeData ? '<tr><td colspan="6" style="text-align:left;color:#8a6a1a">※売上の店内/TG内訳はApps Script v4への更新後から記録されます</td></tr>' : "");
+
+  // 14日チャート
+  const days = [];
+  for (let i=13;i>=0;i--) days.push(dateAdd(viewDate,-i));
+  const rows = days.map(dt=>({dt, meals:(dayByDate(dt)||{meals:0}).meals}));
+  const max = Math.max(1, ...rows.map(r=>r.meals));
+  $("chart").innerHTML = rows.map(r=>{
+    const h = Math.max(2, Math.round(100*r.meals/max));
+    return `<div class="${r.dt===viewDate?"today":""}" style="height:${h}%" title="${r.dt}: ${r.meals}食"><span>${r.dt.slice(5)}</span></div>`;
+  }).join("");
+
+  // カメラ詳細
+  const c = d.camera;
+  if(c){
+    const passers = c["通行"]||0, joined = c["行列参加"]||0, entries = c["入店"]||0;
+    const cells = [
+      ["通行", passers + "人"],
+      ["入店", entries + "人"],
+      ["行列参加", joined + "人"],
+      ["離脱", (c["離脱"]||0) + "人"],
+      ["最大行列", (c["最大行列"]||0) + "人"],
+      ["平均待ち", fmtWait(c["平均待ち秒"])],
+      ["行列参加率", passers ? Math.round(100*joined/passers)+"%" : "-"],
+      ["入店転換率", passers ? Math.round(100*entries/passers)+"%" : "-"],
+    ];
+    $("camGrid").innerHTML = cells.map(([k,v])=>`<div class="c"><b>${v}</b><span>${k}</span></div>`).join("");
+    $("camNote").textContent = "行列参加率=行列に並んだ人÷通行人 / 入店転換率=入店÷通行人";
+  }else{
+    $("camGrid").innerHTML = "";
+    $("camNote").textContent = "この日のカメラデータはありません(人流システム稼働後に表示されます)";
+  }
+
+  $("dHours").innerHTML = Object.keys(d.hours).sort().map(h=>`${h}時台 <b>${d.hours[h]}</b>件`).join("<br>") || "-";
+
+  const items = Object.entries(d.items||{}).sort((a,b)=>b[1]-a[1]);
+  $("dItemsMini").innerHTML = items.slice(0,4).map(([n,q])=>`${n} <b>${q}</b>`).join("<br>") || "-";
+  $("dItems").innerHTML = "<tr><th>商品</th><th>個数</th></tr>" +
+    (items.map(([n,q])=>`<tr><td>${n}</td><td>${q}</td></tr>`).join("") || "<tr><td>記録なし</td><td></td></tr>");
+}
+
+function mondayOf(dt){
+  const [y,m,d] = dt.split("/").map(Number);
+  const dd = new Date(y,m-1,d);
+  dd.setDate(dd.getDate()-((dd.getDay()+6)%7));
+  const p = x => String(x).padStart(2,"0");
+  return dd.getFullYear()+"/"+p(dd.getMonth()+1)+"/"+p(dd.getDate());
+}
+function renderWeek(){
+  const weeks = {};
+  DATA.daily.forEach(d=>{
+    const w = mondayOf(d.date);
+    if(!weeks[w]) weeks[w] = {days:0,meals:0,sales:0,count:0,eatin:0,togo:0};
+    const x = weeks[w];
+    if(d.count>0) x.days++;
+    x.meals+=d.meals; x.sales+=d.sales; x.count+=d.count; x.eatin+=d.eatin; x.togo+=d.togo;
+  });
+  const keys = Object.keys(weeks).sort().slice(-12).reverse();
+  $("weekTable").innerHTML =
+    "<tr><th>週(月〜)</th><th>営業日</th><th>食数</th><th>売上</th><th>食数/日</th><th>客単価</th><th>店内/TG</th></tr>" +
+    keys.map(k=>{
+      const w = weeks[k];
+      return `<tr><td>${k.slice(5)}</td><td>${w.days}</td><td>${w.meals}</td><td>${yen(w.sales)}</td>`+
+             `<td>${w.days?(w.meals/w.days).toFixed(1):"-"}</td>`+
+             `<td>${w.count?yen(Math.round(w.sales/w.count)):"-"}</td>`+
+             `<td>${w.eatin}/${w.togo}</td></tr>`;
+    }).join("");
+}
+function renderMonth(){
+  const months = {};
+  DATA.daily.forEach(d=>{
+    const m = d.date.slice(0,7);
+    if(!months[m]) months[m] = {days:0,meals:0,sales:0,count:0,eatin:0,togo:0,salesEatin:0,salesTogo:0};
+    const x = months[m];
+    if(d.count>0) x.days++;
+    x.meals+=d.meals; x.sales+=d.sales; x.count+=d.count; x.eatin+=d.eatin; x.togo+=d.togo;
+    x.salesEatin+=(d.salesEatin||0); x.salesTogo+=(d.salesTogo||0);
+  });
+  const keys = Object.keys(months).sort().reverse();
+  $("monthTable").innerHTML =
+    "<tr><th>月</th><th>営業日</th><th>食数</th><th>売上</th><th>食数/日</th><th>客単価</th><th>店内売上</th><th>TG売上</th></tr>" +
+    keys.map(k=>{
+      const m = months[k];
+      return `<tr><td>${k}</td><td>${m.days}</td><td>${m.meals}</td><td>${yen(m.sales)}</td>`+
+             `<td>${m.days?(m.meals/m.days).toFixed(1):"-"}</td>`+
+             `<td>${m.count?yen(Math.round(m.sales/m.count)):"-"}</td>`+
+             `<td>${yen(m.salesEatin)}</td><td>${yen(m.salesTogo)}</td></tr>`;
+    }).join("");
+}
+
+function renderAll(){
+  if(!viewDate || !dayByDate(viewDate)) viewDate = DATA.todayKey;
+  renderDay(); renderWeek(); renderMonth();
+}
+
+async function load(){
+  try{
+    $("err").style.display = "none";
+    $("demoBanner").style.display = "none";
+    const res = await fetch(SHEET_URL);
+    DATA = await res.json();
+    viewDate = null;
+    renderAll();
+    $("ts").textContent = "最終更新 " + DATA.updated;
+  }catch(e){
+    $("err").style.display = "block";
+    $("err").textContent = "データを取得できませんでした。通信状態と、Apps Scriptの再デプロイ(新バージョン)を確認してください。";
+  }
+}
+
+// ===== デモデータ =====
+function loadDemo(){
+  const p = x => String(x).padStart(2,"0");
+  const today = new Date();
+  const daily = [];
+  for(let i=29;i>=0;i--){
+    const dd = new Date(today); dd.setDate(dd.getDate()-i);
+    const date = dd.getFullYear()+"/"+p(dd.getMonth()+1)+"/"+p(dd.getDate());
+    const dow = dd.getDay();
+    if(dow===0){ daily.push({date,count:0,meals:0,drinks:0,sales:0,eatin:0,togo:0,
+      salesEatin:0,salesTogo:0,mealsEatin:0,mealsTogo:0,items:{},hours:{},camera:null}); continue; } // 日曜定休
+    const base = [0,52,55,58,60,68,73][dow]; // 曜日ごとの基準食数
+    const meals = base + Math.floor(Math.random()*9) - 4;
+    const togoMeals = Math.round(meals*0.22);
+    const eatinMeals = meals - togoMeals;
+    const orion = Math.round(meals*0.52), nashi = meals - orion;
+    const nacoppe = 6 + Math.floor(Math.random()*5);
+    const count = Math.round(meals*0.96);
+    const eatin = count - Math.round(count*0.22), togo = count - eatin;
+    const drinks = Math.round(count*0.31);
+    const salesEatin = eatinMeals*880 + Math.round(drinks*0.9)*260;
+    const salesTogo = togoMeals*940 + nacoppe*310;
+    const camera = {
+      "通行": 620 + Math.floor(Math.random()*220) + (dow>=5?150:0),
+      "入店": count + 2,
+      "行列参加": Math.round(meals*0.55),
+      "離脱": 1 + Math.floor(Math.random()*3),
+      "最大行列": 5 + Math.floor(Math.random()*6),
+      "平均待ち秒": 200 + Math.floor(Math.random()*220),
+    };
+    daily.push({date, count, meals, drinks,
+      sales: salesEatin+salesTogo, eatin, togo,
+      salesEatin, salesTogo, mealsEatin: eatinMeals, mealsTogo: togoMeals,
+      items: {"名物オリオン":orion-3, "ナシナシ":nashi-2, "TGオリオン":3, "TGナシナシ":2,
+              "ナコッペ":nacoppe, "ナコッペチーズ":Math.round(nacoppe*0.6),
+              "瓶コーラ":Math.round(drinks*0.45), "ジンジャー":Math.round(drinks*0.2),
+              "コーヒー牛乳":Math.round(drinks*0.25), "小瓶ビール":Math.round(drinks*0.1),
+              "コッペパン":8, "折箱":4},
+      hours: {"11": Math.round(count*0.22), "12": Math.round(count*0.46),
+              "13": Math.round(count*0.24), "14": Math.round(count*0.08)},
+      camera});
+  }
+  DATA = {
+    updated: "デモ",
+    todayKey: daily[daily.length-1].date,
+    daily
+  };
+  viewDate = null;
+  renderAll();
+  $("err").style.display = "none";
+  $("demoBanner").style.display = "block";
+  $("ts").textContent = "デモデータ(数値はすべて架空です)";
+}
+
+load();
+</script>
+</body>
+</html>
