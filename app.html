@@ -175,7 +175,7 @@ const CONFIG = {
   STORE_ID: "kanda",
   MAIL_URL: "",   // メール通知用 GAS ウェブアプリURL（空なら送らない）
   PIN_SALT: "orion",
-  VERSION: "1.0.0"
+  VERSION: "1.0.1"
 };
 
 // ===================== ユーティリティ =====================
@@ -683,7 +683,7 @@ function renderRegi(){
   const list = products().filter(p => regiMode==="持ち帰り" ? p.takeout : true);
   const html = `<div class="regi">
     ${afterClose ? `<a href="#list" style="text-decoration:none;background:var(--enji);color:#fff;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:bold;display:flex;justify-content:space-between"><span>${hm(new Date())}　閉店作業がまだ始まっていません</span><span>リストへ ›</span></a>` : ""}
-    <div class="mode"><button class="${regiMode==="店内"&&!practice?"on":""}" data-m="店内">店内</button><button class="${regiMode==="持ち帰り"&&!practice?"on":""}" data-m="持ち帰り">持ち帰り</button><button class="pr ${practice?"on":""}" data-m="練習">練習</button></div>
+    <div class="mode"><button class="${regiMode==="店内"&&!practice?"on":""}" data-m="店内">店内</button><button class="${regiMode==="持ち帰り"&&!practice?"on":""}" data-m="持ち帰り">持ち帰り</button></div>
     <div class="disp"><div class="total">${cartTotal().toLocaleString()} 円</div><div class="items">${cart.length ? `[${practice?"練習":regiMode}] ${esc(cartText())}` : practice ? "練習モード：売上には入りません" : "ご注文をどうぞ"}</div></div>
     <div class="keys">
       ${list.map(p => { const so = sold.has(p.name); return `<button class="key ${p.category==="other"?"other":""}" data-p="${p.id}" ${so?"disabled style='opacity:.45'":""}><span class="nm">${p.label.split("|").map(esc).join("<br>")}</span><small>${so?"売切れ":p.price?yen(p.price):(p.id==="makanai"?"会計外":"無料")}</small></button>`; }).join("")}
@@ -695,7 +695,7 @@ function renderRegi(){
     <div style="color:#c9b891;font-size:12px;text-align:center">本日 ${s.meals}食 ／ ${yen(s.total)}（現金 ${s.cash.toLocaleString()}・PayPay ${s.paypay.toLocaleString()}）</div>
   </div>`;
   $("app").innerHTML = shell(html);
-  document.querySelectorAll(".mode button").forEach(b => b.onclick = () => { const m=b.dataset.m; if(m==="練習"){ practice=!practice; } else { regiMode=m; practice=false; } cart=[]; render(); });
+  document.querySelectorAll(".mode button").forEach(b => b.onclick = () => { regiMode=b.dataset.m; cart=[]; render(); });
   document.querySelectorAll(".key[data-p]").forEach(b => b.onclick = () => { addCart(products().find(p=>p.id===b.dataset.p)); render(); });
   $("kMinus").onclick = () => { const l = cart[cart.length-1]; if(!l) return; l.qty--; if(l.qty<=0) cart.pop(); render(); };
   $("kClear").onclick = () => { cart=[]; render(); };
@@ -733,15 +733,8 @@ function finishSale(){
   localAdd("sales", row); enqueue("sales", row);
   const change = payment==="cash" ? tender-total : 0;
   closeSheet(); cart=[];
-  if(practice){ practiceCount(); }
   toast(payment==="cash" && change>0 ? `おつり ${change.toLocaleString()}円` : "会計しました", 3000);
   render();
-}
-function practiceCount(){
-  const n = (cache.sales||[]).filter(s=>s.mode==="練習"&&s.staff_name===session.name).length;
-  const def = (cache.training_defs||[]).find(t => (t.steps||[]).some(s=>s.by==="auto"));
-  if(!def) return; const step = def.steps.find(s=>s.by==="auto");
-  if(n >= (step.count||5) && !trainingDone(session.name, def.id, step.key)) markTraining(def.id, step.key, "auto");
 }
 function todaySalesSheet(){
   const rows = (cache.sales||[]).filter(s=>s.biz_date===today()).sort((a,b)=>a.ts<b.ts?1:-1);
@@ -816,10 +809,9 @@ function trainingProgress(name){ const defs = cache.training_defs||[]; const don
 function renderLearn(){
   const defs = cache.training_defs||[]; const name = session.name; const pr = trainingProgress(name);
   const band = pr.total ? `<div class="band ${pr.done===pr.total?"ok":""}"><b>研修 ${pr.done} / ${pr.total}${pr.next?`　次：${esc(pr.next.label)}`:"　すべて完了"}</b><br><span style="font-size:12px;opacity:.9">開店・閉店を1人で任せるのは全部終わってから</span></div>` : "";
-  const practiceN = (cache.sales||[]).filter(s=>s.mode==="練習"&&s.staff_name===name).length;
   const html = `<div class="sec">あなたの研修（順番どおり）</div>
     ${defs.map((d,i) => { const allDone = (d.steps||[]).every(s=>trainingDone(name,d.id,s.key)); const isNext = pr.next && pr.next.id===d.id; return `<div class="card ${isNext?"now":""}"><div class="item ${allDone?"done":""}"><span class="ck">${allDone?"✓":""}</span><span class="lb">${i+1} ${esc(d.label)}</span></div>
-      ${isNext ? `<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px">${(d.steps||[]).map(s => { const done = trainingDone(name,d.id,s.key); let ctl; if(s.by==="self") ctl = `<label class="ck"><input type="checkbox" ${done?"checked disabled":""} data-tr="${d.id}" data-k="${s.key}"> ${esc(s.label)}${MANUAL_FOR[d.id]?` <a href="#manual/${MANUAL_FOR[d.id]}" style="font-size:12px">開く</a>`:""}</label>`; else if(s.by==="auto") ctl = `<label class="ck"><input type="checkbox" ${done?"checked":""} disabled> ${esc(s.label)}（${Math.min(practiceN,s.count||5)} / ${s.count||5}）</label>`; else ctl = `<label class="ck"><input type="checkbox" ${done?"checked":""} disabled> ${esc(s.label)}${done?"":isAdmin()?` <button class="chip ok" data-verify="${d.id}" data-k="${s.key}" data-who="${esc(name)}">管理者として✔</button>`:' <span class="muted">← 管理者が確認して✔</span>'}</label>`; return ctl; }).join("")}</div>` : ""}</div>`; }).join("")}
+      ${isNext ? `<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px">${(d.steps||[]).map(s => { const done = trainingDone(name,d.id,s.key); let ctl; if(s.by==="self") ctl = `<label class="ck"><input type="checkbox" ${done?"checked disabled":""} data-tr="${d.id}" data-k="${s.key}"> ${esc(s.label)}${MANUAL_FOR[d.id]?` <a href="#manual/${MANUAL_FOR[d.id]}" style="font-size:12px">開く</a>`:""}</label>`; else ctl = `<label class="ck"><input type="checkbox" ${done?"checked":""} disabled> ${esc(s.label)}${done?"":isAdmin()?` <button class="chip ok" data-verify="${d.id}" data-k="${s.key}" data-who="${esc(name)}">管理者として✔</button>`:' <span class="muted">← 管理者が確認して✔</span>'}</label>`; return ctl; }).join("")}</div>` : ""}</div>`; }).join("")}
     <div class="sec" style="margin-top:8px">マニュアル（いつでも見られる）</div>
     <div class="grid2">${(cache.manuals||[]).map(m => `<a href="#manual/${m.key}" class="card" style="text-decoration:none;color:var(--ink)"><b>${esc(m.title)}</b><div class="muted">${esc((m.body_md||"").replace(/[#*\-\n]/g," ").slice(0,28))||"（まだ内容がありません）"}</div></a>`).join("")}</div>
     <div class="sec" style="margin-top:8px">あなたの設定</div>
