@@ -41,6 +41,7 @@
   .tenkey button{padding:14px 2px;border-radius:10px;border:2px solid var(--wood-d);background:#fff;font-weight:bold;font-size:20px;font-variant-numeric:tabular-nums}
   .tenkey button:active{background:var(--cream-d)}
   .tenkey .op{background:var(--cream-d);font-size:15px}
+  #ppBtn.on{background:#d33 !important;color:#fff !important}
   .tenkey .bs{background:#f2d9c8}
   .sheet .done{padding:14px;border-radius:12px;border:none;background:var(--midori);color:#fff;font-size:18px;font-weight:bold;letter-spacing:4px}
   .sheet .done:disabled{background:#9aa89b}
@@ -86,6 +87,7 @@
   <footer>
     <span id="daily">本日 0件 / 0円</span>
     <span>
+      <button onclick="openClock()">出退勤</button>
       <button onclick="openStock()">在庫</button>
       <button onclick="openShime()">締め</button>
       <button onclick="openSummary()">日計</button>
@@ -112,8 +114,20 @@
       <button class="bs" onclick="backspace()">⌫</button>
       <button class="op" onclick="clearTender()">預りC</button>
     </div>
+    <button class="op" id="ppBtn" onclick="payPayPay()" style="width:100%;margin:6px 0;padding:12px;font-size:16px;font-weight:bold;border-radius:10px;border:2px solid #d33;background:#fff;color:#d33">PayPay で支払い（お預り不要）</button>
     <button class="done" id="doneBtn" onclick="finishSale()">会計完了 → 次のお客様</button>
     <button class="cancel" onclick="hidePay()">← 注文入力へ戻る（会計を中断）</button>
+  </div>
+</div>
+
+<!-- 出退勤シート -->
+<div class="overlay" id="clockOv">
+  <div class="sheet">
+    <h2>出 退 勤</h2>
+    <div class="sum-list" id="clockList"></div>
+    <div style="font-size:12px;color:#8a7a5c;margin:6px 0 0;line-height:1.6">自分の名前の「出勤」「退勤」を押す（押した時刻が記録されます）。押し間違えは管理者に伝えてください。</div>
+    <button class="save" onclick="copyClock()">今日の出退勤をコピー（LINEに貼る用）</button>
+    <button class="cancel" onclick="document.getElementById('clockOv').classList.remove('show')">閉じる</button>
   </div>
 </div>
 
@@ -169,8 +183,8 @@ const CAMERA_LOCAL_URL = "";
 // 折箱は無料だが個数を計測するためボタンを残す(0円)
 // n=集計用の商品名 / l=ボタン表示(| の位置で改行)
 const ITEMS = [
-  {n:"オリオン",          l:"オリオン",          p:1000},
-  {n:"オリオン ハーフ",   l:"オリオン|ハーフ",   p:800},
+  {n:"オリオン",          l:"オリオン",          p:1100},
+  {n:"オリオン ハーフ",   l:"オリオン|ハーフ",   p:900},
   {n:"ナシナシ",          l:"ナシナシ",          p:800},
   {n:"ナシナシ ハーフ",   l:"ナシナシ|ハーフ",   p:600},
   {n:"コカ・コーラ",      l:"コカ・コーラ",      p:300},
@@ -178,23 +192,28 @@ const ITEMS = [
   {n:"ジンジャーエール",  l:"ジンジャー|エール", p:300},
   {n:"キリンラガー 小瓶", l:"キリンラガー|小瓶", p:500},
   {n:"折箱",              l:"折箱",              p:0},
+  {n:"プレ割 -100円",     l:"プレ割|−100円",     p:-100, disc:true, until:"2026-10-19"},
 ];
+// プレオープン(10/13〜10/19)の全品100円引き。until の日付を過ぎるとボタンが自動で消える。延長するなら日付を変えるだけ
+const TODAY_STR = (()=>{ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); })();
+for(let i=ITEMS.length-1;i>=0;i--){ if(ITEMS[i].until && TODAY_STR > ITEMS[i].until) ITEMS.splice(i,1); }
 // 持ち帰り: ナポリタン4種のみ(商品名の頭に TG・価格は店内と同じ)。ドリンク・ビール・折箱は出さない
 const TG_NAMES = ["オリオン","オリオン ハーフ","ナシナシ","ナシナシ ハーフ"];
 const TG_ITEMS = ITEMS
   .filter(m => TG_NAMES.includes(m.n))
-  .map(m => ({n:"TG" + m.n, l:"TG" + m.l, p:m.p}));
+  .map(m => ({n:"TG" + m.n, l:"TG" + m.l, p:m.p}))
+  .concat(ITEMS.filter(m => m.disc));
 const MENUS = { "店内": ITEMS, "持ち帰り": TG_ITEMS };
 const ALL_ITEMS = [...MENUS["店内"], ...MENUS["持ち帰り"].filter(m=>!MENUS["店内"].some(e=>e.n===m.n))];
 
-let items = [], tender = 0, mode = "店内";
+let items = [], tender = 0, mode = "店内", payMethod = "cash";
 const $ = id => document.getElementById(id);
 
 function todayKey(){
   const d = new Date();
   return "orion-sales-" + d.getFullYear() + "-" + (d.getMonth()+1) + "-" + d.getDate();
 }
-function emptyDaily(){ return {count:0, sum:0, items:{}, modes:{"店内":0,"持ち帰り":0}}; }
+function emptyDaily(){ return {count:0, sum:0, paypay:0, disc:0, items:{}, modes:{"店内":0,"持ち帰り":0}}; }
 
 async function loadDaily(){
   try{
@@ -229,6 +248,7 @@ function renderGrid(){
     b.className = "key";
     const lines = (m.l || m.n).split("|");
     b.innerHTML = `<span class="nm">${lines.join("<br>")}</span><small>${m.p ? m.p.toLocaleString()+"円" : "無料"}</small>`;
+    if(m.disc) b.style.background = "#e8dcc2";
     b.onclick = ()=>{ items.push(m); refresh(); };
     $("grid").appendChild(b);
   });
@@ -251,6 +271,8 @@ renderGrid();
 
 function showPay(){
   if(!items.length) return;
+  if(total() < 0){ alert("値引きだけでは会計できません"); return; }
+  payMethod = "cash"; $("ppBtn").classList.remove("on");
   tender = 0;
   $("pTotal").textContent = total().toLocaleString() + " 円";
   updatePay();
@@ -284,7 +306,8 @@ function backspace(){
   tender = parseInt(s.slice(0, -1) || "0", 10);
   updatePay();
 }
-function clearTender(){ tender = 0; updatePay(); }
+function clearTender(){ tender = 0; payMethod = "cash"; $("ppBtn").classList.remove("on"); updatePay(); }
+function payPayPay(){ payMethod = "paypay"; tender = total(); $("ppBtn").classList.add("on"); updatePay(); }
 function addTender(v){ tender += v; updatePay(); }
 function exactTender(){ tender = total(); updatePay(); }
 
@@ -315,6 +338,8 @@ async function finishSale(){
   d.count += 1;
   d.sum += saleTotal;
   d.modes[mode] = (d.modes[mode]||0) + 1;
+  if(payMethod === "paypay") d.paypay = (d.paypay||0) + saleTotal;
+  items.forEach(i=>{ if(i.disc) d.disc = (d.disc||0) + 1; });
   items.forEach(i=>{
     if(!d.items[i.n]) d.items[i.n] = {q:0, yen:0};
     d.items[i.n].q += 1;
@@ -342,12 +367,40 @@ async function finishSale(){
     itemCounts: itemCounts,
     tender: tender,
     change: tender - saleTotal,
+    pay: payMethod === "paypay" ? "PayPay" : "現金",
   };
   const q = loadQueue(); q.push(rec); saveQueue(q);
   flushQueue();
 
-  items = []; tender = 0;
+  items = []; tender = 0; payMethod = "cash";
   hidePay(); refresh(); refreshDaily();
+}
+
+// ===== 出退勤（この端末に記録。日計と一緒にLINEへ貼る） =====
+const STAFF = ["柴村","大崎","マリエル","臨時"];
+function clockKey(){ const d = new Date(); return "orion-clock-" + d.getFullYear() + "-" + (d.getMonth()+1) + "-" + d.getDate(); }
+function loadClock(){ try{ return JSON.parse(localStorage.getItem(clockKey()) || "{}"); }catch(e){ return {}; } }
+function saveClock(c){ try{ localStorage.setItem(clockKey(), JSON.stringify(c)); }catch(e){} }
+function hmNow(){ const n = new Date(); const pad = x => String(x).padStart(2,"0"); return pad(n.getHours())+":"+pad(n.getMinutes()); }
+function openClock(){ renderClock(); $("clockOv").classList.add("show"); }
+function renderClock(){
+  const c = loadClock();
+  $("clockList").innerHTML = STAFF.map(n => {
+    const r = c[n] || {};
+    const btn = !r.in ? `<button class="save" style="margin:0;padding:8px 14px;width:auto" onclick="clockPunch('${n}','in')">出勤</button>`
+      : !r.out ? `<button class="save" style="margin:0;padding:8px 14px;width:auto;background:#93332a" onclick="clockPunch('${n}','out')">退勤</button>`
+      : `<span style="color:#8a7a5c;font-size:12px">完了</span>`;
+    return `<div class="li" style="align-items:center"><span><b style="font-size:16px">${n}</b><br><small style="color:#8a7a5c">${r.in||"—"} 〜 ${r.out||""}</small></span>${btn}</div>`;
+  }).join("");
+}
+function clockPunch(name, kind){
+  if(!confirm(`${name} さんの${kind==="in"?"出勤":"退勤"}を ${hmNow()} で記録します。よろしいですか？`)) return;
+  const c = loadClock(); c[name] = c[name] || {}; c[name][kind] = hmNow(); saveClock(c); renderClock();
+}
+function copyClock(){
+  const c = loadClock(); const d = new Date();
+  const text = `【オリオン 出退勤 ${d.getMonth()+1}/${d.getDate()}】\n` + STAFF.filter(n=>c[n]&&c[n].in).map(n => `${n}　${c[n].in} 〜 ${c[n].out||"（退勤未）"}`).join("\n");
+  (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(()=>alert("コピーしました。LINEに貼り付けてください"), ()=>prompt("長押しでコピーしてください", text));
 }
 
 // ===== レジ締め =====
@@ -371,16 +424,18 @@ async function calcShime(){
   localStorage.setItem("orion-prep", prep);
   const daily = await loadDaily();
   const cash = shimeCash();
-  const expected = prep + daily.sum;
+  const pp = daily.paypay || 0;
+  const expected = prep + daily.sum - pp;
   const diff = cash - expected;
   const cls = diff === 0 ? "diff-ok" : "diff-ng";
   const sign = diff > 0 ? "+" : "";
   $("shimeSum").innerHTML =
     `<div class="li"><span>本日売上(アプリ)</span><span>${daily.sum.toLocaleString()} 円</span></div>`+
-    `<div class="li"><span>あるべき現金(準備金+売上)</span><span>${expected.toLocaleString()} 円</span></div>`+
+    `<div class="li"><span>うちPayPay(現金に含めない)</span><span>${pp.toLocaleString()} 円</span></div>`+
+    `<div class="li"><span>あるべき現金(準備金+現金売上)</span><span>${expected.toLocaleString()} 円</span></div>`+
     `<div class="li"><span>数えた現金</span><span>${cash.toLocaleString()} 円</span></div>`+
     `<div class="li"><span>差異</span><span class="${cls}">${sign}${diff.toLocaleString()} 円</span></div>`;
-  window._shime = {prep, sales: daily.sum, expected, cash, diff};
+  window._shime = {prep, sales: daily.sum, expected, cash, diff, paypay: pp};
 }
 async function saveShime(){
   const s = window._shime;
@@ -392,7 +447,7 @@ async function saveShime(){
     type: "shime",
     date: `${now.getFullYear()}/${pad(now.getMonth()+1)}/${pad(now.getDate())}`,
     time: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
-    prep: s.prep, sales: s.sales, expected: s.expected, cash: s.cash, diff: s.diff
+    prep: s.prep, sales: s.sales, expected: s.expected, cash: s.cash, diff: s.diff, paypay: s.paypay || 0
   };
   const q = loadQueue(); q.push(rec); saveQueue(q);
   flushQueue();
@@ -595,6 +650,8 @@ async function openSummary(){
   let html = "";
   html += `<div class="li"><span><b>合計</b></span><span><b>${d.count}件 / ${d.sum.toLocaleString()}円</b></span></div>`;
   html += `<div class="li"><span>店内 / 持ち帰り</span><span>${d.modes["店内"]||0}件 / ${d.modes["持ち帰り"]||0}件</span></div>`;
+  html += `<div class="li"><span>現金 / PayPay</span><span>${(d.sum-(d.paypay||0)).toLocaleString()}円 / ${(d.paypay||0).toLocaleString()}円</span></div>`;
+  if(d.disc) html += `<div class="li"><span>プレ割の回数</span><span>${d.disc}回</span></div>`;
   const names = Object.keys(d.items);
   if(names.length){
     ALL_ITEMS.forEach(m=>{
