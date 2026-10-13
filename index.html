@@ -192,9 +192,9 @@ const ITEMS = [
   {n:"ジンジャーエール",  l:"ジンジャー|エール", p:300},
   {n:"キリンラガー 小瓶", l:"キリンラガー|小瓶", p:500},
   {n:"折箱",              l:"折箱",              p:0},
-  {n:"プレ割 -100円",     l:"プレ割|−100円",     p:-100, disc:true, until:"2026-10-19"},
+  {n:"目玉焼き",          l:"目玉焼き|追加",     p:100, topping:true},
 ];
-// プレオープン(10/13〜10/19)の全品100円引き。until の日付を過ぎるとボタンが自動で消える。延長するなら日付を変えるだけ
+// 目玉焼き追加(+100円)は店内・持ち帰り両方に出す。until:"YYYY-MM-DD" を付けると期限で自動的に消える
 const TODAY_STR = (()=>{ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); })();
 for(let i=ITEMS.length-1;i>=0;i--){ if(ITEMS[i].until && TODAY_STR > ITEMS[i].until) ITEMS.splice(i,1); }
 // 持ち帰り: ナポリタン4種のみ(商品名の頭に TG・価格は店内と同じ)。ドリンク・ビール・折箱は出さない
@@ -202,7 +202,7 @@ const TG_NAMES = ["オリオン","オリオン ハーフ","ナシナシ","ナシ
 const TG_ITEMS = ITEMS
   .filter(m => TG_NAMES.includes(m.n))
   .map(m => ({n:"TG" + m.n, l:"TG" + m.l, p:m.p}))
-  .concat(ITEMS.filter(m => m.disc));
+  .concat(ITEMS.filter(m => m.disc || m.topping));
 const MENUS = { "店内": ITEMS, "持ち帰り": TG_ITEMS };
 const ALL_ITEMS = [...MENUS["店内"], ...MENUS["持ち帰り"].filter(m=>!MENUS["店内"].some(e=>e.n===m.n))];
 
