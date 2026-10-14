@@ -401,7 +401,7 @@ function copyClock(){
 
 // ===== レジ締め =====
 const DENOMS = [10000,5000,1000,500,100,50,10,5,1];
-const PREP_DEFAULT = 4000; // 毎日レジに残す現金
+const PREP_DEFAULT = 40000; // 毎日レジに残す現金
 function openShime(){
   $("shimeOv").classList.add("show");
   $("prepIn").value = localStorage.getItem("orion-prep2") || PREP_DEFAULT;
