@@ -144,7 +144,7 @@
 <div class="overlay" id="shimeOv">
   <div class="sheet">
     <h2>レ ジ 締 め</h2>
-    <div class="fm" style="grid-template-columns:minmax(0,1fr) 130px"><span>釣銭準備金</span><span class="in"><input type="number" inputmode="numeric" id="prepIn" onchange="calcShime()" oninput="calcShime()"> 円</span></div>
+    <div class="fm" style="grid-template-columns:minmax(0,1fr) 130px"><span>釣銭準備金(朝の現金)</span><span class="in"><input type="number" inputmode="numeric" id="prepIn" onchange="calcShime()" oninput="calcShime()"> 円</span></div>
     <div class="sum-list" id="shimeDenoms" style="max-height:34vh"></div>
     <div class="shime-sum" id="shimeSum"></div>
     <button class="save" onclick="saveShime()">記録して締める</button>
@@ -401,9 +401,10 @@ function copyClock(){
 
 // ===== レジ締め =====
 const DENOMS = [10000,5000,1000,500,100,50,10,5,1];
+const PREP_DEFAULT = 4000; // 毎日レジに残す現金
 function openShime(){
   $("shimeOv").classList.add("show");
-  $("prepIn").value = localStorage.getItem("orion-prep") || 20000;
+  $("prepIn").value = localStorage.getItem("orion-prep2") || PREP_DEFAULT;
   $("shimeDenoms").innerHTML = DENOMS.map((d,i)=>
     `<div class="fm" style="grid-template-columns:minmax(0,1fr) 118px"><span>${d.toLocaleString()}円</span><span class="in"><input type="number" inputmode="numeric" id="dn${i}" placeholder="0" oninput="calcShime()"> 枚</span></div>`
   ).join("");
@@ -417,12 +418,13 @@ function shimeCash(){
 }
 async function calcShime(){
   const prep = parseInt($("prepIn").value) || 0;
-  localStorage.setItem("orion-prep", prep);
+  localStorage.setItem("orion-prep2", prep);
   const daily = await loadDaily();
   const cash = shimeCash();
   const pp = daily.paypay || 0;
   const expected = prep + daily.sum - pp;
   const diff = cash - expected;
+  const bank = Math.max(0, cash - PREP_DEFAULT);
   const cls = diff === 0 ? "diff-ok" : "diff-ng";
   const sign = diff > 0 ? "+" : "";
   $("shimeSum").innerHTML =
@@ -430,8 +432,10 @@ async function calcShime(){
     `<div class="li"><span>うちPayPay(現金に含めない)</span><span>${pp.toLocaleString()} 円</span></div>`+
     `<div class="li"><span>あるべき現金(準備金+現金売上)</span><span>${expected.toLocaleString()} 円</span></div>`+
     `<div class="li"><span>数えた現金</span><span>${cash.toLocaleString()} 円</span></div>`+
-    `<div class="li"><span>差異</span><span class="${cls}">${sign}${diff.toLocaleString()} 円</span></div>`;
-  window._shime = {prep, sales: daily.sum, expected, cash, diff, paypay: pp};
+    `<div class="li"><span>差異</span><span class="${cls}">${sign}${diff.toLocaleString()} 円</span></div>`+
+    `<div class="li"><span>レジに残す</span><span>${PREP_DEFAULT.toLocaleString()} 円</span></div>`+
+    `<div class="li"><span><b>回収する現金(数えた現金−${PREP_DEFAULT.toLocaleString()})</b></span><span><b>${bank.toLocaleString()} 円</b></span></div>`;
+  window._shime = {prep, sales: daily.sum, expected, cash, diff, paypay: pp, bank};
 }
 async function saveShime(){
   const s = window._shime;
@@ -443,7 +447,7 @@ async function saveShime(){
     type: "shime",
     date: `${now.getFullYear()}/${pad(now.getMonth()+1)}/${pad(now.getDate())}`,
     time: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
-    prep: s.prep, sales: s.sales, expected: s.expected, cash: s.cash, diff: s.diff, paypay: s.paypay || 0
+    prep: s.prep, sales: s.sales, expected: s.expected, cash: s.cash, diff: s.diff, paypay: s.paypay || 0, keep: PREP_DEFAULT, bank: s.bank || 0
   };
   const q = loadQueue(); q.push(rec); saveQueue(q);
   flushQueue();
