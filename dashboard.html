@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ダッシュボード | 洋食オリオン 小川町店</title>
+<title>ダッシュボード | 洋食オリオン 神田淡路町店</title>
 <style>
   :root{ --wood:#6b3f1c; --wood-d:#4e2d12; --cream:#fdf6e8; --cream-d:#e8dcc2;
          --enji:#93332a; --midori:#2c4f39; --ink:#3a2a18; }
@@ -60,7 +60,7 @@
 <div class="app">
   <header>
     <div class="t"><small>洋食オリオン</small><b>ダッシュボード</b></div>
-    <span class="store">小川町店</span>
+    <span class="store">神田淡路町店</span>
   </header>
   <div class="demoBanner" id="demoBanner">⚠ デモデータ表示中(「↻ 実データ」で戻ります)</div>
   <div class="err" id="err"></div>
@@ -284,7 +284,7 @@ async function load(){
   try{
     $("err").style.display = "none";
     $("demoBanner").style.display = "none";
-    const res = await fetch(SHEET_URL);
+    const res = await fetch(SHEET_URL + "?t=" + Date.now(), {cache:"no-store"});
     DATA = await res.json();
     viewDate = null;
     renderAll();
