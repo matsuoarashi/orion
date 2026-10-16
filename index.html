@@ -145,7 +145,10 @@
   <div class="sheet">
     <h2>レ ジ 締 め</h2>
     <div class="fm" style="grid-template-columns:minmax(0,1fr) 130px"><span>釣銭準備金(朝の現金)</span><span class="in"><input type="number" inputmode="numeric" id="prepIn" onchange="calcShime()" oninput="calcShime()"> 円</span></div>
-    <div class="sum-list" id="shimeDenoms" style="max-height:34vh"></div>
+    <div class="sum-list" id="shimeDenoms" style="max-height:30vh"></div>
+    <div class="fm" style="grid-template-columns:minmax(0,1fr) 130px"><span>業者への現金支払い(あれば)</span><span class="in"><input type="number" inputmode="numeric" id="vendorIn" placeholder="0" oninput="calcShime()"> 円</span></div>
+    <div style="font-size:13px;margin:6px 0 2px;color:#5a4a3a">伝票を4つに分けて枚数を入力</div>
+    <div class="sum-list" id="shimeSlips" style="max-height:22vh"></div>
     <div class="shime-sum" id="shimeSum"></div>
     <button class="save" onclick="saveShime()">記録して締める</button>
     <button class="cancel" onclick="document.getElementById('shimeOv').classList.remove('show')">閉じる</button>
@@ -192,9 +195,10 @@ const ITEMS = [
   {n:"ジンジャーエール",  l:"ジンジャー|エール", p:300},
   {n:"キリンラガー 小瓶", l:"キリンラガー|小瓶", p:500},
   {n:"折箱",              l:"折箱",              p:0},
-  {n:"目玉焼き",          l:"目玉焼き|追加",     p:100, topping:true},
+  {n:"副菜追加",          l:"副菜|追加",         p:100, topping:true},
+  {n:"副菜値引き",        l:"副菜|値引き",       p:-100, disc:true},
 ];
-// 目玉焼き追加(+100円)は店内・持ち帰り両方に出す。until:"YYYY-MM-DD" を付けると期限で自動的に消える
+// 副菜追加(+100円)・副菜値引き(−100円)は店内・持ち帰り両方に出す。until:"YYYY-MM-DD" を付けると期限で自動的に消える
 const TODAY_STR = (()=>{ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); })();
 for(let i=ITEMS.length-1;i>=0;i--){ if(ITEMS[i].until && TODAY_STR > ITEMS[i].until) ITEMS.splice(i,1); }
 // 持ち帰り: ナポリタン4種のみ(商品名の頭に TG・価格は店内と同じ)。ドリンク・ビール・折箱は出さない
@@ -408,8 +412,14 @@ function openShime(){
   $("shimeDenoms").innerHTML = DENOMS.map((d,i)=>
     `<div class="fm" style="grid-template-columns:minmax(0,1fr) 118px"><span>${d.toLocaleString()}円</span><span class="in"><input type="number" inputmode="numeric" id="dn${i}" placeholder="0" oninput="calcShime()"> 枚</span></div>`
   ).join("");
+  $("vendorIn").value = "";
+  $("shimeSlips").innerHTML = SLIP_MENUS.map((n,i)=>
+    `<div class="fm" style="grid-template-columns:minmax(0,1fr) 118px"><span>${n} <small id="sl${i}c" style="color:#888"></small></span><span class="in"><input type="number" inputmode="numeric" id="sl${i}" placeholder="0" oninput="calcShime()"> 枚</span></div>`
+  ).join("");
   calcShime();
 }
+const SLIP_MENUS = ["オリオン","オリオン ハーフ","ナシナシ","ナシナシ ハーフ"];
+function appCount(daily, n){ const a = daily.items[n] ? daily.items[n].q : 0; const b = daily.items["TG"+n] ? daily.items["TG"+n].q : 0; return a + b; }
 function shimeCash(){
   return DENOMS.reduce((s,d,i)=>{
     const n = parseInt($("dn"+i) && $("dn"+i).value) || 0;
@@ -422,32 +432,46 @@ async function calcShime(){
   const daily = await loadDaily();
   const cash = shimeCash();
   const pp = daily.paypay || 0;
-  const expected = prep + daily.sum - pp;
+  const vendor = parseInt($("vendorIn") && $("vendorIn").value) || 0;
+  const expected = prep + daily.sum - pp - vendor;
   const diff = cash - expected;
   const bank = Math.max(0, cash - PREP_DEFAULT);
   const cls = diff === 0 ? "diff-ok" : "diff-ng";
   const sign = diff > 0 ? "+" : "";
+  // 伝票照合
+  const slips = {}, app = {}; let slipHtml = "", slipOk = true, slipAny = false;
+  SLIP_MENUS.forEach((n,i)=>{
+    const sv = parseInt($("sl"+i) && $("sl"+i).value); const ac = appCount(daily, n);
+    app[n] = ac; if($("sl"+i+"c")) $("sl"+i+"c").textContent = "(アプリ "+ac+")";
+    if(isNaN(sv)) return; slipAny = true; slips[n] = sv; const dlt = sv - ac; if(dlt !== 0) slipOk = false;
+    slipHtml += `<div class="li"><span>伝票 ${n}</span><span class="${dlt===0?"diff-ok":"diff-ng"}">${sv}枚 / アプリ ${ac}件${dlt!==0?" ("+(dlt>0?"+":"")+dlt+")":""}</span></div>`;
+  });
   $("shimeSum").innerHTML =
     `<div class="li"><span>本日売上(アプリ)</span><span>${daily.sum.toLocaleString()} 円</span></div>`+
     `<div class="li"><span>うちPayPay(現金に含めない)</span><span>${pp.toLocaleString()} 円</span></div>`+
-    `<div class="li"><span>あるべき現金(準備金+現金売上)</span><span>${expected.toLocaleString()} 円</span></div>`+
+    (vendor ? `<div class="li"><span>業者支払い(現金から出した分)</span><span>−${vendor.toLocaleString()} 円</span></div>` : "")+
+    `<div class="li"><span>あるべき現金(準備金+現金売上${vendor?"−業者支払い":""})</span><span>${expected.toLocaleString()} 円</span></div>`+
     `<div class="li"><span>数えた現金</span><span>${cash.toLocaleString()} 円</span></div>`+
     `<div class="li"><span>差異</span><span class="${cls}">${sign}${diff.toLocaleString()} 円</span></div>`+
     `<div class="li"><span>レジに残す</span><span>${PREP_DEFAULT.toLocaleString()} 円</span></div>`+
-    `<div class="li"><span><b>回収する現金(数えた現金−${PREP_DEFAULT.toLocaleString()})</b></span><span><b>${bank.toLocaleString()} 円</b></span></div>`;
-  window._shime = {prep, sales: daily.sum, expected, cash, diff, paypay: pp, bank};
+    `<div class="li"><span><b>回収する現金(数えた現金−${PREP_DEFAULT.toLocaleString()})</b></span><span><b>${bank.toLocaleString()} 円</b></span></div>`+
+    slipHtml;
+  window._shime = {prep, sales: daily.sum, expected, cash, diff, paypay: pp, bank, vendor, slips, app, slipOk: slipAny ? slipOk : null};
 }
 async function saveShime(){
   const s = window._shime;
   if(!s || s.cash === 0){ alert("金種を入力してください"); return; }
   if(s.diff !== 0 && !confirm(`差異が ${s.diff>0?"+":""}${s.diff.toLocaleString()}円 あります。このまま記録しますか?`)) return;
+  if(s.slipOk === null && !confirm("伝票の枚数が未入力です。このまま記録しますか?")) return;
+  if(s.slipOk === false && !confirm("伝票の枚数とアプリの件数が合っていません。LINEで報告してください。このまま記録しますか?")) return;
   const now = new Date();
   const pad = n => String(n).padStart(2,"0");
   const rec = {
     type: "shime",
     date: `${now.getFullYear()}/${pad(now.getMonth()+1)}/${pad(now.getDate())}`,
     time: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
-    prep: s.prep, sales: s.sales, expected: s.expected, cash: s.cash, diff: s.diff, paypay: s.paypay || 0, keep: PREP_DEFAULT, bank: s.bank || 0
+    prep: s.prep, sales: s.sales, expected: s.expected, cash: s.cash, diff: s.diff, paypay: s.paypay || 0, keep: PREP_DEFAULT, bank: s.bank || 0,
+    vendor: s.vendor || 0, slips: s.slips || {}, app: s.app || {}, slipOk: s.slipOk
   };
   const q = loadQueue(); q.push(rec); saveQueue(q);
   flushQueue();
@@ -651,7 +675,7 @@ async function openSummary(){
   html += `<div class="li"><span><b>合計</b></span><span><b>${d.count}件 / ${d.sum.toLocaleString()}円</b></span></div>`;
   html += `<div class="li"><span>店内 / 持ち帰り</span><span>${d.modes["店内"]||0}件 / ${d.modes["持ち帰り"]||0}件</span></div>`;
   html += `<div class="li"><span>現金 / PayPay</span><span>${(d.sum-(d.paypay||0)).toLocaleString()}円 / ${(d.paypay||0).toLocaleString()}円</span></div>`;
-  if(d.disc) html += `<div class="li"><span>プレ割の回数</span><span>${d.disc}回</span></div>`;
+  if(d.disc) html += `<div class="li"><span>値引きの回数</span><span>${d.disc}回</span></div>`;
   const names = Object.keys(d.items);
   if(names.length){
     ALL_ITEMS.forEach(m=>{
