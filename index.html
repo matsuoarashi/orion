@@ -32,7 +32,11 @@
   .key.fn-total small{color:#cfe2cc}
   .overlay{position:fixed;inset:0;background:rgba(20,12,4,.65);display:none;justify-content:center;align-items:flex-end;z-index:10}
   .overlay.show{display:flex}
-  .sheet{background:var(--cream);border-radius:18px 18px 0 0;padding:16px;width:100%;max-width:520px;display:flex;flex-direction:column;gap:10px;border-top:4px solid var(--wood-d)}
+  .sheet{background:var(--cream);border-radius:18px 18px 0 0;padding:16px;width:100%;max-width:520px;display:flex;flex-direction:column;gap:10px;border-top:4px solid var(--wood-d);max-height:94vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+  .grid2 .fm{grid-template-columns:minmax(0,1fr) auto;padding:4px 0}
+  .grid2 .fm input{width:58px;height:36px;font-size:17px}
+  .sheet .lbl{font-size:13px;margin:4px 0 0;color:#5a4a3a}
   .sheet h2{font-size:16px;letter-spacing:4px;color:var(--midori);text-align:center}
   .sheet .row{display:flex;justify-content:space-between;font-size:19px;font-variant-numeric:tabular-nums}
   .sheet .row.change{font-size:30px;font-weight:bold;color:var(--enji)}
@@ -144,11 +148,11 @@
 <div class="overlay" id="shimeOv">
   <div class="sheet">
     <h2>レ ジ 締 め</h2>
-    <div class="fm" style="grid-template-columns:minmax(0,1fr) 130px"><span>釣銭準備金(朝の現金)</span><span class="in"><input type="number" inputmode="numeric" id="prepIn" onchange="calcShime()" oninput="calcShime()"> 円</span></div>
-    <div class="sum-list" id="shimeDenoms" style="max-height:30vh"></div>
-    <div class="fm" style="grid-template-columns:minmax(0,1fr) 130px"><span>業者への現金支払い(あれば)</span><span class="in"><input type="number" inputmode="numeric" id="vendorIn" placeholder="0" oninput="calcShime()"> 円</span></div>
-    <div style="font-size:13px;margin:6px 0 2px;color:#5a4a3a">伝票を4つに分けて枚数を入力</div>
-    <div class="sum-list" id="shimeSlips" style="max-height:22vh"></div>
+    <div class="fm" style="grid-template-columns:minmax(0,1fr) 130px"><span>釣銭準備金(朝の現金)</span><span class="in"><input type="number" inputmode="numeric" id="prepIn" style="width:96px" onchange="calcShime()" oninput="calcShime()"> 円</span></div>
+    <div class="grid2" id="shimeDenoms"></div>
+    <div class="fm" style="grid-template-columns:minmax(0,1fr) 130px"><span>業者への現金支払い(あれば)</span><span class="in"><input type="number" inputmode="numeric" id="vendorIn" style="width:96px" placeholder="0" oninput="calcShime()"> 円</span></div>
+    <div class="lbl">伝票を4つに分けて枚数を入力（横はアプリの件数）</div>
+    <div class="grid2" id="shimeSlips"></div>
     <div class="shime-sum" id="shimeSum"></div>
     <button class="save" onclick="saveShime()">記録して締める</button>
     <button class="cancel" onclick="document.getElementById('shimeOv').classList.remove('show')">閉じる</button>
@@ -410,11 +414,11 @@ function openShime(){
   $("shimeOv").classList.add("show");
   $("prepIn").value = localStorage.getItem("orion-prep2") || PREP_DEFAULT;
   $("shimeDenoms").innerHTML = DENOMS.map((d,i)=>
-    `<div class="fm" style="grid-template-columns:minmax(0,1fr) 118px"><span>${d.toLocaleString()}円</span><span class="in"><input type="number" inputmode="numeric" id="dn${i}" placeholder="0" oninput="calcShime()"> 枚</span></div>`
+    `<div class="fm"><span>${d.toLocaleString()}円</span><span class="in"><input type="number" inputmode="numeric" id="dn${i}" placeholder="0" oninput="calcShime()"> 枚</span></div>`
   ).join("");
   $("vendorIn").value = "";
   $("shimeSlips").innerHTML = SLIP_MENUS.map((n,i)=>
-    `<div class="fm" style="grid-template-columns:minmax(0,1fr) 118px"><span>${n} <small id="sl${i}c" style="color:#888"></small></span><span class="in"><input type="number" inputmode="numeric" id="sl${i}" placeholder="0" oninput="calcShime()"> 枚</span></div>`
+    `<div class="fm"><span style="font-size:13px">${n.replace(" ","<br>")}<br><small id="sl${i}c" style="color:#888"></small></span><span class="in"><input type="number" inputmode="numeric" id="sl${i}" placeholder="0" oninput="calcShime()"> 枚</span></div>`
   ).join("");
   calcShime();
 }
@@ -444,7 +448,7 @@ async function calcShime(){
     const sv = parseInt($("sl"+i) && $("sl"+i).value); const ac = appCount(daily, n);
     app[n] = ac; if($("sl"+i+"c")) $("sl"+i+"c").textContent = "(アプリ "+ac+")";
     if(isNaN(sv)) return; slipAny = true; slips[n] = sv; const dlt = sv - ac; if(dlt !== 0) slipOk = false;
-    slipHtml += `<div class="li"><span>伝票 ${n}</span><span class="${dlt===0?"diff-ok":"diff-ng"}">${sv}枚 / アプリ ${ac}件${dlt!==0?" ("+(dlt>0?"+":"")+dlt+")":""}</span></div>`;
+    slipHtml += `<div class="li"><span>伝票 ${n}</span><span class="${dlt===0?"diff-ok":"diff-ng"}">${sv}枚 / アプリ${ac}${dlt!==0?" ("+(dlt>0?"+":"")+dlt+")":" ✓"}</span></div>`;
   });
   $("shimeSum").innerHTML =
     `<div class="li"><span>本日売上(アプリ)</span><span>${daily.sum.toLocaleString()} 円</span></div>`+
