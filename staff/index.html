@@ -60,7 +60,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--g)}
 label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
 .msg{padding:12px 14px;border-radius:10px;font-size:14px;margin-bottom:12px;line-height:1.5}
 .msg.err{background:var(--red-l);color:var(--red)} .msg.ok{background:var(--g-l);color:var(--g)}
-.toast{position:fixed;left:50%;bottom:calc(84px + var(--sab));transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:9;max-width:92vw;text-align:center}
+.toast{position:fixed;left:50%;top:calc(64px + var(--sat));transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:9;max-width:92vw;text-align:center}
 .toast.show{opacity:1}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:8}
 .sheet{background:var(--cream);border-radius:18px 18px 0 0;padding:16px 16px calc(22px + var(--sab));width:100%;max-width:520px;max-height:92vh;max-height:92dvh;overflow-y:auto}
@@ -108,7 +108,13 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
 .monthnav{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
 .monthnav button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 16px;font-size:16px;min-height:44px}
 .monthnav b{font-size:17px}
-.sticky-bottom{position:sticky;bottom:0;background:linear-gradient(to top,var(--cream) 70%,rgba(250,246,238,0));padding-top:10px;margin:0 -14px -24px;padding-left:14px;padding-right:14px;padding-bottom:12px}
+.foot{margin:4px 0 8px}
+#bar{position:fixed;top:0;left:0;right:0;height:3px;z-index:20;background:linear-gradient(90deg,transparent 0%,#e9b949 40%,#e9b949 60%,transparent 100%);background-size:200% 100%;opacity:0;transition:opacity .2s;pointer-events:none}
+#bar.on{opacity:1;animation:slide 1s linear infinite}
+@keyframes slide{from{background-position:200% 0}to{background-position:-200% 0}}
+body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lock .tools button{pointer-events:none;opacity:.55}
+#punchArea .btn{margin-bottom:12px}
+.stale{opacity:.6}
 .link{background:none;border:0;color:var(--g);text-decoration:underline;font-size:14px;padding:8px 0}
 .editrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
 .editrow button{border:2px solid var(--line);background:#fff;border-radius:12px;padding:8px 4px;min-height:64px;text-align:center}
@@ -189,7 +195,7 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
             <label style="margin-top:0">ひとこと（任意）</label>
             <input type="text" id="wNote" maxlength="80" placeholder="例: 第2週は試験のため少なめ希望">
           </div>
-          <div class="sticky-bottom"><button class="btn" id="wishSaveBtn" onclick="saveWish()">この内容で提出する</button></div>
+          <div class="foot"><button class="btn" id="wishSaveBtn" onclick="saveWish()">この内容で提出する</button></div>
         </div>
       </section>
 
@@ -227,6 +233,7 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
     </nav>
   </div>
 </div>
+<div id="bar"></div>
 <div class="toast" id="toast"></div>
 <div id="ov"></div>
 
@@ -239,13 +246,28 @@ let busy = false;
 
 function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2400); }
 function showMsg(el, text, cls){ el.innerHTML = text ? `<div class="msg ${cls||"err"}">${text}</div>` : ""; }
+// 書き込み系は同時に1つだけ（二重タップ防止）。進行中は上部に黄色いバー。
+const WRITES = new Set(["punch","wishes_save","fix_request","change_pass","login","logout"]);
+let inflight = 0;
 async function api(action, body){
-  body = Object.assign({action, token: TOKEN}, body||{});
-  const res = await fetch(API_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(body)});
-  const j = await res.json();
-  if (!j.ok && j.code==="noauth"){ localStorage.removeItem("os-token"); TOKEN=""; showLogin("ログインの期限が切れました"); }
-  return j;
+  const isWrite = WRITES.has(action);
+  if (isWrite && document.body.classList.contains("lock")) return {ok:false, error:"処理中です。少しお待ちください", code:"busy"};
+  inflight++; $("bar").classList.add("on"); if (isWrite) document.body.classList.add("lock");
+  try{
+    body = Object.assign({action, token: TOKEN}, body||{});
+    const res = await fetch(API_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(body)});
+    const j = await res.json();
+    if (!j.ok && j.code==="noauth"){ localStorage.removeItem("os-token"); TOKEN=""; cclear(); showLogin("ログインの期限が切れました"); }
+    return j;
+  }catch(e){ return {ok:false, error:"通信エラーです。電波を確認してもう一度お試しください", code:"net"}; }
+  finally{ inflight--; if (inflight<=0){ inflight=0; $("bar").classList.remove("on"); } if (isWrite) document.body.classList.remove("lock"); }
 }
+// 画面ごとの前回結果を端末に残し、まず表示してから裏で更新
+let CACHE = (()=>{ try{ return JSON.parse(localStorage.getItem("os-cache")||"{}"); }catch(e){ return {}; } })();
+function cget(k){ return CACHE[k]; }
+function cset(k,v){ CACHE[k]=v; try{ localStorage.setItem("os-cache", JSON.stringify(CACHE)); }catch(e){} }
+function cclear(){ CACHE={}; try{ localStorage.removeItem("os-cache"); }catch(e){} }
+function todayStr(){ const d=new Date(); return d.getFullYear()+"/"+pad2(d.getMonth()+1)+"/"+pad2(d.getDate()); }
 function pad2(n){ return String(n).padStart(2,"0"); }
 function ymAdd(ym, n){ let [y,m]=ym.split("/").map(Number); m+=n; while(m>12){m-=12;y++;} while(m<1){m+=12;y--;} return y+"/"+pad2(m); }
 function thisMonth(){ const d=new Date(); return d.getFullYear()+"/"+pad2(d.getMonth()+1); }
@@ -280,13 +302,13 @@ async function doLogin(){
   try{
     const r = await api("login", {staff_id:b.dataset.id, passcode:pass, ua:navigator.userAgent});
     if(!r.ok){ showMsg($("loginMsg"), r.error); return; }
-    TOKEN = r.token; localStorage.setItem("os-token", TOKEN); localStorage.setItem("os-staff", b.dataset.id);
+    TOKEN = r.token; localStorage.setItem("os-token", TOKEN); localStorage.setItem("os-staff", b.dataset.id); cclear();
     ME = r.staff; SET = r.settings; $("passIn").value="";
     enterApp();
   }catch(e){ showMsg($("loginMsg"), "通信エラー。もう一度お試しください"); }
   finally{ $("loginBtn").disabled = false; }
 }
-async function doLogout(){ if(!confirm("ログアウトしますか？")) return; await api("logout"); localStorage.removeItem("os-token"); TOKEN=""; showLogin(); }
+async function doLogout(){ if(!confirm("ログアウトしますか？")) return; await api("logout"); localStorage.removeItem("os-token"); TOKEN=""; cclear(); showLogin(); }
 
 // ───── 画面遷移 ─────
 function enterApp(){ $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); go("home"); }
@@ -299,8 +321,12 @@ function go(p){
 
 // ───── ホーム・打刻 ─────
 async function loadHome(){
-  const r = await api("home"); if(!r.ok){ showMsg($("msg"), r.error); return; }
-  HOME = r; ME = r.staff; SET = r.settings;
+  const c = cget("home"); if (c && c.today===todayStr()) renderHome(c, true);
+  const r = await api("home"); if(!r.ok){ if(!c) showMsg($("msg"), r.error); return; }
+  cset("home", r); renderHome(r, false);
+}
+function renderHome(r, stale){
+  HOME = r; ME = r.staff; SET = r.settings; $("pHome").classList.toggle("stale", !!stale);
   $("hName").textContent = ME.name + (ME.role==="admin" ? "（管理者）" : "");
   $("hToday").textContent = mdLabel(r.today);
   if (r.todayShift){ $("hShift").textContent = r.todayShift.start+" 〜 "+r.todayShift.end; $("hShiftSub").textContent = "本日の勤務予定"; }
@@ -358,7 +384,14 @@ async function punch(type, breakMin, time){
 // 使い方：モード（○ / 時間 / 休）を選び、日をタップで付け外し。白＝出られない日。最後に提出。
 let WISH = {month:null, days:{}, locked:false, openDays:[], mode:"ok", note:""};
 async function loadWish(month){
-  const r = await api("wishes_get", {month}); if(!r.ok){ showMsg($("msg"), r.error); return; }
+  const key = "wish:"+(month||"next"); const c = cget(key); if (c){ renderWish(c); }
+  else { $("wishMonth").textContent = month ? monthLabel(month) : "…"; $("wishInfo").textContent = "読み込み中…"; }
+  WISH.dirty = false;
+  const r = await api("wishes_get", {month}); if(!r.ok){ if(!c) showMsg($("msg"), r.error); return; }
+  cset(key, r); if (WISH.dirty && c) return; // 編集中なら上書きしない
+  renderWish(r);
+}
+function renderWish(r){
   WISH.month = r.month; WISH.locked = r.locked; WISH.openDays = r.openDays; WISH.days = {}; WISH.note = "";
   r.days.forEach(d=>{ if (d.kind==="ng") return; WISH.days[d.date] = d; if (d.note && !WISH.note) WISH.note = d.note; });
   $("wNote").value = WISH.note;
@@ -392,6 +425,7 @@ function renderWishCal(){
   $("wishSummary").innerHTML = `<div><b>${c.ok}</b><span>出られる日</span></div><div><b>${c.time}</b><span>時間指定</span></div><div><b>${c.off}</b><span>休み希望</span></div>`;
 }
 function tapDay(ds){
+  WISH.dirty = true;
   if (WISH.locked){ toast("締切を過ぎています。管理者に伝えてください"); return; }
   const od = WISH.openDays.find(x=>x.date===ds); if (od && !od.open){ toast("定休日です"); return; }
   const cur = WISH.days[ds]; const m = WISH.mode;
@@ -400,8 +434,8 @@ function tapDay(ds){
   else { if (cur && cur.kind===m) delete WISH.days[ds]; else WISH.days[ds] = {date:ds, kind:m}; }
   renderWishCal();
 }
-function selectAllOpen(){ WISH.openDays.filter(d=>d.open).forEach(d=>{ if(!WISH.days[d.date]) WISH.days[d.date]={date:d.date, kind:"ok"}; }); renderWishCal(); toast("営業日をすべて○にしました。出られない日をタップして外してください"); }
-function clearAll(){ if(!confirm("この月の入力をすべて消しますか？（提出するまで保存はされません）")) return; WISH.days={}; renderWishCal(); }
+function selectAllOpen(){ WISH.dirty = true; WISH.openDays.filter(d=>d.open).forEach(d=>{ if(!WISH.days[d.date]) WISH.days[d.date]={date:d.date, kind:"ok"}; }); renderWishCal(); toast("営業日をすべて○にしました。出られない日をタップして外してください"); }
+function clearAll(){ if(!confirm("この月の入力をすべて消しますか？（提出するまで保存はされません）")) return; WISH.dirty = true; WISH.days={}; renderWishCal(); }
 async function saveWish(){
   const note = $("wNote").value.trim();
   const days = Object.values(WISH.days).map((w,i)=>Object.assign({}, w, {note: i===0 ? note : ""}));
@@ -410,6 +444,8 @@ async function saveWish(){
   const r = await api("wishes_save", {month:WISH.month, days});
   $("wishSaveBtn").disabled = false;
   if(!r.ok){ showMsg($("msg"), r.error); return; }
+  WISH.dirty = false; const ck = cget("wish:"+WISH.month) || cget("wish:next"); if (ck){ ck.days = days; cset("wish:"+WISH.month, ck); if (cget("wish:next") && cget("wish:next").month===WISH.month) cset("wish:next", ck); }
+  const hc = cget("home"); if (hc && hc.wishMonth===WISH.month){ hc.wishCount = days.length; cset("home", hc); }
   toast(`${r.saved}日分を提出しました`); showMsg($("msg"), `${monthLabel(WISH.month)}分の希望を提出しました（${r.saved}日分）。締切までは何度でも直せます。`, "ok");
   $("main").scrollTo({top:0, behavior:"smooth"}); $("bdWish").classList.add("hide");
 }
@@ -418,7 +454,11 @@ async function saveWish(){
 let SHM = thisMonth();
 function shiftMove(n){ SHM = ymAdd(SHM, n); loadShift(); }
 async function loadShift(){
-  const r = await api("shifts", {month:SHM}); if(!r.ok){ showMsg($("msg"), r.error); return; }
+  const key = "shift:"+SHM; const c = cget(key); if (c) renderShift(c); else { $("shiftMonth").textContent = monthLabel(SHM); $("shiftList").innerHTML = `<div class="sub">読み込み中…</div>`; }
+  const r = await api("shifts", {month:SHM}); if(!r.ok){ if(!c) showMsg($("msg"), r.error); return; }
+  cset(key, r); if (r.month===SHM) renderShift(r);
+}
+function renderShift(r){
   $("shiftMonth").textContent = monthLabel(r.month);
   if (!r.shifts.length){ $("shiftList").innerHTML = `<div class="sub">確定したシフトはまだありません</div>`; return; }
   const totalMin = r.shifts.reduce((s,x)=>s+(toMinC(x.end)-toMinC(x.start)),0);
@@ -431,7 +471,11 @@ async function loadShift(){
 let HM = thisMonth(); let HIST = null;
 function histMove(n){ HM = ymAdd(HM, n); loadHist(); }
 async function loadHist(){
-  const r = await api("history", {month:HM}); if(!r.ok){ showMsg($("msg"), r.error); return; }
+  const key = "hist:"+HM; const c = cget(key); if (c) renderHist(c); else { $("histMonth").textContent = monthLabel(HM); $("histList").innerHTML = `<div class="sub">読み込み中…</div>`; }
+  const r = await api("history", {month:HM}); if(!r.ok){ if(!c) showMsg($("msg"), r.error); return; }
+  cset(key, r); if (r.month===HM) renderHist(r);
+}
+function renderHist(r){
   HIST = r;
   $("histMonth").textContent = monthLabel(r.month);
   $("histDays").textContent = r.days+"日"; $("histHours").textContent = fmtMin(r.totalMin);
