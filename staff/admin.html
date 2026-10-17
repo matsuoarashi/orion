@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1f3a2a">
+<title>ORION STAFF 管理</title>
+<style>
+:root{ --g:#2c4f39; --g-d:#1f3a2a; --g-l:#e4eee7; --cream:#faf6ee; --cream-d:#ece4d2; --ink:#2b2a26; --mute:#7a7265; --red:#a33c2e; --amber:#b7791f; --line:#d9d1bd; --blue:#2a5aa8; }
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:var(--cream);color:var(--ink);font-size:15px;line-height:1.5}
+.app{max-width:860px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+header{background:var(--g-d);color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:5}
+header .t{font-size:11px;letter-spacing:4px;opacity:.8} header .n{font-size:16px;font-weight:bold}
+header button{background:rgba(255,255,255,.15);border:0;color:#fff;border-radius:8px;padding:6px 10px;font-size:13px}
+.tabs{display:flex;overflow-x:auto;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:54px;z-index:4}
+.tabs button{flex:1;min-width:84px;border:0;background:none;padding:12px 6px;font-size:14px;color:var(--mute);border-bottom:3px solid transparent;white-space:nowrap}
+.tabs button.on{color:var(--g);font-weight:bold;border-bottom-color:var(--g)}
+main{flex:1;padding:14px 14px 60px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:14px}
+.card h2{font-size:12px;letter-spacing:3px;color:var(--g);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.card h2 small{letter-spacing:0;color:var(--mute);font-weight:normal}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.kpi{background:var(--cream);border-radius:10px;padding:10px 12px}
+.kpi small{display:block;font-size:11px;letter-spacing:2px;color:var(--g)} .kpi b{font-size:22px;font-variant-numeric:tabular-nums}
+.row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line);gap:8px}
+.row:last-child{border-bottom:0}
+.btn{border:0;border-radius:10px;padding:12px 16px;font-size:15px;font-weight:bold;color:#fff;background:var(--g);cursor:pointer}
+.btn.sec{background:var(--cream-d);color:var(--ink);font-weight:normal} .btn.red{background:var(--red)} .btn.sm{padding:6px 10px;font-size:13px;border-radius:8px}
+.btn:disabled{opacity:.45}
+.pill{display:inline-block;border-radius:999px;padding:1px 9px;font-size:12px;background:var(--g-l);color:var(--g);white-space:nowrap}
+.pill.red{background:#f6e3df;color:var(--red)} .pill.amber{background:#f7ebd3;color:var(--amber)} .pill.gray{background:#eee;color:#666} .pill.blue{background:#e3eaf7;color:var(--blue)}
+input,select,textarea{font-size:15px;padding:9px 10px;border:1.5px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);width:100%}
+input:focus,select:focus{outline:none;border-color:var(--g)}
+label{display:block;font-size:12px;color:var(--mute);margin:10px 0 3px}
+.msg{padding:10px 14px;border-radius:10px;font-size:14px;margin-bottom:12px}
+.msg.err{background:#f6e3df;color:var(--red)} .msg.ok{background:var(--g-l);color:var(--g)}
+.hide{display:none !important}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--g);font-size:11px;letter-spacing:0;font-weight:bold;background:var(--cream);white-space:nowrap}
+td{white-space:nowrap}
+td.r,th.r{text-align:right}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.monthnav{display:flex;justify-content:center;align-items:center;gap:14px;margin-bottom:10px}
+.monthnav button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 14px;font-size:16px}
+.monthnav b{font-size:17px}
+.toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:9}
+.toast.show{opacity:1}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:8;padding:14px}
+.sheet{background:var(--cream);border-radius:16px;padding:18px;width:100%;max-width:520px;max-height:92vh;overflow:auto}
+.sheet h3{font-size:16px;margin-bottom:8px}
+.mini{font-size:12px;color:var(--mute)}
+.login{padding:40px 20px;max-width:420px;margin:0 auto}
+.login h1{font-size:14px;letter-spacing:6px;color:var(--g);text-align:center;margin-bottom:24px}
+/* シフト表 */
+.sg{display:grid;grid-template-columns:70px repeat(var(--n),1fr);gap:3px;font-size:12px}
+.sg .hd{font-weight:bold;color:var(--g);text-align:center;padding:4px 0;font-size:11px}
+.sg .dt{padding:6px 4px;border-radius:6px;background:var(--cream);font-variant-numeric:tabular-nums}
+.sg .dt.closed{background:#eee;color:#999}
+.sg .dt .y{font-size:10px;color:var(--mute)} .sg .dt .sun{color:var(--red)} .sg .dt .sat{color:var(--blue)}
+.sg .cell{border:1px solid var(--line);border-radius:6px;min-height:40px;padding:3px 4px;background:#fff;cursor:pointer;position:relative}
+.sg .cell.closed{background:#f3f3f3;border-style:dashed;cursor:default}
+.sg .cell .w{font-size:10px;color:var(--mute);line-height:1.2}
+.sg .cell .w.ok{color:var(--g)} .sg .cell .w.ng,.sg .cell .w.off{color:var(--red)} .sg .cell .w.time{color:var(--amber)}
+.sg .cell .s{display:block;font-weight:bold;font-size:12px;line-height:1.2}
+.sg .cell .s.draft{color:var(--amber)} .sg .cell .s.confirmed{color:var(--g)}
+.sg .cell .sync{position:absolute;top:2px;right:3px;font-size:9px}
+.sg .need{font-size:10px;color:var(--mute);text-align:right}
+.sg .need.short{color:var(--red);font-weight:bold}
+.legend{font-size:11px;color:var(--mute);margin:6px 0}
+pre.copy{white-space:pre-wrap;background:var(--cream);border-radius:8px;padding:10px;font-size:13px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="vLogin" class="login">
+    <h1>ORION STAFF 管理</h1>
+    <div id="loginMsg"></div>
+    <label>管理者</label><select id="adminSel"></select>
+    <label>パスコード</label><input type="password" inputmode="numeric" id="passIn" autocomplete="off">
+    <div style="height:16px"></div>
+    <button class="btn" style="width:100%;padding:16px;font-size:18px" id="loginBtn" onclick="doLogin()">ログイン</button>
+  </div>
+
+  <div id="vApp" class="hide" style="display:flex;flex-direction:column;flex:1">
+    <header><div><div class="t">ORION STAFF 管理</div><div class="n" id="hName">-</div></div><div><a href="index.html" style="color:#fff;font-size:13px;margin-right:10px;opacity:.85">スタッフ画面</a><button onclick="doLogout()">ログアウト</button></div></header>
+    <div class="tabs">
+      <button class="on" data-t="today" onclick="go('today')">今日</button>
+      <button data-t="shift" onclick="go('shift')">シフト</button>
+      <button data-t="att" onclick="go('att')">勤怠</button>
+      <button data-t="pay" onclick="go('pay')">給与</button>
+      <button data-t="staff" onclick="go('staff')">スタッフ</button>
+      <button data-t="set" onclick="go('set')">設定</button>
+    </div>
+    <main>
+      <div id="msg"></div>
+      <section id="pToday"></section>
+      <section id="pShift" class="hide"></section>
+      <section id="pAtt" class="hide"></section>
+      <section id="pPay" class="hide"></section>
+      <section id="pStaff" class="hide"></section>
+      <section id="pSet" class="hide"></section>
+    </main>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<div id="ov"></div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbwgGW6rXzAW2rHVicdoCMdHOT_E3egrXPsaEJerX-_brZr0mYF6Qo_tRorX8PgLc7c/exec";
+const $ = id => document.getElementById(id);
+let TOKEN = localStorage.getItem("os-admin-token") || ""; let ME=null;
+const YO = ["日","月","火","水","木","金","土"];
+const yen = n => (Math.round(n||0)).toLocaleString()+"円";
+const pad2 = n => String(n).padStart(2,"0");
+const thisMonth = () => { const d=new Date(); return d.getFullYear()+"/"+pad2(d.getMonth()+1); };
+const ymAdd = (ym,n) => { let [y,m]=ym.split("/").map(Number); m+=n; while(m>12){m-=12;y++;} while(m<1){m+=12;y--;} return y+"/"+pad2(m); };
+const ymLabel = ym => ym.replace("/","年")+"月";
+const youbi = ds => { const [y,m,d]=ds.split("/").map(Number); return new Date(y,m-1,d).getDay(); };
+const fmtMin = m => Math.floor(m/60)+":"+pad2(m%60);
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2400); }
+function showMsg(text, cls){ $("msg").innerHTML = text ? `<div class="msg ${cls||"err"}">${esc(text)}</div>` : ""; if(text) window.scrollTo(0,0); }
+async function api(action, body){
+  const res = await fetch(API_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(Object.assign({action, token:TOKEN}, body||{}))});
+  const j = await res.json();
+  if (!j.ok && j.code==="noauth"){ localStorage.removeItem("os-admin-token"); TOKEN=""; showLogin("ログインし直してください"); }
+  return j;
+}
+function closeOv(){ $("ov").innerHTML=""; }
+function modal(html){ $("ov").innerHTML = `<div class="overlay" onclick="if(event.target===this)closeOv()"><div class="sheet">${html}</div></div>`; }
+function download(name, text){ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob(["﻿"+text],{type:"text/csv"})); a.download=name; a.click(); }
+
+// ───── ログイン ─────
+async function showLogin(msg){
+  $("vLogin").classList.remove("hide"); $("vApp").classList.add("hide");
+  $("loginMsg").innerHTML = msg?`<div class="msg err">${esc(msg)}</div>`:"";
+  try{ const r = await fetch(API_URL+"?action=staff_list").then(r=>r.json());
+    $("adminSel").innerHTML = (r.staff||[]).filter(s=>s.role==="admin").map(s=>`<option value="${s.staff_id}">${esc(s.name)}</option>`).join("");
+  }catch(e){ $("loginMsg").innerHTML = `<div class="msg err">通信できません</div>`; }
+}
+async function doLogin(){
+  $("loginBtn").disabled=true;
+  try{ const r = await api("login", {staff_id:$("adminSel").value, passcode:$("passIn").value.trim(), ua:navigator.userAgent});
+    if(!r.ok){ $("loginMsg").innerHTML=`<div class="msg err">${esc(r.error)}</div>`; return; }
+    if(r.staff.role!=="admin"){ $("loginMsg").innerHTML=`<div class="msg err">管理者ではありません</div>`; return; }
+    TOKEN=r.token; localStorage.setItem("os-admin-token",TOKEN); ME=r.staff; $("passIn").value=""; enterApp();
+  }catch(e){ $("loginMsg").innerHTML=`<div class="msg err">通信エラー</div>`; } finally{ $("loginBtn").disabled=false; }
+}
+async function doLogout(){ if(!confirm("ログアウトしますか？")) return; await api("logout"); localStorage.removeItem("os-admin-token"); TOKEN=""; showLogin(); }
+function enterApp(){ $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); $("hName").textContent = ME.name; go("today"); }
+function go(t){
+  document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on", b.dataset.t===t));
+  ["today","shift","att","pay","staff","set"].forEach(x=>$("p"+x[0].toUpperCase()+x.slice(1)).classList.toggle("hide", x!==t));
+  showMsg(""); ({today:loadToday, shift:loadShift, att:loadAtt, pay:loadPay, staff:loadStaff, set:loadSet})[t]();
+}
+
+// ───── 今日 ─────
+async function loadToday(){
+  $("pToday").innerHTML = `<div class="mini">読み込み中…</div>`;
+  const r = await api("admin.dashboard"); if(!r.ok){ showMsg(r.error); return; }
+  const attBy = {}; r.todayAtt.forEach(a=>attBy[a.staff_id]=a);
+  const working = r.todayAtt.filter(a=>a.status==="working").length, done = r.todayAtt.filter(a=>a.status==="done").length;
+  const notIn = r.todayShifts.filter(s=>!attBy[s.staff_id]);
+  const laborToday = (r.labor.find(l=>l.date===r.today)||{}).cost||0;
+  const monthCost = r.payroll.reduce((s,x)=>s+x.total,0), monthMin = r.payroll.reduce((s,x)=>s+x.minutes,0);
+  let html = `<div class="card"><h2>本日 ${r.today.slice(5)}(${YO[youbi(r.today)]}) <small>${r.now} 時点</small></h2>
+    <div class="grid3"><div class="kpi"><small>予定</small><b>${r.todayShifts.length}<span style="font-size:13px">人</span></b></div><div class="kpi"><small>勤務中</small><b>${working}<span style="font-size:13px">人</span></b></div><div class="kpi"><small>退勤済</small><b>${done}<span style="font-size:13px">人</span></b></div></div>
+    <div style="margin-top:10px">` +
+    (r.todayShifts.map(s=>{ const a=attBy[s.staff_id]; const st = !a?`<span class="pill gray">未出勤</span>`: a.status==="working"?`<span class="pill">勤務中 ${a.in}〜</span>`:`<span class="pill blue">退勤 ${a.in}〜${a.out}</span>`; return `<div class="row"><span><b>${esc(s.name)}</b> <span class="mini">${s.start}〜${s.end}</span></span>${st}</div>`; }).join("") || `<div class="mini">本日の確定シフトはありません</div>`) +
+    r.todayAtt.filter(a=>!r.todayShifts.some(s=>s.staff_id===a.staff_id)).map(a=>`<div class="row"><span><b>${esc(a.name)}</b> <span class="mini">予定外</span></span><span class="pill amber">${a.in}〜${a.out||""}</span></div>`).join("") +
+    `</div></div>`;
+  const alerts = [];
+  if (r.missing.length) alerts.push(`退勤打刻のない日が ${r.missing.length} 件（${r.missing.slice(0,3).map(m=>m.date.slice(5)+" "+esc(m.name)).join("、")}${r.missing.length>3?" ほか":""}）→ 勤怠タブで修正`);
+  if (r.pendingFix) alerts.push(`修正申請が ${r.pendingFix} 件 承認待ち → 勤怠タブ`);
+  if (r.syncIssues) alerts.push(`カレンダー未同期のシフトが ${r.syncIssues} 件 → 設定タブで再同期`);
+  if (!r.calendarSet) alerts.push(`Googleカレンダーが未設定です → 設定タブ`);
+  const wishNot = r.wishStatus.filter(w=>!w.submitted);
+  if (wishNot.length) alerts.push(`${ymLabel(r.wishMonth)}の希望が未提出：${wishNot.map(w=>esc(w.name)).join("、")}（締切 ${r.wishDeadline.slice(5)}）`);
+  html += `<div class="card"><h2>確認が必要なこと</h2>${alerts.length? alerts.map(a=>`<div class="row"><span>⚠ ${a}</span></div>`).join("") : `<div class="mini">特にありません</div>`}</div>`;
+  html += `<div class="card"><h2>${ymLabel(r.month)}の人件費 <small>実績ベース</small></h2>
+    <div class="grid3"><div class="kpi"><small>実績</small><b style="font-size:18px">${yen(monthCost)}</b></div><div class="kpi"><small>予定</small><b style="font-size:18px">${yen(r.plannedCost)}</b></div><div class="kpi"><small>労働時間</small><b style="font-size:18px">${fmtMin(monthMin)}</b></div></div>
+    <div style="margin-top:8px">${r.payroll.filter(p=>p.days>0).map(p=>`<div class="row"><span>${esc(p.name)} <span class="mini">${p.days}日 ${fmtMin(p.minutes)}</span></span><b>${yen(p.total)}</b></div>`).join("") || `<div class="mini">今月の勤務実績はまだありません</div>`}</div></div>`;
+  html += `<div class="card"><h2>日別人件費（今月）<small>人時売上高は分析シートで</small></h2><div class="scroll"><table><tr><th>日</th><th class="r">人数</th><th class="r">時間</th><th class="r">人件費</th></tr>${r.labor.slice().reverse().map(l=>`<tr><td>${l.date.slice(5)}(${YO[youbi(l.date)]})</td><td class="r">${l.staff}</td><td class="r">${fmtMin(l.minutes)}</td><td class="r">${yen(l.cost)}</td></tr>`).join("") || `<tr><td colspan="4" class="mini">まだありません</td></tr>`}</table></div></div>`;
+  $("pToday").innerHTML = html;
+}
+
+// ───── シフト ─────
+let SM = thisMonth(); let SD = null;
+async function loadShift(){
+  $("pShift").innerHTML = `<div class="mini">読み込み中…</div>`;
+  const [s, w] = await Promise.all([api("admin.shifts_month",{month:SM}), api("admin.wishes_month",{month:SM})]);
+  if(!s.ok){ showMsg(s.error); return; } SD = {s, w};
+  const staff = s.staff.filter(x=>x.status==="active"); const n = staff.length;
+  const byDate = {}; s.shifts.forEach(x=>{ (byDate[x.date]=byDate[x.date]||{})[x.staff_id]=x; });
+  const wishBy = {}; (w.wishes||[]).forEach(x=>{ (wishBy[x.date]=wishBy[x.date]||{})[x.staff_id]=x; });
+  const drafts = s.shifts.filter(x=>x.status==="draft").length;
+  let grid = `<div class="sg" style="--n:${n}"><div class="hd"></div>${staff.map(x=>`<div class="hd">${esc(x.name)}</div>`).join("")}`;
+  s.openDays.forEach(d=>{
+    const nd = (s.need||{})[d.date]||{}; const open = nd.open===null||nd.open===undefined ? d.open : nd.open;
+    const dow = youbi(d.date); const cnt = Object.keys(byDate[d.date]||{}).length; const need = nd.need||"";
+    grid += `<div class="dt ${open?"":"closed"}" onclick="editDay('${d.date}')"><span class="${dow===0?"sun":dow===6?"sat":""}">${d.date.slice(8)}<span class="y">(${YO[dow]})</span></span>${open?`<div class="need ${need&&cnt<need?"short":""}">${cnt}${need?"/"+need:""}人</div>`:`<div class="need">休</div>`}</div>`;
+    staff.forEach(x=>{
+      const sh = (byDate[d.date]||{})[x.staff_id]; const wi = (wishBy[d.date]||{})[x.staff_id];
+      const wl = wi ? ({ok:"○可",ng:"×不可",time:"△"+wi.start+"-"+wi.end,off:"休希望"})[wi.kind] : "";
+      grid += `<div class="cell ${open?"":"closed"}" ${open?`onclick="editCell('${d.date}','${x.staff_id}')"`:""}>${sh?`<span class="s ${sh.status}">${sh.start}<br>${sh.end}</span>${sh.status==="confirmed"?`<span class="sync">${sh.sync==="synced"?"📅":sh.sync==="error"?"⚠":"…"}</span>`:""}`:""}${wi?`<span class="w ${wi.kind}">${wl}</span>`:""}</div>`;
+    });
+  });
+  grid += `</div>`;
+  const subm = (w.submitted||[]);
+  $("pShift").innerHTML = `
+    <div class="monthnav"><button onclick="SM=ymAdd(SM,-1);loadShift()">◀</button><b>${ymLabel(SM)}</b><button onclick="SM=ymAdd(SM,1);loadShift()">▶</button></div>
+    <div class="card"><h2>シフト表 <small>予定人件費 ${yen(s.plannedCost)}・下書き ${drafts}件</small></h2>
+      <div class="legend">マスをタップ→時間を選んで配置。<span style="color:var(--amber)">橙＝下書き</span>、<span style="color:var(--g)">緑＝確定</span>、📅同期済 / …同期待ち / ⚠エラー。小さい文字はスタッフの希望。日付をタップで必要人数・臨時休業。</div>
+      <div class="scroll">${grid}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <button class="btn" onclick="confirmAll()" ${drafts?"":"disabled"}>下書きを一括確定（${drafts}件）</button>
+        <button class="btn sec" onclick="copyPrev()">前月をコピー</button>
+        <button class="btn sec" onclick="lineText()">LINE用テキスト</button>
+      </div></div>
+    <div class="card"><h2>希望の提出状況 <small>締切 ${w.deadline?w.deadline.slice(5):""}</small></h2>${subm.map(x=>`<div class="row"><span>${esc(x.name)}</span>${x.submitted?`<span class="pill">提出済</span>`:`<span class="pill amber">未提出</span> <button class="btn sec sm" onclick="proxyWish('${x.staff_id}','${esc(x.name)}')">代理入力</button>`}</div>`).join("")}</div>`;
+}
+function editCell(date, staff_id){
+  const x = SD.s.staff.find(s=>s.staff_id===staff_id); const cur = SD.s.shifts.find(s=>s.date===date && s.staff_id===staff_id);
+  const wi = (SD.w.wishes||[]).find(w=>w.date===date && w.staff_id===staff_id);
+  const presets = SD.s.presets||[];
+  modal(`<h3>${date.slice(5)}(${YO[youbi(date)]}) ${esc(x.name)}</h3>
+    ${wi?`<div class="mini">希望：${({ok:"出勤可",ng:"出勤不可",time:"時間指定 "+wi.start+"〜"+wi.end,off:"希望休"})[wi.kind]}${wi.note?"（"+esc(wi.note)+"）":""}</div>`:`<div class="mini">希望：未提出</div>`}
+    ${cur?`<div class="mini" style="margin-top:4px">現在：${cur.start}〜${cur.end}（${cur.status==="draft"?"下書き":"確定"}）</div>`:""}
+    <label>時間</label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">${presets.map(p=>{const [a,b]=p.split("-"); return `<button class="btn sec" onclick="$('cS').value='${a}';$('cE').value='${b}'">${p}</button>`;}).join("")}</div>
+    <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center"><input type="time" id="cS" value="${cur?cur.start:(wi&&wi.kind==="time"?wi.start:"10:15")}"><span>〜</span><input type="time" id="cE" value="${cur?cur.end:(wi&&wi.kind==="time"?wi.end:"15:15")}"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn" style="flex:1" onclick="saveCell('${date}','${staff_id}','${cur?cur.shift_id:""}')">${cur?"変更":"配置"}</button>
+      ${cur?`<button class="btn red" style="flex:1" onclick="delCell('${cur.shift_id}')">${cur.status==="confirmed"?"取消（カレンダーも削除）":"削除"}</button>`:""}
+      <button class="btn sec" onclick="closeOv()">閉じる</button></div>`);
+}
+async function saveCell(date, staff_id, shift_id){
+  const start=$("cS").value, end=$("cE").value; if(!start||!end||start>=end){ toast("時間を確認してください"); return; }
+  const r = await api("admin.shifts_save", {rows:[{shift_id:shift_id||undefined, staff_id, date, start, end}]}); if(!r.ok){ toast(r.error); return; }
+  closeOv(); toast(shift_id?"変更しました（確定済みなら次回同期で反映）":"下書きに追加しました"); loadShift();
+}
+async function delCell(shift_id){ if(!confirm("このシフトを取り消しますか？")) return; const r = await api("admin.shifts_save", {rows:[{shift_id, delete:true}]}); if(!r.ok){ toast(r.error); return; } closeOv(); const s = await api("admin.sync_retry"); toast("取り消しました"); loadShift(); }
+function editDay(date){
+  const nd = (SD.s.need||{})[date]||{}; const base = SD.s.openDays.find(d=>d.date===date);
+  modal(`<h3>${date.slice(5)}(${YO[youbi(date)]}) の設定</h3>
+    <label>必要人数</label><select id="dN"><option value="">指定なし</option>${[1,2,3,4].map(n=>`<option value="${n}" ${nd.need===n?"selected":""}>${n}人</option>`).join("")}</select>
+    <label>営業</label><select id="dO"><option value="" ${nd.open==null?"selected":""}>通常（${base&&base.open?"営業日":"定休日"}）</option><option value="1" ${nd.open===true?"selected":""}>営業する（臨時営業）</option><option value="0" ${nd.open===false?"selected":""}>休業する（臨時休業）</option></select>
+    <label>メモ</label><input id="dM" value="${esc(nd.note||"")}">
+    <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" style="flex:1" onclick="saveDay('${date}')">保存</button><button class="btn sec" onclick="closeOv()">閉じる</button></div>`);
+}
+async function saveDay(date){ const o=$("dO").value; const r = await api("admin.need_set", {date, need:$("dN").value||null, open: o===""?null:o==="1", note:$("dM").value}); if(!r.ok){ toast(r.error); return; } closeOv(); loadShift(); }
+async function confirmAll(){
+  if(!confirm(`${ymLabel(SM)}の下書きをすべて確定し、Googleカレンダーに登録します。よろしいですか？`)) return;
+  const r = await api("admin.shifts_confirm", {month:SM}); if(!r.ok){ showMsg(r.error); return; }
+  const sy = r.sync||{}; toast(`${r.confirmed}件を確定${sy.skipped?"（カレンダー未設定のため同期なし）":sy.errors?`・同期エラー${sy.errors}件`:`・カレンダー同期 ${sy.synced}件`}`); loadShift();
+}
+async function copyPrev(){ const from = ymAdd(SM,-1); if(!confirm(`${ymLabel(from)}の確定シフトを曜日ごとに${ymLabel(SM)}へ下書きとしてコピーします。よろしいですか？`)) return; const r = await api("admin.shifts_copy",{from, to:SM}); if(!r.ok){ showMsg(r.error); return; } toast(`${r.created}件コピーしました`); loadShift(); }
+async function lineText(){ const r = await api("admin.line_text",{month:SM}); if(!r.ok){ toast(r.error); return; } modal(`<h3>LINE用テキスト</h3><pre class="copy" id="lt">${esc(r.text)}</pre><div style="display:flex;gap:8px;margin-top:12px"><button class="btn" style="flex:1" onclick="navigator.clipboard.writeText($('lt').textContent).then(()=>toast('コピーしました'))">コピー</button><button class="btn sec" onclick="closeOv()">閉じる</button></div>`); }
+function proxyWish(staff_id, name){
+  const days = SD.s.openDays.filter(d=>d.open);
+  modal(`<h3>${esc(name)} の希望を代理入力（${ymLabel(SM)}）</h3><div class="mini">出勤できない日・希望休だけチェック（それ以外は出勤可として登録）</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px">${days.map(d=>`<label style="margin:0;font-size:13px;color:var(--ink)"><input type="checkbox" value="${d.date}" style="width:auto;margin-right:4px">${d.date.slice(5)}(${YO[youbi(d.date)]})</label>`).join("")}</div>
+    <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" style="flex:1" onclick="saveProxy('${staff_id}')">登録</button><button class="btn sec" onclick="closeOv()">閉じる</button></div>`);
+}
+async function saveProxy(staff_id){
+  const ng = [...document.querySelectorAll('.sheet input[type=checkbox]:checked')].map(c=>c.value);
+  const days = SD.s.openDays.filter(d=>d.open).map(d=>({date:d.date, kind: ng.includes(d.date)?"off":"ok"}));
+  const r = await api("wishes_save", {month:SM, staff_id, days}); if(!r.ok){ toast(r.error); return; } closeOv(); toast("代理入力しました"); loadShift();
+}
+
+// ───── 勤怠 ─────
+let AM = thisMonth();
+async function loadAtt(){
+  $("pAtt").innerHTML = `<div class="mini">読み込み中…</div>`;
+  const r = await api("admin.att_month",{month:AM}); if(!r.ok){ showMsg(r.error); return; }
+  const fx = r.pendingFixes.map(f=>`<div class="row"><span><b>${esc(f.name)}</b> ${f.date.slice(5)} ${f.field}：${esc(f.current)} → <b>${esc(f.wanted)}</b><br><span class="mini">${esc(f.reason)}（${f.requested}）</span></span><span style="white-space:nowrap"><button class="btn sm" onclick="decide('${f.req_id}',true)">承認</button> <button class="btn sec sm" onclick="decide('${f.req_id}',false)">却下</button></span></div>`).join("");
+  const rows = r.list.slice().reverse().map(a=>`<tr><td>${a.date.slice(5)}(${YO[youbi(a.date)]})</td><td>${esc(a.name)}</td><td>${a.in||"-"}</td><td>${a.out||`<span class="pill red">未退勤</span>`}</td><td class="r">${a.breakMin||0}</td><td class="r">${a.status==="done"?fmtMin(a.workMin):"-"}</td><td class="r">${a.transport||0}</td><td><button class="btn sec sm" onclick='editAtt(${JSON.stringify(a).replace(/'/g,"&#39;")})'>修正</button></td></tr>`).join("");
+  $("pAtt").innerHTML = `
+    <div class="card"><h2>修正申請 <small>${r.pendingFixes.length}件</small></h2>${fx||`<div class="mini">承認待ちはありません</div>`}</div>
+    <div class="monthnav"><button onclick="AM=ymAdd(AM,-1);loadAtt()">◀</button><b>${ymLabel(AM)}</b><button onclick="AM=ymAdd(AM,1);loadAtt()">▶</button></div>
+    <div class="card"><h2>勤怠記録 <small><button class="btn sec sm" onclick="editAtt(null)">手入力で追加</button></small></h2><div class="scroll"><table><tr><th>日</th><th>名前</th><th>出勤</th><th>退勤</th><th class="r">休憩</th><th class="r">実労働</th><th class="r">交通費</th><th></th></tr>${rows||`<tr><td colspan="8" class="mini">記録がありません</td></tr>`}</table></div></div>`;
+}
+async function decide(req_id, approve){ if(!confirm(approve?"この修正を承認して勤怠に反映します":"この申請を却下します")) return; const r = await api("admin.fix_decide",{req_id, approve}); if(!r.ok){ showMsg(r.error); return; } toast(approve?"承認しました":"却下しました"); loadAtt(); }
+function editAtt(a){
+  const staffOpts = (SD&&SD.s?SD.s.staff:[]);
+  modal(`<h3>${a?`${a.date.slice(5)} ${esc(a.name)} の勤怠を修正`:"勤怠を手入力で追加"}</h3>
+    ${a?"":`<label>スタッフ</label><select id="eSt">${staffOpts.map(s=>`<option value="${s.staff_id}">${esc(s.name)}</option>`).join("")}</select><label>日付</label><input type="date" id="eD">`}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>出勤</label><input type="time" id="eI" value="${a?a.in:"10:15"}"></div><div><label>退勤</label><input type="time" id="eO" value="${a?a.out:"15:15"}"></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>休憩（分）</label><input type="number" id="eB" value="${a?a.breakMin:0}"></div><div><label>交通費（円）</label><input type="number" id="eT" value="${a?a.transport:""}" placeholder="マスターの値"></div></div>
+    <label>メモ</label><input id="eN" value="${a?esc(a.note||""):""}">
+    <div class="mini" style="margin-top:6px">元の打刻は監査ログに残ります</div>
+    <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" style="flex:1" onclick="saveAtt(${a?`'${a.att_id}'`:"null"})">保存</button><button class="btn sec" onclick="closeOv()">閉じる</button></div>`);
+  if(!a && !staffOpts.length){ api("admin.staff_list").then(r=>{ $("eSt").innerHTML = r.staff.filter(s=>s.status==="active").map(s=>`<option value="${s.staff_id}">${esc(s.name)}</option>`).join(""); }); }
+}
+async function saveAtt(att_id){
+  const body = {att_id, in:$("eI").value, out:$("eO").value, breakMin:Number($("eB").value)||0, note:$("eN").value}; if($("eT").value!=="") body.transport=Number($("eT").value);
+  if(!att_id){ body.create=true; body.staff_id=$("eSt").value; body.date=$("eD").value.replace(/-/g,"/"); if(!body.date){ toast("日付を入れてください"); return; } }
+  const r = await api("admin.att_edit", body); if(!r.ok){ toast(r.error); return; } closeOv(); toast("保存しました"); loadAtt();
+}
+
+// ───── 給与 ─────
+let PM = thisMonth();
+async function loadPay(){
+  $("pPay").innerHTML = `<div class="mini">読み込み中…</div>`;
+  const r = await api("admin.payroll_month",{month:PM}); if(!r.ok){ showMsg(r.error); return; }
+  const rows = r.rows.filter(x=>x.days>0);
+  const tot = rows.reduce((s,x)=>s+x.total,0);
+  $("pPay").innerHTML = `
+    <div class="monthnav"><button onclick="PM=ymAdd(PM,-1);loadPay()">◀</button><b>${ymLabel(PM)}</b><button onclick="PM=ymAdd(PM,1);loadPay()">▶</button></div>
+    <div class="card"><h2>給与集計 ${r.closed?`<span class="pill">締め済 ${r.closedAt}</span>`:`<small>未締め（実労働ベースの見込み）</small>`}</h2>
+      <div class="scroll"><table><tr><th>スタッフ</th><th class="r">日数</th><th class="r">労働</th><th class="r">時給</th><th class="r">基本給</th><th class="r">割増</th><th class="r">交通費</th><th class="r">支給額</th></tr>
+      ${rows.map(x=>`<tr><td>${esc(x.name)}</td><td class="r">${x.days}</td><td class="r">${fmtMin(x.minutes)}</td><td class="r">${x.wage.toLocaleString()}</td><td class="r">${x.base.toLocaleString()}</td><td class="r">${x.overtime.toLocaleString()}</td><td class="r">${x.transport.toLocaleString()}</td><td class="r"><b>${x.total.toLocaleString()}</b></td></tr>`).join("")}
+      <tr><td><b>合計</b></td><td colspan="6"></td><td class="r"><b>${tot.toLocaleString()}</b></td></tr></table></div>
+      <div class="mini" style="margin-top:8px">支給額 = 実労働分×時給÷60（月合計で円未満四捨五入）＋ 8時間/日超の25%割増 ＋ 交通費（出勤日×日額、上限1,000円）。所得税等の控除は含みません。</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <button class="btn sec" onclick="csv('admin.payroll_csv')">給与CSV</button>
+        <button class="btn sec" onclick="csv('admin.bank_csv')">振込一覧CSV（口座付き）</button>
+        <button class="btn ${r.closed?"sec":""}" onclick="closeMonth()">${r.closed?"再締め":"この月を締める"}</button>
+      </div></div>`;
+}
+async function csv(action){ const r = await api(action,{month:PM}); if(!r.ok){ showMsg(r.error); return; } download(r.filename, r.csv); }
+async function closeMonth(){
+  if(!confirm(`${ymLabel(PM)}を締めます。締め後に勤怠を直した場合は「再締め」で更新してください。`)) return;
+  let r = await api("admin.payroll_close",{month:PM});
+  if(!r.ok && (r.code==="pending"||r.code==="working")){ if(!confirm(r.error+"\n\nそれでも締めますか？")) return; r = await api("admin.payroll_close",{month:PM, force:true}); }
+  if(!r.ok){ showMsg(r.error); return; } toast("締めました（バックアップフォルダにCSVを保存）"); loadPay();
+}
+
+// ───── スタッフ ─────
+async function loadStaff(){
+  $("pStaff").innerHTML = `<div class="mini">読み込み中…</div>`;
+  const r = await api("admin.staff_list"); if(!r.ok){ showMsg(r.error); return; }
+  const rows = r.staff.map(s=>`<div class="row"><span><b>${esc(s.name)}</b> ${s.role==="admin"?`<span class="pill blue">管理者</span>`:""} ${s.status==="stopped"?`<span class="pill gray">停止</span>`:""} ${!s.hasPass?`<span class="pill amber">パス未設定</span>`:""} ${s.locked?`<span class="pill red">ロック中</span>`:""}<br><span class="mini">時給 ${s.wage.toLocaleString()}円・交通費 ${s.transport}円/日・${s.joined}〜</span></span><button class="btn sec sm" onclick='editStaff(${JSON.stringify(s).replace(/'/g,"&#39;")})'>編集</button></div>`).join("");
+  $("pStaff").innerHTML = `<div class="card"><h2>スタッフ <small><button class="btn sm" onclick="editStaff(null)">＋ 新規登録</button></small></h2>${rows}</div>
+    <div class="card"><h2>パスコードの渡し方</h2><div class="mini">1. 「編集」→「パスコードを設定」で6桁の数字を決める　2. 本人に口頭かLINEで伝える　3. 本人はスタッフ画面の「履歴」タブで自分のパスコードに変更できます。5回間違えると15分ロックされ、ここで解除できます。</div></div>`;
+}
+function editStaff(s){
+  modal(`<h3>${s?esc(s.name)+" の編集":"スタッフを新規登録"}</h3>
+    <label>名前</label><input id="sN" value="${s?esc(s.name):""}">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>役割</label><select id="sR"><option value="staff" ${s&&s.role==="staff"?"selected":""}>スタッフ</option><option value="admin" ${s&&s.role==="admin"?"selected":""}>管理者</option></select></div><div><label>状態</label><select id="sS"><option value="active" ${!s||s.status==="active"?"selected":""}>在籍</option><option value="stopped" ${s&&s.status==="stopped"?"selected":""}>停止（退職）</option></select></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>時給（円）</label><input type="number" id="sW" value="${s?s.wage:1500}"></div><div><label>交通費 日額（上限1,000）</label><input type="number" id="sT" value="${s?s.transport:0}"></div></div>
+    <label>入社日</label><input type="date" id="sJ" value="${s&&s.joined?s.joined.replace(/\//g,"-"):new Date().toISOString().slice(0,10)}">
+    <label>備考</label><input id="sM" value="${s?esc(s.note||""):""}">
+    ${s?`<div style="border-top:1px dashed var(--line);margin-top:14px;padding-top:10px"><label>パスコード（6桁以上の数字）</label><div style="display:flex;gap:8px"><input type="text" inputmode="numeric" id="sP" placeholder="新しいパスコード"><button class="btn sec" onclick="setPass('${s.staff_id}')">設定</button></div>${s.locked?`<button class="btn sec sm" style="margin-top:8px" onclick="unlock('${s.staff_id}')">ロック解除</button>`:""}</div>
+    <div style="border-top:1px dashed var(--line);margin-top:14px;padding-top:10px"><h3 style="font-size:14px">振込口座 <span class="mini">（管理者のみ閲覧）</span></h3><div id="bankBox" class="mini">読み込み中…</div></div>`:""}
+    <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" style="flex:1" onclick="saveStaff(${s?`'${s.staff_id}'`:"null"})">保存</button><button class="btn sec" onclick="closeOv()">閉じる</button></div>`);
+  if (s) loadBank(s.staff_id);
+}
+async function loadBank(staff_id){
+  const r = await api("admin.bank_get",{staff_id}); const b = (r.ok&&r.bank)||{};
+  $("bankBox").innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>銀行名</label><input id="bB" value="${esc(b.bank||"")}"></div><div><label>支店名</label><input id="bBr" value="${esc(b.branch||"")}"></div></div>
+    <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><div><label>種別</label><select id="bT"><option ${b.type==="普通"||!b.type?"selected":""}>普通</option><option ${b.type==="当座"?"selected":""}>当座</option><option ${b.type==="貯蓄"?"selected":""}>貯蓄</option></select></div><div><label>口座番号</label><input id="bN" inputmode="numeric" value="${esc(b.number||"")}"></div></div>
+    <label>口座名義（カナ）</label><input id="bH" value="${esc(b.holder||"")}">
+    <button class="btn sec sm" style="margin-top:8px" onclick="saveBank('${staff_id}')">口座を保存</button> ${b.updated?`<span class="mini">更新 ${b.updated}</span>`:""}`;
+}
+async function saveBank(staff_id){ const r = await api("admin.bank_set",{staff_id, bank:{bank:$("bB").value, branch:$("bBr").value, type:$("bT").value, number:$("bN").value, holder:$("bH").value}}); toast(r.ok?"口座を保存しました":r.error); }
+async function saveStaff(staff_id){
+  const st = {staff_id:staff_id||undefined, name:$("sN").value.trim(), role:$("sR").value, status:$("sS").value, wage:Number($("sW").value)||0, transport:Number($("sT").value)||0, joined:$("sJ").value.replace(/-/g,"/"), note:$("sM").value};
+  if(!st.name){ toast("名前を入れてください"); return; }
+  if(staff_id && st.status==="stopped" && !confirm("停止するとログインできなくなります。よろしいですか？")) return;
+  const r = await api("admin.staff_save",{staff:st}); if(!r.ok){ toast(r.error); return; }
+  if(!staff_id){ closeOv(); toast("登録しました。続けて「編集」からパスコードを設定してください"); } else { closeOv(); toast("保存しました"); }
+  loadStaff();
+}
+async function setPass(staff_id){ const p=$("sP").value.trim(); if(!/^\d{6,}$/.test(p)){ toast("6桁以上の数字"); return; } const r = await api("admin.staff_setpass",{staff_id, passcode:p}); toast(r.ok?"パスコードを設定しました。本人に伝えてください":r.error); if(r.ok){ $("sP").value=""; loadStaff(); } }
+async function unlock(staff_id){ const r = await api("admin.staff_unlock",{staff_id}); toast(r.ok?"解除しました":r.error); closeOv(); loadStaff(); }
+
+// ───── 設定 ─────
+async function loadSet(){
+  $("pSet").innerHTML = `<div class="mini">読み込み中…</div>`;
+  const [r, s] = await Promise.all([api("admin.settings_get"), api("admin.sync_status")]); if(!r.ok){ showMsg(r.error); return; }
+  const hideKeys = ["backup_folder_id"];
+  const rows = r.settings.filter(x=>!hideKeys.includes(x.key)).map(x=>`<div class="row" style="align-items:flex-start"><span style="flex:1"><b>${esc(x.key)}</b><br><span class="mini">${esc(x.desc)}</span></span><input style="width:48%" id="set_${esc(x.key)}" value="${esc(x.value)}"></div>`).join("");
+  const issues = (s.issues||[]).map(i=>`<div class="row"><span>${i.date.slice(5)} ${esc(i.name)} ${i.start}〜${i.end} <span class="mini">${esc(i.syncError||"")}</span></span><span class="pill ${i.sync==="error"?"red":"amber"}">${i.sync}</span></div>`).join("");
+  $("pSet").innerHTML = `
+    <div class="card"><h2>Googleカレンダー同期 <small>${s.calendar_id?"設定済":"未設定"}</small></h2>${issues||`<div class="mini">未同期はありません</div>`}<div style="margin-top:10px"><button class="btn sec" onclick="resync()">今すぐ再同期</button></div>
+      <div class="mini" style="margin-top:8px">カレンダーIDは Googleカレンダー → 「オリオン」の設定 → 「カレンダーの統合」にある ID（…@group.calendar.google.com）。このアプリを動かすアカウントに「予定の変更権限」で共有しておくこと。</div></div>
+    <div class="card"><h2>設定</h2>${rows}<div style="display:flex;gap:8px;margin-top:12px"><button class="btn" onclick="saveSet()">設定を保存</button></div></div>
+    <div class="card"><h2>メンテナンス</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec" onclick="api('admin.labor_rebuild').then(r=>toast(r.ok?'人件費日次を再集計しました':r.error))">人件費日次を再集計</button><button class="btn sec" onclick="api('admin.backup_now').then(r=>toast(r.ok?'バックアップ: '+r.file:r.error))">今すぐバックアップ</button><button class="btn sec" onclick="showAudit()">操作ログ</button></div><div class="mini" style="margin-top:8px">毎日 15:30 に打刻漏れチェック（admin_email へ通知）、毎時カレンダー再同期、毎晩 2:00 にスプレッドシートをDriveへバックアップ（30世代）。</div></div>`;
+}
+async function saveSet(){ const o={}; document.querySelectorAll("[id^=set_]").forEach(i=>o[i.id.slice(4)]=i.value); const r = await api("admin.settings_set",{settings:o}); toast(r.ok?"保存しました":r.error); }
+async function resync(){ const r = await api("admin.sync_retry"); if(!r.ok){ toast(r.error); return; } const s=r.sync; toast(s.skipped?s.skipped:`同期 ${s.synced}件 / エラー ${s.errors}件`); loadSet(); }
+async function showAudit(){ const r = await api("admin.audit"); modal(`<h3>操作ログ（直近200件）</h3><div class="scroll"><table>${(r.log||[]).map(l=>`<tr><td class="mini" style="white-space:nowrap">${l.ts}</td><td>${esc(l.actor)}</td><td>${esc(l.action)}</td><td class="mini">${esc(l.target)} ${esc(l.detail)}</td></tr>`).join("")}</table></div><button class="btn sec" style="margin-top:10px" onclick="closeOv()">閉じる</button>`); }
+
+(async function(){
+  if(!TOKEN){ showLogin(); return; }
+  try{ const r = await api("home"); if(r.ok && r.staff.role==="admin"){ ME=r.staff; enterApp(); } else if(r.ok){ showLogin("管理者ではありません"); } else if(r.code!=="noauth"){ showLogin(r.error); } } catch(e){ showLogin("通信できません"); }
+})();
+</script>
+</body>
+</html>
