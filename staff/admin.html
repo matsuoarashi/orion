@@ -71,6 +71,15 @@ td.r,th.r{text-align:right}
 .sg .need.short{color:var(--red);font-weight:bold}
 .legend{font-size:11px;color:var(--mute);margin:6px 0}
 pre.copy{white-space:pre-wrap;background:var(--cream);border-radius:8px;padding:10px;font-size:13px;line-height:1.6}
+#bar{position:fixed;top:0;left:0;right:0;height:3px;z-index:20;background:linear-gradient(90deg,transparent 0%,#e9b949 40%,#e9b949 60%,transparent 100%);background-size:200% 100%;opacity:0;transition:opacity .2s;pointer-events:none}
+#bar.on{opacity:1;animation:slide 1s linear infinite}
+@keyframes slide{from{background-position:200% 0}to{background-position:-200% 0}}
+body.lock .btn,body.lock .sg .cell{pointer-events:none;opacity:.55}
+body.loading main{opacity:.6;transition:opacity .2s}
+.loadmsg{display:flex;align-items:center;gap:10px;color:var(--mute);padding:18px 4px;font-size:14px}
+.loadmsg::before{content:"";width:16px;height:16px;border:3px solid var(--line);border-top-color:var(--g);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.bk{width:100%;border-collapse:collapse;font-size:13px}.bk th,.bk td{border-bottom:1px dashed var(--line);padding:6px 4px;text-align:left;white-space:nowrap}.bk td.r,.bk th.r{text-align:right}
 </style>
 </head>
 <body>
@@ -105,6 +114,7 @@ pre.copy{white-space:pre-wrap;background:var(--cream);border-radius:8px;padding:
     </main>
   </div>
 </div>
+<div id="bar"></div>
 <div class="toast" id="toast"></div>
 <div id="ov"></div>
 
@@ -123,12 +133,23 @@ const fmtMin = m => Math.floor(m/60)+":"+pad2(m%60);
 const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2400); }
 function showMsg(text, cls){ $("msg").innerHTML = text ? `<div class="msg ${cls||"err"}">${esc(text)}</div>` : ""; if(text) window.scrollTo(0,0); }
+// 読み取り以外は同時に1つだけ（二重タップ防止）。通信中は上部に黄色いバー、0.3秒超で画面を薄く
+const READS = new Set(["admin.staff_list","admin.wishes_month","admin.shifts_month","admin.att_month","admin.payroll_month","admin.dashboard","admin.settings_get","admin.sync_status","admin.audit","admin.line_text","admin.bank_get","admin.payroll_csv","admin.bank_csv","staff_list"]);
+let inflight = 0, dimT = null;
 async function api(action, body){
-  const res = await fetch(API_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(Object.assign({action, token:TOKEN}, body||{}))});
-  const j = await res.json();
-  if (!j.ok && j.code==="noauth"){ localStorage.removeItem("os-admin-token"); TOKEN=""; showLogin("ログインし直してください"); }
-  return j;
+  const isWrite = !READS.has(action);
+  if (isWrite && document.body.classList.contains("lock")) return {ok:false, error:"処理中です。少しお待ちください", code:"busy"};
+  inflight++; $("bar").classList.add("on"); if (isWrite) document.body.classList.add("lock");
+  if (!dimT) dimT = setTimeout(()=>document.body.classList.add("loading"), 300);
+  try{
+    const res = await fetch(API_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(Object.assign({action, token:TOKEN}, body||{}))});
+    const j = await res.json();
+    if (!j.ok && j.code==="noauth"){ localStorage.removeItem("os-admin-token"); TOKEN=""; showLogin("ログインし直してください"); }
+    return j;
+  }catch(e){ return {ok:false, error:"通信エラーです。電波を確認してもう一度お試しください", code:"net"}; }
+  finally{ inflight--; if (inflight<=0){ inflight=0; $("bar").classList.remove("on"); clearTimeout(dimT); dimT=null; document.body.classList.remove("loading"); } if (isWrite) document.body.classList.remove("lock"); }
 }
+function loadingHtml(t){ return `<div class="loadmsg">${t||"読み込み中…"}</div>`; }
 function closeOv(){ $("ov").innerHTML=""; }
 function modal(html){ $("ov").innerHTML = `<div class="overlay" onclick="if(event.target===this)closeOv()"><div class="sheet">${html}</div></div>`; }
 function download(name, text){ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob(["﻿"+text],{type:"text/csv"})); a.download=name; a.click(); }
@@ -158,7 +179,7 @@ function go(t){
 }
 
 // ───── 今日 ─────
-async function loadToday(){
+async function loadToday(){ if(!$("pToday").dataset.loaded) $("pToday").innerHTML = loadingHtml(); $("pToday").dataset.loaded="1";
   $("pToday").innerHTML = `<div class="mini">読み込み中…</div>`;
   const r = await api("admin.dashboard"); if(!r.ok){ showMsg(r.error); return; }
   const attBy = {}; r.todayAtt.forEach(a=>attBy[a.staff_id]=a);
@@ -189,7 +210,7 @@ async function loadToday(){
 
 // ───── シフト ─────
 let SM = thisMonth(); let SD = null;
-async function loadShift(){
+async function loadShift(){ if(!$("pShift").dataset.loaded) $("pShift").innerHTML = loadingHtml(); $("pShift").dataset.loaded="1";
   $("pShift").innerHTML = `<div class="mini">読み込み中…</div>`;
   const [s, w] = await Promise.all([api("admin.shifts_month",{month:SM}), api("admin.wishes_month",{month:SM})]);
   if(!s.ok){ showMsg(s.error); return; } SD = {s, w};
@@ -273,7 +294,7 @@ async function saveProxy(staff_id){
 
 // ───── 勤怠 ─────
 let AM = thisMonth();
-async function loadAtt(){
+async function loadAtt(){ if(!$("pAtt").dataset.loaded) $("pAtt").innerHTML = loadingHtml(); $("pAtt").dataset.loaded="1";
   $("pAtt").innerHTML = `<div class="mini">読み込み中…</div>`;
   const r = await api("admin.att_month",{month:AM}); if(!r.ok){ showMsg(r.error); return; }
   const fx = r.pendingFixes.map(f=>`<div class="row"><span><b>${esc(f.name)}</b> ${f.date.slice(5)} ${f.field}：${esc(f.current)} → <b>${esc(f.wanted)}</b><br><span class="mini">${esc(f.reason)}（${f.requested}）</span></span><span style="white-space:nowrap"><button class="btn sm" onclick="decide('${f.req_id}',true)">承認</button> <button class="btn sec sm" onclick="decide('${f.req_id}',false)">却下</button></span></div>`).join("");
@@ -303,7 +324,7 @@ async function saveAtt(att_id){
 
 // ───── 給与 ─────
 let PM = thisMonth();
-async function loadPay(){
+async function loadPay(){ if(!$("pPay").dataset.loaded) $("pPay").innerHTML = loadingHtml(); $("pPay").dataset.loaded="1";
   $("pPay").innerHTML = `<div class="mini">読み込み中…</div>`;
   const r = await api("admin.payroll_month",{month:PM}); if(!r.ok){ showMsg(r.error); return; }
   const rows = r.rows.filter(x=>x.days>0);
@@ -317,11 +338,25 @@ async function loadPay(){
       <div class="mini" style="margin-top:8px">支給額 = 実労働分×時給÷60（月合計で円未満四捨五入）＋ 8時間/日超の25%割増 ＋ 交通費（出勤日×日額、上限1,000円）。所得税等の控除は含みません。</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
         <button class="btn sec" onclick="csv('admin.payroll_csv')">給与CSV</button>
-        <button class="btn sec" onclick="csv('admin.bank_csv')">振込一覧CSV（口座付き）</button>
+        <button class="btn sec" onclick="bankList()">振込一覧（三菱UFJ入力用）</button>
         <button class="btn ${r.closed?"sec":""}" onclick="closeMonth()">${r.closed?"再締め":"この月を締める"}</button>
       </div></div>`;
 }
 async function csv(action){ const r = await api(action,{month:PM}); if(!r.ok){ showMsg(r.error); return; } download(r.filename, r.csv); }
+// 三菱UFJダイレクト（個人）は一括アップロード非対応 → 入力順に並べた一覧を表示し、タップでコピーできるようにする
+let BANK = null;
+async function bankList(){
+  const r = await api("admin.bank_csv",{month:PM}); if(!r.ok){ showMsg(r.error); return; } BANK = r;
+  const miss = r.list.filter(x=>!x.number||!x.kana);
+  modal(`<h3>振込一覧 ${ymLabel(PM)}<small style="color:var(--mute);font-weight:normal;margin-left:8px">三菱UFJダイレクト入力順</small></h3>
+    <div class="mini" style="margin-bottom:8px">個人口座のネットバンキングは一括アップロードができないため、1人ずつ「振込」画面に入力します。各値はタップでコピーできます。${miss.length?`<br><b style="color:var(--red)">口座未登録: ${miss.map(x=>x.name).join("、")}</b>（スタッフタブで登録）`:""}</div>
+    <div class="scroll"><table class="bk"><tr><th>スタッフ</th><th>受取人名(カナ)</th><th>金融機関</th><th>支店</th><th>種目</th><th>口座番号</th><th class="r">金額</th></tr>
+    ${r.list.map(x=>`<tr><td>${x.name}</td>${[x.kana,x.bank,x.branch,x.type,x.number].map(v=>`<td onclick="cp('${v}')" style="cursor:pointer;text-decoration:underline dotted">${v||"—"}</td>`).join("")}<td class="r" onclick="cp('${x.amount}')" style="cursor:pointer"><b>${Number(x.amount).toLocaleString()}</b></td></tr>`).join("")}
+    <tr><td><b>合計</b></td><td colspan="5"></td><td class="r"><b>${r.list.reduce((s,x)=>s+Number(x.amount),0).toLocaleString()}</b></td></tr></table></div>
+    <div class="mini" style="margin-top:8px">振込依頼人名に「${r.list[0]?r.list[0].memo:""}」のように入れると、本人の通帳で分かりやすくなります。手数料は他行宛 154円（3万円未満）/ 220円（3万円以上）、三菱UFJ宛は無料です。</div>
+    <div style="display:flex;gap:8px;margin-top:12px"><button class="btn sec" style="flex:1" onclick="download(BANK.filename, BANK.csv)">CSVで保存</button><button class="btn sec" style="flex:1" onclick="closeOv()">閉じる</button></div>`);
+}
+function cp(v){ if(!v) return; navigator.clipboard.writeText(String(v)).then(()=>toast("コピー: "+v)).catch(()=>toast(v)); }
 async function closeMonth(){
   if(!confirm(`${ymLabel(PM)}を締めます。締め後に勤怠を直した場合は「再締め」で更新してください。`)) return;
   let r = await api("admin.payroll_close",{month:PM});
@@ -330,7 +365,7 @@ async function closeMonth(){
 }
 
 // ───── スタッフ ─────
-async function loadStaff(){
+async function loadStaff(){ if(!$("pStaff").dataset.loaded) $("pStaff").innerHTML = loadingHtml(); $("pStaff").dataset.loaded="1";
   $("pStaff").innerHTML = `<div class="mini">読み込み中…</div>`;
   const r = await api("admin.staff_list"); if(!r.ok){ showMsg(r.error); return; }
   const rows = r.staff.map(s=>`<div class="row"><span><b>${esc(s.name)}</b> ${s.role==="admin"?`<span class="pill blue">管理者</span>`:""} ${s.status==="stopped"?`<span class="pill gray">停止</span>`:""} ${!s.hasPass?`<span class="pill amber">パス未設定</span>`:""} ${s.locked?`<span class="pill red">ロック中</span>`:""}<br><span class="mini">時給 ${s.wage.toLocaleString()}円・交通費 ${s.transport}円/日・${s.joined}〜</span></span><button class="btn sec sm" onclick='editStaff(${JSON.stringify(s).replace(/'/g,"&#39;")})'>編集</button></div>`).join("");
@@ -369,7 +404,7 @@ async function setPass(staff_id){ const p=$("sP").value.trim(); if(!/^\d{4,}$/.t
 async function unlock(staff_id){ const r = await api("admin.staff_unlock",{staff_id}); toast(r.ok?"解除しました":r.error); closeOv(); loadStaff(); }
 
 // ───── 設定 ─────
-async function loadSet(){
+async function loadSet(){ if(!$("pSet").dataset.loaded) $("pSet").innerHTML = loadingHtml(); $("pSet").dataset.loaded="1";
   $("pSet").innerHTML = `<div class="mini">読み込み中…</div>`;
   const [r, s] = await Promise.all([api("admin.settings_get"), api("admin.sync_status")]); if(!r.ok){ showMsg(r.error); return; }
   const hideKeys = ["backup_folder_id"];
