@@ -279,7 +279,24 @@ async function confirmAll(){
   const sy = r.sync||{}; toast(`${r.confirmed}件を確定${sy.skipped?"（カレンダー未設定のため同期なし）":sy.errors?`・同期エラー${sy.errors}件`:`・カレンダー同期 ${sy.synced}件`}`); loadShift();
 }
 async function copyPrev(){ const from = ymAdd(SM,-1); if(!confirm(`${ymLabel(from)}の確定シフトを曜日ごとに${ymLabel(SM)}へ下書きとしてコピーします。よろしいですか？`)) return; const r = await api("admin.shifts_copy",{from, to:SM}); if(!r.ok){ showMsg(r.error); return; } toast(`${r.created}件コピーしました`); loadShift(); }
-async function lineText(){ const r = await api("admin.line_text",{month:SM}); if(!r.ok){ toast(r.error); return; } modal(`<h3>LINE用テキスト</h3><pre class="copy" id="lt">${esc(r.text)}</pre><div style="display:flex;gap:8px;margin-top:12px"><button class="btn" style="flex:1" onclick="navigator.clipboard.writeText($('lt').textContent).then(()=>toast('コピーしました'))">コピー</button><button class="btn sec" onclick="closeOv()">閉じる</button></div>`); }
+function copyText(id){ const el=$(id); const t=el.value!==undefined?el.value:el.textContent; const done=()=>toast("コピーしました。LINEに貼り付けてください"); if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(done).catch(()=>{ el.focus(); el.select&&el.select(); document.execCommand("copy"); done(); }); } else { el.focus(); el.select&&el.select(); document.execCommand("copy"); done(); } }
+function textModal(title, text, note){ modal(`<h3>${title}</h3>${note?`<div class="mini" style="margin-bottom:6px">${note}</div>`:""}<textarea id="lt" style="width:100%;min-height:260px;font-size:14px;line-height:1.6;padding:10px;border:2px solid var(--line);border-radius:10px;font-family:inherit">${esc(text)}</textarea><div style="display:flex;gap:8px;margin-top:12px"><button class="btn" style="flex:1" onclick="copyText('lt')">コピーしてLINEへ</button><button class="btn sec" onclick="closeOv()">閉じる</button></div>`); }
+async function lineText(){
+  const r = await api("admin.line_text",{month:SM}); if(!r.ok){ toast(r.error); return; }
+  const body = r.text.split("\n").slice(1).join("\n");
+  const text = `【${ymLabel(SM)}のシフトが確定しました】\nお疲れさまです。${ymLabel(SM).slice(5)}のシフトをお知らせします。\nアプリの「シフト」タブとGoogleカレンダー「オリオントウキョウ」にも入っています。\n\n${body}\n\n都合が悪くなった日は、分かった時点で早めに連絡をお願いします。\n次の月の希望は毎月${(window.SET&&window.SET.wish_deadline_day)||25}日までにアプリの「希望」タブから提出してください。`;
+  textModal("LINE用テキスト（シフト確定）", text, "文面は編集できます。グループLINEにそのまま貼れます。");
+}
+// 給与確認：本人に送る勤務記録の確認文
+async function payConfirmText(staff_id, name){
+  const r = await api("admin.att_month",{month:PM}); if(!r.ok){ toast(r.error); return; }
+  const list = r.list.filter(a=>a.staff_id===staff_id && a.status==="done");
+  const pr = (PAYR||[]).find(x=>x.staff_id===staff_id) || {};
+  const lines = list.map(a=>`${a.date.slice(5)}(${YO[youbi(a.date)]}) ${a.in}〜${a.out}${a.breakMin?`（休憩${a.breakMin}分）`:""}`);
+  const d = new Date(); d.setDate(d.getDate()+3); const due = `${d.getMonth()+1}/${d.getDate()}(${YO[d.getDay()]})`;
+  const text = `【${name}さん ${ymLabel(PM)}の勤務確認】\nお疲れさまです。${ymLabel(PM).slice(5)}の勤務記録です。内容を確認してください。\n\n${lines.join("\n")||"（記録なし）"}\n\n合計：${pr.days||list.length}日 / ${(m=>Math.floor(m/60)+"時間"+pad2(m%60)+"分")(pr.minutes||list.reduce((s,a)=>s+a.workMin,0))}\n支給見込：${(pr.total||0).toLocaleString()}円（時給${(pr.wage||0).toLocaleString()}円${pr.overtime?`、割増${pr.overtime.toLocaleString()}円`:""}${pr.transport?`、交通費${pr.transport.toLocaleString()}円`:""}）\n\n違っている日があれば ${due} までに返信してください。返信がなければこの内容で振込します。`;
+  textModal(`LINE用テキスト（${name}さん 勤務確認）`, text, "本人に個別LINEで送ってください。日付や締切の文言は編集できます。");
+}
 function proxyWish(staff_id, name){
   const days = SD.s.openDays.filter(d=>d.open);
   modal(`<h3>${esc(name)} の希望を代理入力（${ymLabel(SM)}）</h3><div class="mini">出勤できない日・希望休だけチェック（それ以外は出勤可として登録）</div>
@@ -323,18 +340,18 @@ async function saveAtt(att_id){
 }
 
 // ───── 給与 ─────
-let PM = thisMonth();
+let PM = thisMonth(); let PAYR=null;
 async function loadPay(){ if(!$("pPay").dataset.loaded) $("pPay").innerHTML = loadingHtml(); $("pPay").dataset.loaded="1";
   $("pPay").innerHTML = `<div class="mini">読み込み中…</div>`;
   const r = await api("admin.payroll_month",{month:PM}); if(!r.ok){ showMsg(r.error); return; }
-  const rows = r.rows.filter(x=>x.days>0);
+  const rows = r.rows.filter(x=>x.days>0); PAYR = rows;
   const tot = rows.reduce((s,x)=>s+x.total,0);
   $("pPay").innerHTML = `
     <div class="monthnav"><button onclick="PM=ymAdd(PM,-1);loadPay()">◀</button><b>${ymLabel(PM)}</b><button onclick="PM=ymAdd(PM,1);loadPay()">▶</button></div>
     <div class="card"><h2>給与集計 ${r.closed?`<span class="pill">締め済 ${r.closedAt}</span>`:`<small>未締め（実労働ベースの見込み）</small>`}</h2>
-      <div class="scroll"><table><tr><th>スタッフ</th><th class="r">日数</th><th class="r">労働</th><th class="r">時給</th><th class="r">基本給</th><th class="r">割増</th><th class="r">交通費</th><th class="r">支給額</th></tr>
-      ${rows.map(x=>`<tr><td>${esc(x.name)}</td><td class="r">${x.days}</td><td class="r">${fmtMin(x.minutes)}</td><td class="r">${x.wage.toLocaleString()}</td><td class="r">${x.base.toLocaleString()}</td><td class="r">${x.overtime.toLocaleString()}</td><td class="r">${x.transport.toLocaleString()}</td><td class="r"><b>${x.total.toLocaleString()}</b></td></tr>`).join("")}
-      <tr><td><b>合計</b></td><td colspan="6"></td><td class="r"><b>${tot.toLocaleString()}</b></td></tr></table></div>
+      <div class="scroll"><table><tr><th>スタッフ</th><th class="r">日数</th><th class="r">労働</th><th class="r">時給</th><th class="r">基本給</th><th class="r">割増</th><th class="r">交通費</th><th class="r">支給額</th><th></th></tr>
+      ${rows.map(x=>`<tr><td>${esc(x.name)}</td><td class="r">${x.days}</td><td class="r">${fmtMin(x.minutes)}</td><td class="r">${x.wage.toLocaleString()}</td><td class="r">${x.base.toLocaleString()}</td><td class="r">${x.overtime.toLocaleString()}</td><td class="r">${x.transport.toLocaleString()}</td><td class="r"><b>${x.total.toLocaleString()}</b></td><td><button class="btn sec" style="padding:6px 10px;font-size:12px;white-space:nowrap" onclick="payConfirmText('${x.staff_id}','${esc(x.name)}')">LINE確認文</button></td></tr>`).join("")}
+      <tr><td><b>合計</b></td><td colspan="6"></td><td class="r"><b>${tot.toLocaleString()}</b></td><td></td></tr></table></div>
       <div class="mini" style="margin-top:8px">支給額 = 実労働分×時給÷60（月合計で円未満四捨五入）＋ 8時間/日超の25%割増 ＋ 交通費（出勤日×日額、上限1,000円）。所得税等の控除は含みません。</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
         <button class="btn sec" onclick="csv('admin.payroll_csv')">給与CSV</button>
