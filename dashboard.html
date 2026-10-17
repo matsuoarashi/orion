@@ -57,13 +57,16 @@
 .pd:first-child{border-top:none;padding-top:2px}
 .pd-h{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:#6b5a40}
 .pd-h b{font-size:15px;color:var(--ink);letter-spacing:1px}
-.pd-main{display:flex;gap:22px;margin:4px 0 2px}
+.pd-h span{white-space:nowrap}
+.pd-main{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;margin:6px 0 6px}
 .pd-main div small{display:block;font-size:10px;letter-spacing:2px;color:var(--midori)}
-.pd-main div b{font-size:26px;font-variant-numeric:tabular-nums;line-height:1.1}
+.pd-main div b{font-size:24px;font-variant-numeric:tabular-nums;line-height:1.1}
 .pd-main div i{font-style:normal;font-size:12px;margin-left:2px}
-.pd-sub{display:flex;flex-wrap:wrap;gap:2px 14px;font-size:12px;color:#6b5a40;line-height:1.7}
-.pd-sub b{color:var(--ink);font-variant-numeric:tabular-nums}
-.pd-sub em{font-style:normal;font-size:11px;margin-left:3px}
+.pd-sub{display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;font-size:12px;color:#6b5a40;line-height:1.6}
+.pd-sub span{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px dotted #d9ccb0;padding:2px 0;min-width:0}
+.pd-sub b{color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pd-sub b small{font-weight:normal;color:#6b5a40;font-size:11px}
+.pd-sub em{font-style:normal;font-size:11px;margin-left:3px;font-weight:normal}
 .pd-sub em.up{color:var(--midori)} .pd-sub em.dn{color:var(--enji)}
 .hide{display:none}
 </style>
@@ -269,17 +272,17 @@ function periodCard(label, x, prev, extra){
     delta = `<em class="${df>=0?"up":"dn"}">${df>=0?"+":""}${df.toFixed(1)}</em>`;
   }
   return `<div class="pd">`+
-    `<div class="pd-h"><b>${label}</b><span>営業 ${x.days}日 ・ ${x.count}会計</span></div>`+
+    `<div class="pd-h"><b>${label}</b><span>営業 ${x.days}日・${x.count}会計</span></div>`+
     `<div class="pd-main">`+
       `<div><small>食数</small><b>${x.meals}</b><i>食</i></div>`+
       `<div><small>売上</small><b>${x.sales.toLocaleString()}</b><i>円</i></div>`+
     `</div>`+
     `<div class="pd-sub">`+
-      `<span>食数/日 <b>${x.days?avgM.toFixed(1):"-"}</b>${delta}</span>`+
-      `<span>客単価 <b>${x.meals?Math.round(x.sales/x.meals).toLocaleString()+"円":"-"}</b></span>`+
-      `<span>持ち帰り <b>${x.mealsTogo}</b>食(${pctOf(x.mealsTogo,x.meals)})</span>`+
-      `<span>ドリンク <b>${x.drinks}</b>本(${pctOf(x.drinks,x.meals)})</span>`+
-      `<span>副菜追加 <b>${x.fk}</b>(${pctOf(x.fk,x.meals)})</span>`+
+      `<span>食数/日<b>${x.days?avgM.toFixed(1):"-"}${delta}</b></span>`+
+      `<span>客単価<b>${x.meals?Math.round(x.sales/x.meals).toLocaleString()+"円":"-"}</b></span>`+
+      `<span>持ち帰り<b>${x.mealsTogo}食 <small>${pctOf(x.mealsTogo,x.meals)}</small></b></span>`+
+      `<span>ドリンク<b>${x.drinks}本 <small>${pctOf(x.drinks,x.meals)}</small></b></span>`+
+      `<span>副菜追加<b>${x.fk}個 <small>${pctOf(x.fk,x.meals)}</small></b></span>`+
       (extra||"")+
     `</div></div>`;
 }
@@ -298,7 +301,7 @@ function renderMonth(){
     const idx = keys.indexOf(k); const prev = idx>0 ? months[keys[idx-1]] : null;
     const m = months[k];
     return periodCard(k.replace("/","年")+"月", m, prev,
-      `<span>店内売上 <b>${m.salesEatin.toLocaleString()}</b>円 / TG売上 <b>${m.salesTogo.toLocaleString()}</b>円</span>`);
+      `<span>店内売上<b>${m.salesEatin.toLocaleString()}円</b></span><span>TG売上<b>${m.salesTogo.toLocaleString()}円</b></span>`);
   }).join("") || "<div class='sub'>記録なし</div>";
 }
 
