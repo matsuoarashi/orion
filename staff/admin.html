@@ -335,7 +335,7 @@ async function loadStaff(){
   const r = await api("admin.staff_list"); if(!r.ok){ showMsg(r.error); return; }
   const rows = r.staff.map(s=>`<div class="row"><span><b>${esc(s.name)}</b> ${s.role==="admin"?`<span class="pill blue">管理者</span>`:""} ${s.status==="stopped"?`<span class="pill gray">停止</span>`:""} ${!s.hasPass?`<span class="pill amber">パス未設定</span>`:""} ${s.locked?`<span class="pill red">ロック中</span>`:""}<br><span class="mini">時給 ${s.wage.toLocaleString()}円・交通費 ${s.transport}円/日・${s.joined}〜</span></span><button class="btn sec sm" onclick='editStaff(${JSON.stringify(s).replace(/'/g,"&#39;")})'>編集</button></div>`).join("");
   $("pStaff").innerHTML = `<div class="card"><h2>スタッフ <small><button class="btn sm" onclick="editStaff(null)">＋ 新規登録</button></small></h2>${rows}</div>
-    <div class="card"><h2>パスコードの渡し方</h2><div class="mini">1. 「編集」→「パスコードを設定」で6桁の数字を決める　2. 本人に口頭かLINEで伝える　3. 本人はスタッフ画面の「履歴」タブで自分のパスコードに変更できます。5回間違えると15分ロックされ、ここで解除できます。</div></div>`;
+    <div class="card"><h2>パスコードの渡し方</h2><div class="mini">1. 「編集」→「パスコードを設定」で4桁以上の数字を決める　2. 本人に口頭かLINEで伝える　3. 本人はスタッフ画面の「履歴」タブで自分のパスコードに変更できます。5回間違えると15分ロックされ、ここで解除できます。</div></div>`;
 }
 function editStaff(s){
   modal(`<h3>${s?esc(s.name)+" の編集":"スタッフを新規登録"}</h3>
@@ -344,7 +344,7 @@ function editStaff(s){
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>時給（円）</label><input type="number" id="sW" value="${s?s.wage:1500}"></div><div><label>交通費 日額（上限1,000）</label><input type="number" id="sT" value="${s?s.transport:0}"></div></div>
     <label>入社日</label><input type="date" id="sJ" value="${s&&s.joined?s.joined.replace(/\//g,"-"):new Date().toISOString().slice(0,10)}">
     <label>備考</label><input id="sM" value="${s?esc(s.note||""):""}">
-    ${s?`<div style="border-top:1px dashed var(--line);margin-top:14px;padding-top:10px"><label>パスコード（6桁以上の数字）</label><div style="display:flex;gap:8px"><input type="text" inputmode="numeric" id="sP" placeholder="新しいパスコード"><button class="btn sec" onclick="setPass('${s.staff_id}')">設定</button></div>${s.locked?`<button class="btn sec sm" style="margin-top:8px" onclick="unlock('${s.staff_id}')">ロック解除</button>`:""}</div>
+    ${s?`<div style="border-top:1px dashed var(--line);margin-top:14px;padding-top:10px"><label>パスコード（4桁以上の数字）</label><div style="display:flex;gap:8px"><input type="text" inputmode="numeric" id="sP" placeholder="新しいパスコード"><button class="btn sec" onclick="setPass('${s.staff_id}')">設定</button></div>${s.locked?`<button class="btn sec sm" style="margin-top:8px" onclick="unlock('${s.staff_id}')">ロック解除</button>`:""}</div>
     <div style="border-top:1px dashed var(--line);margin-top:14px;padding-top:10px"><h3 style="font-size:14px">振込口座 <span class="mini">（管理者のみ閲覧）</span></h3><div id="bankBox" class="mini">読み込み中…</div></div>`:""}
     <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" style="flex:1" onclick="saveStaff(${s?`'${s.staff_id}'`:"null"})">保存</button><button class="btn sec" onclick="closeOv()">閉じる</button></div>`);
   if (s) loadBank(s.staff_id);
@@ -365,7 +365,7 @@ async function saveStaff(staff_id){
   if(!staff_id){ closeOv(); toast("登録しました。続けて「編集」からパスコードを設定してください"); } else { closeOv(); toast("保存しました"); }
   loadStaff();
 }
-async function setPass(staff_id){ const p=$("sP").value.trim(); if(!/^\d{6,}$/.test(p)){ toast("6桁以上の数字"); return; } const r = await api("admin.staff_setpass",{staff_id, passcode:p}); toast(r.ok?"パスコードを設定しました。本人に伝えてください":r.error); if(r.ok){ $("sP").value=""; loadStaff(); } }
+async function setPass(staff_id){ const p=$("sP").value.trim(); if(!/^\d{4,}$/.test(p)){ toast("4桁以上の数字"); return; } const r = await api("admin.staff_setpass",{staff_id, passcode:p}); toast(r.ok?"パスコードを設定しました。本人に伝えてください":r.error); if(r.ok){ $("sP").value=""; loadStaff(); } }
 async function unlock(staff_id){ const r = await api("admin.staff_unlock",{staff_id}); toast(r.ok?"解除しました":r.error); closeOv(); loadStaff(); }
 
 // ───── 設定 ─────
