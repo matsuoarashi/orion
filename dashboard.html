@@ -292,25 +292,14 @@ function renderWeek(){
   }).join("") || "<div class='sub'>記録なし</div>";
 }
 function renderMonth(){
-  const months = {};
-  DATA.daily.forEach(d=>{
-    const m = d.date.slice(0,7);
-    if(!months[m]) months[m] = {days:0,meals:0,sales:0,count:0,eatin:0,togo:0,salesEatin:0,salesTogo:0};
-    const x = months[m];
-    if(d.count>0) x.days++;
-    x.meals+=d.meals; x.sales+=d.sales; x.count+=d.count; x.eatin+=d.eatin; x.togo+=d.togo;
-    x.salesEatin+=(d.salesEatin||0); x.salesTogo+=(d.salesTogo||0);
-  });
-  const keys = Object.keys(months).sort().reverse();
-  $("monthTable").innerHTML =
-    "<tr><th>月</th><th>営業日</th><th>食数</th><th>売上</th><th>食数/日</th><th>客単価</th><th>店内売上</th><th>TG売上</th></tr>" +
-    keys.map(k=>{
-      const m = months[k];
-      return `<tr><td>${k}</td><td>${m.days}</td><td>${m.meals}</td><td>${yen(m.sales)}</td>`+
-             `<td>${m.days?(m.meals/m.days).toFixed(1):"-"}</td>`+
-             `<td>${m.meals?yen(Math.round(m.sales/m.meals)):"-"}</td>`+
-             `<td>${yen(m.salesEatin)}</td><td>${yen(m.salesTogo)}</td></tr>`;
-    }).join("");
+  const months = sumDays(DATA.daily, d=>d.date.slice(0,7));
+  const keys = Object.keys(months).sort();
+  $("monthTable").innerHTML = keys.slice().reverse().map(k=>{
+    const idx = keys.indexOf(k); const prev = idx>0 ? months[keys[idx-1]] : null;
+    const m = months[k];
+    return periodCard(k.replace("/","年")+"月", m, prev,
+      `<span>店内売上 <b>${m.salesEatin.toLocaleString()}</b>円 / TG売上 <b>${m.salesTogo.toLocaleString()}</b>円</span>`);
+  }).join("") || "<div class='sub'>記録なし</div>";
 }
 
 function renderAll(){
