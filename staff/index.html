@@ -483,14 +483,14 @@ async function sendFix(){
   closeOv(); toast("申請しました。管理者の承認をお待ちください"); loadHist(); if(HOME && HOME.today===FIX.date) loadHome();
 }
 function openPass(){
-  sheet(`<h3>パスコードを変更</h3><div class="mini">6桁以上の数字。次回から新しいパスコードでログインします。</div>
+  sheet(`<h3>パスコードを変更</h3><div class="mini">4桁以上の数字。次回から新しいパスコードでログインします。</div>
     <label>新しいパスコード</label><input type="password" inputmode="numeric" id="npass" placeholder="●●●●●●">
     <label>もう一度</label><input type="password" inputmode="numeric" id="npass2" placeholder="●●●●●●">
     <div style="height:12px"></div><button class="btn" onclick="changePass()">変更する</button><button class="btn sec" style="margin-top:10px" onclick="closeOv()">やめる</button>`);
 }
 async function changePass(){
   const p = $("npass").value.trim(), p2 = $("npass2").value.trim();
-  if(!/^\d{6,}$/.test(p)){ toast("6桁以上の数字にしてください"); return; } if(p!==p2){ toast("2回の入力が一致しません"); return; }
+  if(!/^\d{4,}$/.test(p)){ toast("4桁以上の数字にしてください"); return; } if(p!==p2){ toast("2回の入力が一致しません"); return; }
   const r = await api("change_pass", {newpass:p}); if(!r.ok){ showMsg($("msg"), r.error); return; } closeOv(); toast("パスコードを変更しました");
 }
 
