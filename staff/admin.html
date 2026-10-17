@@ -80,6 +80,11 @@ body.loading main{opacity:.6;transition:opacity .2s}
 .loadmsg::before{content:"";width:16px;height:16px;border:3px solid var(--line);border-top-color:var(--g);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .bk{width:100%;border-collapse:collapse;font-size:13px}.bk th,.bk td{border-bottom:1px dashed var(--line);padding:6px 4px;text-align:left;white-space:nowrap}.bk td.r,.bk th.r{text-align:right}
+#ld{position:fixed;inset:0;z-index:30;background:rgba(250,246,238,.72);display:none;align-items:center;justify-content:center;backdrop-filter:blur(1px)}
+#ld.on{display:flex}
+#ld .box{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px 24px;display:flex;align-items:center;gap:12px;font-size:15px;color:var(--ink);box-shadow:0 6px 24px rgba(0,0,0,.12)}
+#ld .sp{width:22px;height:22px;border:3px solid var(--line);border-top-color:var(--g);border-radius:50%;animation:spin .8s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
@@ -115,6 +120,7 @@ body.loading main{opacity:.6;transition:opacity .2s}
   </div>
 </div>
 <div id="bar"></div>
+<div id="ld"><div class="box"><span class="sp"></span><span id="ldt">読み込み中…</span></div></div>
 <div class="toast" id="toast"></div>
 <div id="ov"></div>
 
@@ -140,6 +146,7 @@ async function api(action, body){
   const isWrite = !READS.has(action);
   if (isWrite && document.body.classList.contains("lock")) return {ok:false, error:"処理中です。少しお待ちください", code:"busy"};
   inflight++; $("bar").classList.add("on"); if (isWrite) document.body.classList.add("lock");
+  const LDMSG = {"admin.shifts_confirm":"確定してカレンダーに登録しています…","admin.payroll_close":"締めています…","admin.sync_retry":"カレンダーと同期しています…","admin.backup_now":"バックアップ中…","admin.shifts_save":"保存しています…","admin.shifts_copy":"コピーしています…","login":"ログインしています…"}; if (!window._ldT) window._ldT = setTimeout(()=>{ $("ldt").textContent = (isWrite ? (LDMSG[action]||"処理しています…") : "読み込み中…"); $("ld").classList.add("on"); }, 200); else if (isWrite) $("ldt").textContent = LDMSG[action]||"処理しています…";
   if (!dimT) dimT = setTimeout(()=>document.body.classList.add("loading"), 300);
   try{
     const res = await fetch(API_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(Object.assign({action, token:TOKEN}, body||{}))});
@@ -147,7 +154,7 @@ async function api(action, body){
     if (!j.ok && j.code==="noauth"){ localStorage.removeItem("os-admin-token"); TOKEN=""; showLogin("ログインし直してください"); }
     return j;
   }catch(e){ return {ok:false, error:"通信エラーです。電波を確認してもう一度お試しください", code:"net"}; }
-  finally{ inflight--; if (inflight<=0){ inflight=0; $("bar").classList.remove("on"); clearTimeout(dimT); dimT=null; document.body.classList.remove("loading"); } if (isWrite) document.body.classList.remove("lock"); }
+  finally{ inflight--; if (inflight<=0){ inflight=0; $("bar").classList.remove("on"); clearTimeout(window._ldT); window._ldT=null; $("ld").classList.remove("on"); clearTimeout(dimT); dimT=null; document.body.classList.remove("loading"); } if (isWrite) document.body.classList.remove("lock"); }
 }
 function loadingHtml(t){ return `<div class="loadmsg">${t||"読み込み中…"}</div>`; }
 function closeOv(){ $("ov").innerHTML=""; }
