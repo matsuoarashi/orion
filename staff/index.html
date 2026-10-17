@@ -124,7 +124,7 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
           <div class="monthnav"><button onclick="wishMove(-1)">◀</button><b id="wishMonth"></b><button onclick="wishMove(1)">▶</button></div>
           <div class="mini" id="wishInfo"></div>
           <div class="cal" id="wishCal"></div>
-          <div class="mini" style="margin-top:8px">日をタップ → 下で「出勤可／不可／時間指定／希望休」を選ぶ。灰色は定休日。</div>
+          <div class="mini" style="margin-top:8px">①日をタップ → ②下で「出勤可／不可／時間指定／希望休」を選んで「この日に反映」 → ③全部入れたら「提出する」。灰色は定休日。</div>
         </div>
         <div class="card" id="wishEdit">
           <h2 id="wishEditDate">日を選んでください</h2>
@@ -306,8 +306,8 @@ async function loadWish(month){
   WISH.month = r.month; WISH.locked = r.locked; WISH.openDays = r.openDays; WISH.days = {}; WISH.sel = null;
   r.days.forEach(d=>{ WISH.days[d.date] = d; });
   $("wishMonth").textContent = r.month.replace("/","年")+"月";
-  $("wishInfo").innerHTML = r.locked ? `<span class="pill red">締切済み（${r.deadline.slice(5)}）</span> 変更は管理者へ` : `締切 ${r.deadline.slice(5)}(${youbi(r.deadline)}) まで何度でも変更できます`;
-  $("wishSaveBtn").disabled = r.locked;
+  $("wishInfo").innerHTML = r.locked ? `<span class="pill red">締切済み（${r.deadline.slice(5)}）</span> この月の希望は締め切りました。変更したいときは松尾さん・長下さんに直接伝えてください（代わりに入力します）` : `締切 ${r.deadline.slice(5)}(${youbi(r.deadline)}) まで何度でも変更できます`;
+  $("wishSaveBtn").disabled = r.locked; $("wishEdit").classList.toggle("hide", r.locked);
   $("wishEditDate").textContent = "日を選んでください";
   renderWishCal();
 }
@@ -326,7 +326,7 @@ function renderWishCal(){
   $("wishCal").innerHTML = html;
 }
 function selDay(ds){
-  if (WISH.locked) return;
+  if (WISH.locked){ toast("締切を過ぎています。管理者に伝えてください"); return; }
   WISH.sel = ds; renderWishCal();
   $("wishEditDate").textContent = ds.slice(5).replace("/","月")+"日（"+youbi(ds)+"）";
   const w = WISH.days[ds]; document.querySelectorAll(".kinds button").forEach(b=>b.classList.remove("on"));
