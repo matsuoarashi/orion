@@ -55,7 +55,7 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
 .cal .d{border:1px solid var(--line);border-radius:8px;min-height:54px;padding:4px;font-size:12px;background:#fff;position:relative}
 .cal .d.closed{background:var(--cream-d);color:#aaa}
 .cal .d .n{font-weight:bold}
-.cal .d .k{display:block;font-size:11px;margin-top:2px;border-radius:5px;padding:1px 3px;text-align:center}
+.cal .d .k{display:block;font-size:10px;margin-top:3px;border-radius:5px;padding:2px 1px;text-align:center;white-space:nowrap;overflow:hidden;line-height:1.3}
 .k.ok{background:var(--g-l);color:var(--g)} .k.ng{background:#f6e3df;color:var(--red)} .k.time{background:#f7ebd3;color:var(--amber)} .k.off{background:#e8e8f4;color:#4a4a8a}
 .cal .d.sun .n{color:var(--red)} .cal .d.sat .n{color:#2a5aa8}
 .cal .d.today{border-color:var(--g);border-width:2px}
@@ -72,6 +72,25 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
 .monthnav{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .monthnav button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 14px;font-size:16px}
 .num{font-variant-numeric:tabular-nums}
+.status{display:flex;align-items:center;gap:10px;font-size:15px;color:var(--mute);margin-top:6px}
+.dot{width:10px;height:10px;border-radius:50%;background:#c8c0ae;flex:none}
+.dot.on{background:#2e8b57;box-shadow:0 0 0 4px rgba(46,139,87,.18)}
+.dot.done{background:var(--g)}
+.timebox{display:grid;grid-template-columns:56px 1fr 56px;gap:8px;align-items:center;margin:12px 0 6px}
+.tdisp{position:relative;border:2px solid var(--line);border-radius:12px;background:#fff;text-align:center;font-size:38px;font-weight:bold;padding:8px 4px;font-variant-numeric:tabular-nums;letter-spacing:1px}
+.tdisp small{display:block;font-size:11px;font-weight:normal;color:var(--mute);letter-spacing:0}
+.tdisp input{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:16px}
+.timebox button{border:2px solid var(--line);background:#fff;border-radius:12px;padding:16px 0;font-size:16px;font-weight:bold}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
+.chips.c4{grid-template-columns:repeat(4,1fr)}
+.chip{border:2px solid var(--line);background:#fff;border-radius:12px;padding:12px 4px;font-size:15px;font-weight:bold}
+.chip.on{border-color:var(--g);background:var(--g-l)}
+.chip small{display:block;font-weight:normal;font-size:11px;color:var(--mute)}
+.steps{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px}
+.steps span{background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 4px;font-size:12px;color:var(--mute);text-align:center;line-height:1.35}
+.steps span b{display:block;color:var(--g);font-size:13px}
+.cal .d.sel{border-color:var(--g);border-width:2px;background:var(--g-l)}
+.link{background:none;border:0;color:var(--g);text-decoration:underline;font-size:14px;padding:6px 0}
 </style>
 </head>
 <body>
@@ -124,7 +143,7 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
           <div class="monthnav"><button onclick="wishMove(-1)">◀</button><b id="wishMonth"></b><button onclick="wishMove(1)">▶</button></div>
           <div class="mini" id="wishInfo"></div>
           <div class="cal" id="wishCal"></div>
-          <div class="mini" style="margin-top:8px">①日をタップ → ②下で「出勤可／不可／時間指定／希望休」を選んで「この日に反映」 → ③全部入れたら「提出する」。灰色は定休日。</div>
+          <div class="steps"><span><b>① 日をタップ</b>灰色は定休日</span><span><b>② 区分を押す</b>押した瞬間に入ります</span><span><b>③ 提出する</b>一番下のボタン</span></div>
         </div>
         <div class="card" id="wishEdit">
           <h2 id="wishEditDate">日を選んでください</h2>
@@ -135,13 +154,13 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
             <button onclick="setKind('off')" id="k_off">希望休</button>
           </div>
           <div id="timeRow" class="hide" style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-top:10px">
-            <input type="time" id="wStart" value="11:00"><span>〜</span><input type="time" id="wEnd" value="14:00">
+            <input type="time" id="wStart" value="11:00" onchange="applyKind(true)"><span>〜</span><input type="time" id="wEnd" value="14:00" onchange="applyKind(true)">
           </div>
           <label>備考（任意）</label>
-          <input type="text" id="wNote" maxlength="60" placeholder="例: 午後は用事">
-          <div style="display:flex;gap:8px;margin-top:10px">
-            <button class="btn sec" style="flex:1" onclick="applyKind()">この日に反映</button>
-            <button class="btn sec" style="flex:1" onclick="clearKind()">取り消し</button>
+          <input type="text" id="wNote" maxlength="60" placeholder="例: 午後は用事" onchange="applyKind(true)">
+          <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+            <button class="btn sec" style="flex:1" onclick="nextDay()">次の日へ ▶</button>
+            <button class="link" onclick="clearKind()">この日を未入力に戻す</button>
           </div>
         </div>
         <button class="btn" id="wishSaveBtn" onclick="saveWish()">希望を提出する</button>
@@ -167,13 +186,9 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
           <div id="histList" style="margin-top:8px"></div>
         </div>
         <div class="card">
-          <h2>打刻の修正申請</h2>
-          <label>日付</label><input type="date" id="fxDate">
-          <label>項目</label>
-          <select id="fxField"><option value="出勤">出勤時刻</option><option value="退勤">退勤時刻</option><option value="休憩">休憩（分）</option></select>
-          <label>正しい値</label><input type="text" id="fxWanted" placeholder="例: 10:15 または 15">
-          <label>理由</label><input type="text" id="fxReason" maxlength="100" placeholder="例: 打刻を忘れた">
-          <button class="btn sec" style="margin-top:12px" onclick="sendFix()">申請する</button>
+          <h2>打刻の修正</h2>
+          <div class="mini">時刻や休憩が違っていたら申請してください。管理者が承認すると反映されます。</div>
+          <button class="btn sec" style="margin-top:10px" onclick="openFix()">修正を申請する</button>
           <div id="fixList" style="margin-top:10px"></div>
         </div>
         <div class="card">
@@ -260,42 +275,56 @@ async function loadHome(){
   $("hName").textContent = ME.name + (ME.role==="admin" ? "（管理者）" : "");
   $("hToday").textContent = r.today.slice(5) + "(" + youbi(r.today) + ")";
   if (r.todayShift){ $("hShift").textContent = r.todayShift.start+" 〜 "+r.todayShift.end; $("hShiftSub").textContent = "本日の勤務予定"; }
-  else { $("hShift").textContent = "予定なし"; $("hShiftSub").textContent = "予定外に勤務する場合もそのまま打刻できます"; }
+  else { $("hShift").textContent = "本日の予定なし"; $("hShiftSub").textContent = "予定外に働く場合もそのまま出勤を押せます"; }
   $("hNext").textContent = r.next ? `${r.next.date.slice(5)}(${youbi(r.next.date)}) ${r.next.start}〜${r.next.end}` : "確定した予定はありません";
   $("hWish").innerHTML = `${r.wishMonth.replace("/","年")}月分：${r.wishCount ? `<span class="pill">提出済み（${r.wishCount}日分）</span>` : `<span class="pill amber">未提出</span>`}`;
   renderPunch(r);
 }
+function nowHM(){ const d=new Date(); return pad2(d.getHours())+":"+pad2(d.getMinutes()); }
+function round5(hm){ let [h,m]=hm.split(":").map(Number); m=Math.round(m/5)*5; if(m===60){m=0;h=(h+1)%24;} return pad2(h)+":"+pad2(m); }
+function toMinC(hm){ const [h,m]=String(hm).split(":").map(Number); return h*60+m; }
 function renderPunch(r){
   const a = r.att; let html = "";
-  if (!a){ html = `<button class="btn" onclick="punch('in')">出勤</button>`; }
-  else if (a.status==="working"){ html = `<div class="card"><div class="row"><span>出勤</span><b>${a.in}</b></div><div class="row"><span>現在</span><b>${r.now}</b></div></div><button class="btn out" onclick="punchOut()">退勤</button>`; }
-  else { html = `<div class="card"><h2>本日の勤務（完了）</h2><div class="row"><span>出勤</span><b>${a.in}</b></div><div class="row"><span>退勤</span><b>${a.out}</b></div>${a.breakMin?`<div class="row"><span>休憩</span><b>${a.breakMin}分</b></div>`:""}<div class="row"><span>実労働</span><b>${fmtMin(a.workMin)}</b></div><div class="sub">時刻が違うときは「履歴」から修正申請してください</div></div>`; }
+  if (!a){ html = `<div class="card"><div class="status"><span class="dot"></span>まだ出勤していません</div></div><button class="btn" onclick="punchSheet('in')">出勤する</button>`; }
+  else if (a.status==="working"){ html = `<div class="card"><div class="status"><span class="dot on"></span>勤務中</div><div class="row"><span>出勤</span><b>${a.in}</b></div><div class="row"><span>経過</span><b>${fmtMin(Math.max(0,toMinC(nowHM())-toMinC(a.in)))}</b></div></div><button class="btn out" onclick="punchSheet('out')">退勤する</button>`; }
+  else { html = `<div class="card"><div class="status"><span class="dot done"></span>本日の勤務は完了</div><div class="row"><span>出勤</span><b>${a.in}</b></div><div class="row"><span>退勤</span><b>${a.out}</b></div>${a.breakMin?`<div class="row"><span>休憩</span><b>${a.breakMin}分</b></div>`:""}<div class="row"><span>実労働</span><b>${fmtMin(a.workMin)}</b></div><div class="sub">時刻が違うときは「履歴」から修正申請してください</div></div>`; }
   $("punchArea").innerHTML = html;
 }
-async function punch(type, breakMin){
+function punchSheet(type){
+  const isIn = type==="in", sh = HOME && HOME.todayShift, now = nowHM();
+  const planned = sh ? (isIn ? sh.start : sh.end) : null;
+  const near = planned && Math.abs(toMinC(planned)-toMinC(now)) <= 30;
+  const def = near ? planned : round5(now);
+  $("ov").innerHTML = `<div class="overlay" onclick="if(event.target===this)closeOv()"><div class="sheet">
+    <h3>${isIn?"出勤":"退勤"}時刻を確認してください</h3>
+    <div class="mini">実際の時刻に合わせて直せます（未来の時刻は不可）。</div>
+    <div class="timebox"><button onclick="ptAdd(-5)">−5分</button><div class="tdisp"><span id="ptd">${def}</span><small>タップで時刻を選ぶ</small><input type="time" id="pt" value="${def}" step="300" onchange="ptSync()"></div><button onclick="ptAdd(5)">+5分</button></div>
+    <div class="chips">
+      <button class="chip" onclick="ptSet('${now}')">今の時刻<small>${now}</small></button>
+      ${planned?`<button class="chip" onclick="ptSet('${planned}')">シフト通り<small>${planned}</small></button>`:`<button class="chip" disabled style="opacity:.4">シフト通り<small>本日の予定なし</small></button>`}
+    </div>
+    ${isIn?"":`<label>休憩（取った場合だけ）</label>
+    <div class="chips c4">${[0,15,30,45].map(n=>`<button class="chip ${n===0?"on":""}" onclick="setBrk(this,${n})">${n}分</button>`).join("")}</div>
+    <input type="number" inputmode="numeric" id="brk" value="0" min="0" max="180" placeholder="その他の分数">`}
+    <div style="height:14px"></div>
+    <button class="btn ${isIn?"":"out"}" onclick="var b=Number(($('brk')||{}).value)||0;var t=$('pt').value;closeOv();punch('${type}', b, t)">${isIn?"出勤":"退勤"}を記録する</button>
+    <button class="btn sec" style="margin-top:10px" onclick="closeOv()">やめる</button>
+  </div></div>`;
+}
+function ptSet(v){ $("pt").value=v; ptSync(); }
+function ptSync(){ const v=$("pt").value; if(v) $("ptd").textContent=v; }
+function ptAdd(n){ const el=$("pt"); if(!el.value) return; let m=toMinC(el.value)+n; m=(m+1440)%1440; ptSet(pad2(Math.floor(m/60))+":"+pad2(m%60)); }
+function setBrk(btn,n){ document.querySelectorAll(".chips.c4 .chip").forEach(b=>b.classList.remove("on")); btn.classList.add("on"); $("brk").value=n; }
+async function punch(type, breakMin, time){
   if (busy) return; busy = true;
   const btns = document.querySelectorAll("#punchArea .btn"); btns.forEach(b=>b.disabled=true);
   try{
-    const r = await api("punch", {type, breakMin});
+    const r = await api("punch", {type, breakMin, time});
     if(!r.ok){ showMsg($("msg"), r.error); loadHome(); return; }
-    toast(type==="in" ? `出勤 ${r.time} を記録しました` : `退勤 ${r.time} を記録しました`);
+    toast(type==="in" ? `出勤 ${r.time} を記録しました` : `退勤 ${r.time} を記録しました（実労働 ${fmtMin(r.workMin)}）`);
     loadHome();
   }catch(e){ showMsg($("msg"), "通信エラーです。電波のある場所でもう一度押してください（二重には記録されません）"); btns.forEach(b=>b.disabled=false); }
   finally{ busy = false; }
-}
-function punchOut(){
-  $("ov").innerHTML = `<div class="overlay" onclick="if(event.target===this)closeOv()"><div class="sheet">
-    <h3>退勤します</h3>
-    <div class="mini">休憩を取った場合は分数を入れてください（取っていなければ 0 のまま）</div>
-    <label>休憩（分）</label>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px">
-      ${[0,15,30,45].map(n=>`<button class="btn sec" style="padding:12px" onclick="$('brk').value=${n}">${n}分</button>`).join("")}
-    </div>
-    <input type="number" inputmode="numeric" id="brk" value="0" min="0" max="180">
-    <div style="height:14px"></div>
-    <button class="btn out" onclick="var b=Number($('brk').value)||0;closeOv();punch('out', b)">退勤を記録する</button>
-    <button class="btn sec" style="margin-top:10px" onclick="closeOv()">やめる</button>
-  </div></div>`;
 }
 function closeOv(){ $("ov").innerHTML = ""; }
 
@@ -316,34 +345,44 @@ function renderWishCal(){
   const [y,m] = WISH.month.split("/").map(Number); const first = new Date(y,m-1,1).getDay();
   let html = YO.map(x=>`<div class="h">${x}</div>`).join("");
   for (let i=0;i<first;i++) html += `<div></div>`;
-  const KL = {ok:"出勤可", ng:"不可", time:"時間", off:"休望"};
+  const KL = {ok:"○可", ng:"×不可", time:"時間", off:"休希望"};
   const today = new Date(); const ts = today.getFullYear()+"/"+pad2(today.getMonth()+1)+"/"+pad2(today.getDate());
   WISH.openDays.forEach(d=>{
     const dn = Number(d.date.slice(8)); const dow = new Date(y,m-1,dn).getDay(); const w = WISH.days[d.date];
-    const cls = ["d", d.open?"":"closed", dow===0?"sun":dow===6?"sat":"", WISH.sel===d.date?"today":""].join(" ");
-    html += `<div class="${cls}" onclick="selDay('${d.date}')"><span class="n">${dn}</span>${w?`<span class="k ${w.kind}">${w.kind==="time"?(w.start+"-"):KL[w.kind]}</span>`:""}${w&&w.kind==="time"?`<span class="k time">${w.end}</span>`:""}</div>`;
+    const cls = ["d", d.open?"":"closed", dow===0?"sun":dow===6?"sat":"", WISH.sel===d.date?"sel":""].join(" ");
+    html += `<div class="${cls}" onclick="selDay('${d.date}')"><span class="n">${dn}</span>${w?`<span class="k ${w.kind}">${w.kind==="time"?(w.start.replace(/^0/,"").replace(/:00$/,"")+"-"+w.end.replace(/^0/,"").replace(/:00$/,"")):KL[w.kind]}</span>`:""}</div>`;
   });
   $("wishCal").innerHTML = html;
 }
 function selDay(ds){
   if (WISH.locked){ toast("締切を過ぎています。管理者に伝えてください"); return; }
-  WISH.sel = ds; renderWishCal();
-  $("wishEditDate").textContent = ds.slice(5).replace("/","月")+"日（"+youbi(ds)+"）";
+  const od = WISH.openDays.find(x=>x.date===ds); if (od && !od.open){ toast("定休日です"); return; }
+  WISH.sel = ds; KIND = null; renderWishCal();
+  $("wishEditDate").textContent = ds.slice(5).replace("/","月")+"日（"+youbi(ds)+"）はどうしますか？";
   const w = WISH.days[ds]; document.querySelectorAll(".kinds button").forEach(b=>b.classList.remove("on"));
   if (w){ $("k_"+w.kind).classList.add("on"); $("timeRow").classList.toggle("hide", w.kind!=="time"); if(w.kind==="time"){ $("wStart").value=w.start; $("wEnd").value=w.end; } $("wNote").value = w.note||""; }
   else { $("timeRow").classList.add("hide"); $("wNote").value=""; }
   $("wishEdit").scrollIntoView({behavior:"smooth", block:"center"});
 }
-let KIND = null;
-function setKind(k){ KIND = k; document.querySelectorAll(".kinds button").forEach(b=>b.classList.remove("on")); $("k_"+k).classList.add("on"); $("timeRow").classList.toggle("hide", k!=="time"); }
-function applyKind(){
-  if (!WISH.sel){ toast("日を選んでください"); return; }
-  const k = KIND || (WISH.days[WISH.sel]||{}).kind; if(!k){ toast("区分を選んでください"); return; }
-  WISH.days[WISH.sel] = {date:WISH.sel, kind:k, start:$("wStart").value, end:$("wEnd").value, note:$("wNote").value};
-  if (k==="time" && (!$("wStart").value || !$("wEnd").value)){ toast("時間を入れてください"); return; }
-  KIND = null; renderWishCal(); toast("反映しました（最後に「提出する」）");
+function nextDay(){
+  if (!WISH.sel) return; const opens = WISH.openDays.filter(d=>d.open).map(d=>d.date); const i = opens.indexOf(WISH.sel);
+  if (i < 0 || i+1 >= opens.length){ toast("最後の日です。下の「提出する」を押してください"); return; }
+  selDay(opens[i+1]);
 }
-function clearKind(){ if(!WISH.sel) return; delete WISH.days[WISH.sel]; KIND=null; document.querySelectorAll(".kinds button").forEach(b=>b.classList.remove("on")); renderWishCal(); }
+let KIND = null;
+function setKind(k){
+  if (!WISH.sel){ toast("先にカレンダーの日をタップしてください"); return; }
+  KIND = k; document.querySelectorAll(".kinds button").forEach(b=>b.classList.remove("on")); $("k_"+k).classList.add("on"); $("timeRow").classList.toggle("hide", k!=="time");
+  applyKind(true);
+}
+function applyKind(silent){
+  if (!WISH.sel) return;
+  const k = KIND || (WISH.days[WISH.sel]||{}).kind; if(!k) return;
+  if (k==="time" && (!$("wStart").value || !$("wEnd").value)){ toast("時間を入れてください"); return; }
+  WISH.days[WISH.sel] = {date:WISH.sel, kind:k, start:$("wStart").value, end:$("wEnd").value, note:$("wNote").value};
+  renderWishCal(); if(!silent) toast("反映しました");
+}
+function clearKind(){ if(!WISH.sel) return; delete WISH.days[WISH.sel]; KIND=null; document.querySelectorAll(".kinds button").forEach(b=>b.classList.remove("on")); $("timeRow").classList.add("hide"); renderWishCal(); }
 async function saveWish(){
   const days = Object.values(WISH.days); if(!days.length && !confirm("1日も入っていません。空で提出しますか？")) return;
   $("wishSaveBtn").disabled = true;
@@ -375,7 +414,20 @@ async function loadHist(){
   $("histList").innerHTML = r.list.map(a=>`<div class="row"><span>${a.date.slice(5)}(${youbi(a.date)})${a.note?`<br><span class="mini">${a.note}</span>`:""}</span><b>${a.in||"--:--"}〜${a.out||"<span style='color:var(--red)'>未退勤</span>"}${a.breakMin?` <span class="mini">休${a.breakMin}</span>`:""}<br><span class="mini">${a.status==="done"?fmtMin(a.workMin):""}</span></b></div>`).join("") || `<div class="sub">記録がありません</div>`;
   const ST = {pending:"<span class='pill amber'>確認中</span>", approved:"<span class='pill'>承認</span>", rejected:"<span class='pill red'>却下</span>"};
   $("fixList").innerHTML = r.fixes.length ? `<div class="mini" style="margin-bottom:4px">申請履歴</div>` + r.fixes.map(f=>`<div class="row"><span>${f.date.slice(5)} ${f.field} ${f.current}→${f.wanted}</span>${ST[f.status]||f.status}</div>`).join("") : "";
-  if (!$("fxDate").value) $("fxDate").value = new Date().toISOString().slice(0,10);
+}
+function openFix(){
+  const d = new Date(); const today = d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());
+  $("ov").innerHTML = `<div class="overlay" onclick="if(event.target===this)closeOv()"><div class="sheet">
+    <h3>打刻の修正を申請</h3>
+    <label>日付</label><input type="date" id="fxDate" value="${today}">
+    <label>直したい項目</label>
+    <select id="fxField"><option value="出勤">出勤時刻</option><option value="退勤">退勤時刻</option><option value="休憩">休憩（分）</option></select>
+    <label>正しい値</label><input type="text" id="fxWanted" placeholder="例: 10:15（休憩なら 15）">
+    <label>理由</label><input type="text" id="fxReason" maxlength="100" placeholder="例: 打刻を忘れた">
+    <div style="height:14px"></div>
+    <button class="btn" onclick="sendFix()">申請する</button>
+    <button class="btn sec" style="margin-top:10px" onclick="closeOv()">やめる</button>
+  </div></div>`;
 }
 async function sendFix(){
   const date = $("fxDate").value.replace(/-/g,"/"), field = $("fxField").value, wanted = $("fxWanted").value.trim(), reason = $("fxReason").value.trim();
@@ -383,7 +435,7 @@ async function sendFix(){
   if(field!=="休憩" && !/^\d{1,2}:\d{2}$/.test(wanted)){ toast("時刻は 10:15 の形で入れてください"); return; }
   if(!confirm(`${date.slice(5)} の${field}を「${wanted}」に修正申請します。よろしいですか？`)) return;
   const r = await api("fix_request", {date, field, wanted, reason}); if(!r.ok){ showMsg($("msg"), r.error); return; }
-  toast("申請しました。管理者の承認をお待ちください"); $("fxWanted").value=""; $("fxReason").value=""; loadHist();
+  closeOv(); toast("申請しました。管理者の承認をお待ちください"); loadHist();
 }
 async function changePass(){
   const p = $("npass").value.trim(); if(!/^\d{6,}$/.test(p)){ toast("6桁以上の数字にしてください"); return; }
