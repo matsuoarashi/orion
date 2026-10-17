@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta name="theme-color" content="#2c4f39">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="../icon-192.png">
+<title>ORION STAFF</title>
+<style>
+:root{ --g:#2c4f39; --g-d:#1f3a2a; --g-l:#e4eee7; --cream:#faf6ee; --cream-d:#ece4d2; --ink:#2b2a26; --mute:#7a7265; --red:#a33c2e; --amber:#b7791f; --line:#d9d1bd; }
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:var(--cream);color:var(--ink);font-size:16px;line-height:1.5}
+.app{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+header{background:var(--g);color:#fff;padding:14px 18px 12px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:5}
+header .t{font-size:12px;letter-spacing:4px;opacity:.85}
+header .n{font-size:17px;font-weight:bold}
+header button{background:rgba(255,255,255,.15);border:0;color:#fff;border-radius:8px;padding:6px 10px;font-size:13px}
+main{flex:1;padding:16px 16px 90px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.card h2{font-size:12px;letter-spacing:3px;color:var(--g);margin-bottom:8px}
+.big{font-size:28px;font-weight:bold;line-height:1.2}
+.sub{font-size:13px;color:var(--mute);margin-top:4px}
+.btn{display:block;width:100%;border:0;border-radius:14px;padding:20px;font-size:22px;font-weight:bold;color:#fff;background:var(--g);letter-spacing:2px}
+.btn.out{background:var(--red)}
+.btn.sec{background:var(--cream-d);color:var(--ink);font-size:16px;padding:14px;letter-spacing:0}
+.btn:disabled{opacity:.45}
+.btn + .btn{margin-top:10px}
+.row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px dashed var(--line);font-size:15px}
+.row:last-child{border-bottom:0}
+.row b{font-variant-numeric:tabular-nums}
+.pill{display:inline-block;border-radius:999px;padding:2px 10px;font-size:12px;background:var(--g-l);color:var(--g)}
+.pill.red{background:#f6e3df;color:var(--red)} .pill.amber{background:#f7ebd3;color:var(--amber)}
+nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;max-width:520px;margin:0 auto;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;border:0;background:none;padding:10px 4px 8px;font-size:11px;color:var(--mute)}
+nav button i{display:block;font-style:normal;font-size:20px;margin-bottom:2px}
+nav button.on{color:var(--g);font-weight:bold}
+.hide{display:none !important}
+.login{padding:40px 24px}
+.login h1{font-size:14px;letter-spacing:6px;color:var(--g);text-align:center;margin-bottom:6px}
+.login .store{text-align:center;color:var(--mute);font-size:13px;margin-bottom:28px}
+.sel{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.sel button{border:2px solid var(--line);background:#fff;border-radius:12px;padding:16px 8px;font-size:17px;font-weight:bold}
+.sel button.on{border-color:var(--g);background:var(--g-l)}
+input,select,textarea{width:100%;font-size:18px;padding:12px;border:2px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--g)}
+label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
+.msg{padding:12px 14px;border-radius:10px;font-size:14px;margin-bottom:12px}
+.msg.err{background:#f6e3df;color:var(--red)} .msg.ok{background:var(--g-l);color:var(--g)}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px}
+.cal .h{text-align:center;font-size:11px;color:var(--mute);padding:4px 0}
+.cal .d{border:1px solid var(--line);border-radius:8px;min-height:54px;padding:4px;font-size:12px;background:#fff;position:relative}
+.cal .d.closed{background:var(--cream-d);color:#aaa}
+.cal .d .n{font-weight:bold}
+.cal .d .k{display:block;font-size:11px;margin-top:2px;border-radius:5px;padding:1px 3px;text-align:center}
+.k.ok{background:var(--g-l);color:var(--g)} .k.ng{background:#f6e3df;color:var(--red)} .k.time{background:#f7ebd3;color:var(--amber)} .k.off{background:#e8e8f4;color:#4a4a8a}
+.cal .d.sun .n{color:var(--red)} .cal .d.sat .n{color:#2a5aa8}
+.cal .d.today{border-color:var(--g);border-width:2px}
+.kinds{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.kinds button{border:2px solid var(--line);background:#fff;border-radius:10px;padding:10px 2px;font-size:13px}
+.kinds button.on{border-color:var(--g);background:var(--g-l);font-weight:bold}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:9}
+.toast.show{opacity:1}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:8}
+.sheet{background:var(--cream);border-radius:18px 18px 0 0;padding:18px 18px 28px;width:100%;max-width:520px;max-height:90vh;overflow:auto}
+.sheet h3{font-size:16px;margin-bottom:10px}
+.mini{font-size:13px;color:var(--mute)}
+.center{text-align:center}
+.monthnav{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.monthnav button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 14px;font-size:16px}
+.num{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ログイン -->
+  <div id="vLogin" class="login">
+    <h1>ORION STAFF</h1>
+    <div class="store" id="loginStore">洋食オリオン</div>
+    <div id="loginMsg"></div>
+    <div class="mini" style="margin-bottom:6px">名前を選んでください</div>
+    <div class="sel" id="staffSel"></div>
+    <label>パスコード（数字）</label>
+    <input type="password" inputmode="numeric" pattern="[0-9]*" id="passIn" placeholder="●●●●●●" autocomplete="off">
+    <div style="height:18px"></div>
+    <button class="btn" id="loginBtn" onclick="doLogin()">ログイン</button>
+    <p class="mini center" style="margin-top:16px">パスコードを忘れたときは管理者に連絡してください</p>
+  </div>
+
+  <!-- 本体 -->
+  <div id="vApp" class="hide" style="display:flex;flex-direction:column;flex:1">
+    <header>
+      <div><div class="t">ORION STAFF</div><div class="n" id="hName">-</div></div>
+      <button onclick="doLogout()">ログアウト</button>
+    </header>
+    <main>
+      <div id="msg"></div>
+      <!-- ホーム -->
+      <section id="pHome">
+        <div class="card">
+          <h2>本日 <span id="hToday" style="letter-spacing:0;color:var(--mute);font-weight:normal"></span></h2>
+          <div class="big" id="hShift">-</div>
+          <div class="sub" id="hShiftSub"></div>
+        </div>
+        <div id="punchArea"></div>
+        <div class="card" style="margin-top:14px">
+          <h2>次回の勤務</h2>
+          <div id="hNext" class="sub" style="font-size:15px;color:var(--ink)">-</div>
+        </div>
+        <div class="card" id="hWishCard">
+          <h2>希望シフト</h2>
+          <div id="hWish" class="sub" style="font-size:15px;color:var(--ink)"></div>
+          <button class="btn sec" style="margin-top:10px" onclick="go('wish')">希望を入力する</button>
+        </div>
+      </section>
+
+      <!-- 希望シフト -->
+      <section id="pWish" class="hide">
+        <div class="card">
+          <h2>希望シフト提出</h2>
+          <div class="monthnav"><button onclick="wishMove(-1)">◀</button><b id="wishMonth"></b><button onclick="wishMove(1)">▶</button></div>
+          <div class="mini" id="wishInfo"></div>
+          <div class="cal" id="wishCal"></div>
+          <div class="mini" style="margin-top:8px">日をタップ → 下で「出勤可／不可／時間指定／希望休」を選ぶ。灰色は定休日。</div>
+        </div>
+        <div class="card" id="wishEdit">
+          <h2 id="wishEditDate">日を選んでください</h2>
+          <div class="kinds">
+            <button onclick="setKind('ok')" id="k_ok">出勤可</button>
+            <button onclick="setKind('ng')" id="k_ng">不可</button>
+            <button onclick="setKind('time')" id="k_time">時間指定</button>
+            <button onclick="setKind('off')" id="k_off">希望休</button>
+          </div>
+          <div id="timeRow" class="hide" style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-top:10px">
+            <input type="time" id="wStart" value="11:00"><span>〜</span><input type="time" id="wEnd" value="14:00">
+          </div>
+          <label>備考（任意）</label>
+          <input type="text" id="wNote" maxlength="60" placeholder="例: 午後は用事">
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn sec" style="flex:1" onclick="applyKind()">この日に反映</button>
+            <button class="btn sec" style="flex:1" onclick="clearKind()">取り消し</button>
+          </div>
+        </div>
+        <button class="btn" id="wishSaveBtn" onclick="saveWish()">希望を提出する</button>
+        <p class="mini center" style="margin-top:10px">締切後の変更は管理者に連絡してください</p>
+      </section>
+
+      <!-- 確定シフト -->
+      <section id="pShift" class="hide">
+        <div class="card">
+          <h2>確定シフト</h2>
+          <div class="monthnav"><button onclick="shiftMove(-1)">◀</button><b id="shiftMonth"></b><button onclick="shiftMove(1)">▶</button></div>
+          <div id="shiftList"></div>
+        </div>
+      </section>
+
+      <!-- 勤務履歴 -->
+      <section id="pHist" class="hide">
+        <div class="card">
+          <h2>勤務履歴</h2>
+          <div class="monthnav"><button onclick="histMove(-1)">◀</button><b id="histMonth"></b><button onclick="histMove(1)">▶</button></div>
+          <div class="row"><span>勤務日数</span><b id="histDays">-</b></div>
+          <div class="row"><span>労働時間</span><b id="histHours">-</b></div>
+          <div id="histList" style="margin-top:8px"></div>
+        </div>
+        <div class="card">
+          <h2>打刻の修正申請</h2>
+          <label>日付</label><input type="date" id="fxDate">
+          <label>項目</label>
+          <select id="fxField"><option value="出勤">出勤時刻</option><option value="退勤">退勤時刻</option><option value="休憩">休憩（分）</option></select>
+          <label>正しい値</label><input type="text" id="fxWanted" placeholder="例: 10:15 または 15">
+          <label>理由</label><input type="text" id="fxReason" maxlength="100" placeholder="例: 打刻を忘れた">
+          <button class="btn sec" style="margin-top:12px" onclick="sendFix()">申請する</button>
+          <div id="fixList" style="margin-top:10px"></div>
+        </div>
+        <div class="card">
+          <h2>パスコード変更</h2>
+          <input type="password" inputmode="numeric" id="npass" placeholder="新しいパスコード（6桁以上の数字）">
+          <button class="btn sec" style="margin-top:10px" onclick="changePass()">変更する</button>
+        </div>
+      </section>
+    </main>
+    <nav>
+      <button id="n_home" class="on" onclick="go('home')"><i>⌂</i>ホーム</button>
+      <button id="n_wish" onclick="go('wish')"><i>✎</i>希望</button>
+      <button id="n_shift" onclick="go('shift')"><i>▦</i>シフト</button>
+      <button id="n_hist" onclick="go('hist')"><i>≡</i>履歴</button>
+    </nav>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<div id="ov"></div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbwgGW6rXzAW2rHVicdoCMdHOT_E3egrXPsaEJerX-_brZr0mYF6Qo_tRorX8PgLc7c/exec";
+const $ = id => document.getElementById(id);
+let TOKEN = localStorage.getItem("os-token") || "";
+let ME = null, SET = null, HOME = null;
+let busy = false;
+
+function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2200); }
+function showMsg(el, text, cls){ el.innerHTML = text ? `<div class="msg ${cls||"err"}">${text}</div>` : ""; }
+async function api(action, body){
+  body = Object.assign({action, token: TOKEN}, body||{});
+  const res = await fetch(API_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(body)});
+  const j = await res.json();
+  if (!j.ok && j.code==="noauth"){ localStorage.removeItem("os-token"); TOKEN=""; showLogin("ログインの期限が切れました"); }
+  return j;
+}
+function pad2(n){ return String(n).padStart(2,"0"); }
+function ymAdd(ym, n){ let [y,m]=ym.split("/").map(Number); m+=n; while(m>12){m-=12;y++;} while(m<1){m+=12;y--;} return y+"/"+pad2(m); }
+function thisMonth(){ const d=new Date(); return d.getFullYear()+"/"+pad2(d.getMonth()+1); }
+const YO = ["日","月","火","水","木","金","土"];
+function youbi(ds){ const [y,m,d]=ds.split("/").map(Number); return YO[new Date(y,m-1,d).getDay()]; }
+function fmtMin(m){ return Math.floor(m/60)+"時間"+pad2(m%60)+"分"; }
+
+// ───── ログイン ─────
+async function showLogin(msg){
+  $("vLogin").classList.remove("hide"); $("vApp").classList.add("hide");
+  showMsg($("loginMsg"), msg||"", "err");
+  try{
+    const r = await fetch(API_URL+"?action=staff_list").then(r=>r.json());
+    $("loginStore").textContent = r.store_name || "洋食オリオン";
+    $("staffSel").innerHTML = (r.staff||[]).map(s=>`<button data-id="${s.staff_id}" onclick="pickStaff(this)">${s.name}</button>`).join("");
+    const last = localStorage.getItem("os-staff"); if (last){ const b=[...document.querySelectorAll("#staffSel button")].find(x=>x.dataset.id===last); if(b) b.classList.add("on"); }
+  }catch(e){ showMsg($("loginMsg"), "通信できません。電波を確認してもう一度開いてください", "err"); }
+}
+function pickStaff(b){ document.querySelectorAll("#staffSel button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); $("passIn").focus(); }
+async function doLogin(){
+  const b = document.querySelector("#staffSel button.on"); if(!b){ showMsg($("loginMsg"),"名前を選んでください"); return; }
+  const pass = $("passIn").value.trim(); if(!pass){ showMsg($("loginMsg"),"パスコードを入力してください"); return; }
+  $("loginBtn").disabled = true;
+  try{
+    const r = await api("login", {staff_id:b.dataset.id, passcode:pass, ua:navigator.userAgent});
+    if(!r.ok){ showMsg($("loginMsg"), r.error); return; }
+    TOKEN = r.token; localStorage.setItem("os-token", TOKEN); localStorage.setItem("os-staff", b.dataset.id);
+    ME = r.staff; SET = r.settings; $("passIn").value="";
+    enterApp();
+  }catch(e){ showMsg($("loginMsg"), "通信エラー。もう一度お試しください"); }
+  finally{ $("loginBtn").disabled = false; }
+}
+async function doLogout(){ if(!confirm("ログアウトしますか？")) return; await api("logout"); localStorage.removeItem("os-token"); TOKEN=""; showLogin(); }
+
+// ───── 画面遷移 ─────
+function enterApp(){ $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); go("home"); }
+function go(p){
+  ["home","wish","shift","hist"].forEach(x=>{ $("p"+x[0].toUpperCase()+x.slice(1)).classList.toggle("hide", x!==p); $("n_"+x).classList.toggle("on", x===p); });
+  showMsg($("msg"), "");
+  if(p==="home") loadHome(); if(p==="wish") loadWish(); if(p==="shift") loadShift(); if(p==="hist") loadHist();
+  window.scrollTo(0,0);
+}
+
+// ───── ホーム・打刻 ─────
+async function loadHome(){
+  const r = await api("home"); if(!r.ok){ showMsg($("msg"), r.error); return; }
+  HOME = r; ME = r.staff; SET = r.settings;
+  $("hName").textContent = ME.name + (ME.role==="admin" ? "（管理者）" : "");
+  $("hToday").textContent = r.today.slice(5) + "(" + youbi(r.today) + ")";
+  if (r.todayShift){ $("hShift").textContent = r.todayShift.start+" 〜 "+r.todayShift.end; $("hShiftSub").textContent = "本日の勤務予定"; }
+  else { $("hShift").textContent = "予定なし"; $("hShiftSub").textContent = "予定外に勤務する場合もそのまま打刻できます"; }
+  $("hNext").textContent = r.next ? `${r.next.date.slice(5)}(${youbi(r.next.date)}) ${r.next.start}〜${r.next.end}` : "確定した予定はありません";
+  $("hWish").innerHTML = `${r.wishMonth.replace("/","年")}月分：${r.wishCount ? `<span class="pill">提出済み（${r.wishCount}日分）</span>` : `<span class="pill amber">未提出</span>`}`;
+  renderPunch(r);
+}
+function renderPunch(r){
+  const a = r.att; let html = "";
+  if (!a){ html = `<button class="btn" onclick="punch('in')">出勤</button>`; }
+  else if (a.status==="working"){ html = `<div class="card"><div class="row"><span>出勤</span><b>${a.in}</b></div><div class="row"><span>現在</span><b>${r.now}</b></div></div><button class="btn out" onclick="punchOut()">退勤</button>`; }
+  else { html = `<div class="card"><h2>本日の勤務（完了）</h2><div class="row"><span>出勤</span><b>${a.in}</b></div><div class="row"><span>退勤</span><b>${a.out}</b></div>${a.breakMin?`<div class="row"><span>休憩</span><b>${a.breakMin}分</b></div>`:""}<div class="row"><span>実労働</span><b>${fmtMin(a.workMin)}</b></div><div class="sub">時刻が違うときは「履歴」から修正申請してください</div></div>`; }
+  $("punchArea").innerHTML = html;
+}
+async function punch(type, breakMin){
+  if (busy) return; busy = true;
+  const btns = document.querySelectorAll("#punchArea .btn"); btns.forEach(b=>b.disabled=true);
+  try{
+    const r = await api("punch", {type, breakMin});
+    if(!r.ok){ showMsg($("msg"), r.error); loadHome(); return; }
+    toast(type==="in" ? `出勤 ${r.time} を記録しました` : `退勤 ${r.time} を記録しました`);
+    loadHome();
+  }catch(e){ showMsg($("msg"), "通信エラーです。電波のある場所でもう一度押してください（二重には記録されません）"); btns.forEach(b=>b.disabled=false); }
+  finally{ busy = false; }
+}
+function punchOut(){
+  $("ov").innerHTML = `<div class="overlay" onclick="if(event.target===this)closeOv()"><div class="sheet">
+    <h3>退勤します</h3>
+    <div class="mini">休憩を取った場合は分数を入れてください（取っていなければ 0 のまま）</div>
+    <label>休憩（分）</label>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px">
+      ${[0,15,30,45].map(n=>`<button class="btn sec" style="padding:12px" onclick="$('brk').value=${n}">${n}分</button>`).join("")}
+    </div>
+    <input type="number" inputmode="numeric" id="brk" value="0" min="0" max="180">
+    <div style="height:14px"></div>
+    <button class="btn out" onclick="var b=Number($('brk').value)||0;closeOv();punch('out', b)">退勤を記録する</button>
+    <button class="btn sec" style="margin-top:10px" onclick="closeOv()">やめる</button>
+  </div></div>`;
+}
+function closeOv(){ $("ov").innerHTML = ""; }
+
+// ───── 希望シフト ─────
+let WISH = {month:null, days:{}, sel:null, locked:false, openDays:[]};
+async function loadWish(month){
+  const r = await api("wishes_get", {month}); if(!r.ok){ showMsg($("msg"), r.error); return; }
+  WISH.month = r.month; WISH.locked = r.locked; WISH.openDays = r.openDays; WISH.days = {}; WISH.sel = null;
+  r.days.forEach(d=>{ WISH.days[d.date] = d; });
+  $("wishMonth").textContent = r.month.replace("/","年")+"月";
+  $("wishInfo").innerHTML = r.locked ? `<span class="pill red">締切済み（${r.deadline.slice(5)}）</span> 変更は管理者へ` : `締切 ${r.deadline.slice(5)}(${youbi(r.deadline)}) まで何度でも変更できます`;
+  $("wishSaveBtn").disabled = r.locked;
+  $("wishEditDate").textContent = "日を選んでください";
+  renderWishCal();
+}
+function wishMove(n){ loadWish(ymAdd(WISH.month, n)); }
+function renderWishCal(){
+  const [y,m] = WISH.month.split("/").map(Number); const first = new Date(y,m-1,1).getDay();
+  let html = YO.map(x=>`<div class="h">${x}</div>`).join("");
+  for (let i=0;i<first;i++) html += `<div></div>`;
+  const KL = {ok:"出勤可", ng:"不可", time:"時間", off:"休望"};
+  const today = new Date(); const ts = today.getFullYear()+"/"+pad2(today.getMonth()+1)+"/"+pad2(today.getDate());
+  WISH.openDays.forEach(d=>{
+    const dn = Number(d.date.slice(8)); const dow = new Date(y,m-1,dn).getDay(); const w = WISH.days[d.date];
+    const cls = ["d", d.open?"":"closed", dow===0?"sun":dow===6?"sat":"", WISH.sel===d.date?"today":""].join(" ");
+    html += `<div class="${cls}" onclick="selDay('${d.date}')"><span class="n">${dn}</span>${w?`<span class="k ${w.kind}">${w.kind==="time"?(w.start+"-"):KL[w.kind]}</span>`:""}${w&&w.kind==="time"?`<span class="k time">${w.end}</span>`:""}</div>`;
+  });
+  $("wishCal").innerHTML = html;
+}
+function selDay(ds){
+  if (WISH.locked) return;
+  WISH.sel = ds; renderWishCal();
+  $("wishEditDate").textContent = ds.slice(5).replace("/","月")+"日（"+youbi(ds)+"）";
+  const w = WISH.days[ds]; document.querySelectorAll(".kinds button").forEach(b=>b.classList.remove("on"));
+  if (w){ $("k_"+w.kind).classList.add("on"); $("timeRow").classList.toggle("hide", w.kind!=="time"); if(w.kind==="time"){ $("wStart").value=w.start; $("wEnd").value=w.end; } $("wNote").value = w.note||""; }
+  else { $("timeRow").classList.add("hide"); $("wNote").value=""; }
+  $("wishEdit").scrollIntoView({behavior:"smooth", block:"center"});
+}
+let KIND = null;
+function setKind(k){ KIND = k; document.querySelectorAll(".kinds button").forEach(b=>b.classList.remove("on")); $("k_"+k).classList.add("on"); $("timeRow").classList.toggle("hide", k!=="time"); }
+function applyKind(){
+  if (!WISH.sel){ toast("日を選んでください"); return; }
+  const k = KIND || (WISH.days[WISH.sel]||{}).kind; if(!k){ toast("区分を選んでください"); return; }
+  WISH.days[WISH.sel] = {date:WISH.sel, kind:k, start:$("wStart").value, end:$("wEnd").value, note:$("wNote").value};
+  if (k==="time" && (!$("wStart").value || !$("wEnd").value)){ toast("時間を入れてください"); return; }
+  KIND = null; renderWishCal(); toast("反映しました（最後に「提出する」）");
+}
+function clearKind(){ if(!WISH.sel) return; delete WISH.days[WISH.sel]; KIND=null; document.querySelectorAll(".kinds button").forEach(b=>b.classList.remove("on")); renderWishCal(); }
+async function saveWish(){
+  const days = Object.values(WISH.days); if(!days.length && !confirm("1日も入っていません。空で提出しますか？")) return;
+  $("wishSaveBtn").disabled = true;
+  const r = await api("wishes_save", {month:WISH.month, days});
+  $("wishSaveBtn").disabled = false;
+  if(!r.ok){ showMsg($("msg"), r.error); return; }
+  toast(`${r.saved}日分を提出しました`); showMsg($("msg"), `${WISH.month.replace("/","年")}月分の希望を提出しました（${r.saved}日分）。締切までは何度でも直せます。`, "ok");
+}
+
+// ───── 確定シフト ─────
+let SHM = thisMonth();
+function shiftMove(n){ SHM = ymAdd(SHM, n); loadShift(); }
+async function loadShift(){
+  const r = await api("shifts", {month:SHM}); if(!r.ok){ showMsg($("msg"), r.error); return; }
+  $("shiftMonth").textContent = r.month.replace("/","年")+"月";
+  if (!r.shifts.length){ $("shiftList").innerHTML = `<div class="sub">確定したシフトはまだありません</div>`; return; }
+  const totalMin = r.shifts.reduce((s,x)=>{ const [a,b]=[x.start,x.end].map(t=>{const [h,m]=t.split(":").map(Number);return h*60+m;}); return s+(b-a); },0);
+  $("shiftList").innerHTML = `<div class="row"><span>勤務日数</span><b>${r.shifts.length}日</b></div><div class="row"><span>予定時間</span><b>${fmtMin(totalMin)}</b></div>` +
+    r.shifts.map(s=>`<div class="row"><span>${s.date.slice(5)}(${youbi(s.date)})<br><span class="mini">${(r.others[s.date]||[]).join("、")||"—"}</span></span><b>${s.start}〜${s.end}</b></div>`).join("");
+}
+
+// ───── 履歴・修正・パス変更 ─────
+let HM = thisMonth();
+function histMove(n){ HM = ymAdd(HM, n); loadHist(); }
+async function loadHist(){
+  const r = await api("history", {month:HM}); if(!r.ok){ showMsg($("msg"), r.error); return; }
+  $("histMonth").textContent = r.month.replace("/","年")+"月";
+  $("histDays").textContent = r.days+"日"; $("histHours").textContent = fmtMin(r.totalMin);
+  $("histList").innerHTML = r.list.map(a=>`<div class="row"><span>${a.date.slice(5)}(${youbi(a.date)})${a.note?`<br><span class="mini">${a.note}</span>`:""}</span><b>${a.in||"--:--"}〜${a.out||"<span style='color:var(--red)'>未退勤</span>"}${a.breakMin?` <span class="mini">休${a.breakMin}</span>`:""}<br><span class="mini">${a.status==="done"?fmtMin(a.workMin):""}</span></b></div>`).join("") || `<div class="sub">記録がありません</div>`;
+  const ST = {pending:"<span class='pill amber'>確認中</span>", approved:"<span class='pill'>承認</span>", rejected:"<span class='pill red'>却下</span>"};
+  $("fixList").innerHTML = r.fixes.length ? `<div class="mini" style="margin-bottom:4px">申請履歴</div>` + r.fixes.map(f=>`<div class="row"><span>${f.date.slice(5)} ${f.field} ${f.current}→${f.wanted}</span>${ST[f.status]||f.status}</div>`).join("") : "";
+  if (!$("fxDate").value) $("fxDate").value = new Date().toISOString().slice(0,10);
+}
+async function sendFix(){
+  const date = $("fxDate").value.replace(/-/g,"/"), field = $("fxField").value, wanted = $("fxWanted").value.trim(), reason = $("fxReason").value.trim();
+  if(!date||!wanted){ toast("日付と正しい値を入れてください"); return; }
+  if(field!=="休憩" && !/^\d{1,2}:\d{2}$/.test(wanted)){ toast("時刻は 10:15 の形で入れてください"); return; }
+  if(!confirm(`${date.slice(5)} の${field}を「${wanted}」に修正申請します。よろしいですか？`)) return;
+  const r = await api("fix_request", {date, field, wanted, reason}); if(!r.ok){ showMsg($("msg"), r.error); return; }
+  toast("申請しました。管理者の承認をお待ちください"); $("fxWanted").value=""; $("fxReason").value=""; loadHist();
+}
+async function changePass(){
+  const p = $("npass").value.trim(); if(!/^\d{6,}$/.test(p)){ toast("6桁以上の数字にしてください"); return; }
+  if(!confirm("パスコードを変更します。よろしいですか？")) return;
+  const r = await api("change_pass", {newpass:p}); if(!r.ok){ showMsg($("msg"), r.error); return; } $("npass").value=""; toast("変更しました");
+}
+
+// ───── 起動 ─────
+(async function(){
+  if ("serviceWorker" in navigator){ try{ navigator.serviceWorker.register("sw.js"); }catch(e){} }
+  if (!TOKEN){ showLogin(); return; }
+  try{ const r = await api("home"); if(r.ok){ HOME=r; ME=r.staff; SET=r.settings; enterApp(); } else if(r.code!=="noauth"){ showLogin(r.error); } }
+  catch(e){ showLogin("通信できません"); }
+})();
+</script>
+</body>
+</html>
