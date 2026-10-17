@@ -88,9 +88,9 @@
         <div class="goal"><i id="goalBar" style="width:0%"></i></div></div>
       <div class="card"><h2>売上</h2><div class="big" id="dSales">-</div>
         <div class="sub" id="dCount"></div></div>
-      <div class="card"><h2>客単価</h2><div class="big" id="dAvg">-</div>
+      <div class="card"><h2>客単価(売上÷食数)</h2><div class="big" id="dAvg">-</div>
         <div class="sub">計画 945円</div></div>
-      <div class="card"><h2>ドリンク率</h2><div class="big" id="dDrink">-</div>
+      <div class="card"><h2>ドリンク率(本÷食数)</h2><div class="big" id="dDrink">-</div>
         <div class="sub">計画 30%</div></div>
 
       <div class="card wide"><h2>店内 / 持ち帰り</h2>
@@ -168,9 +168,10 @@ function renderDay(){
   $("dateLabel").textContent = `${viewDate}(${youbi(viewDate)})${viewDate===DATA.todayKey?" 本日":""}`;
   $("dMeals").innerHTML = d.meals + '<small> 食</small>';
   $("dSales").textContent = yen(d.sales);
-  $("dAvg").textContent = d.count ? yen(Math.round(d.sales/d.count)) : "-";
-  $("dDrink").textContent = d.count ? Math.round(100*d.drinks/d.count) + "%" : "-";
-  $("dCount").textContent = `${d.count}会計`;
+  $("dAvg").textContent = d.meals ? yen(Math.round(d.sales/d.meals)) : "-";
+  $("dDrink").textContent = d.meals ? Math.round(100*d.drinks/d.meals) + "%" : "-";
+  const fk = (d.items||{})["副菜追加"] || 0;
+  $("dCount").textContent = `${d.count}会計 / 副菜追加 ${fk}個${d.meals?"("+Math.round(100*fk/d.meals)+"%)":""}`;
   $("dGoal").textContent = `目標 ${GOAL_MEALS}食まであと ${Math.max(0, GOAL_MEALS - d.meals)}食`;
   $("goalBar").style.width = Math.min(100, 100*d.meals/GOAL_MEALS) + "%";
 
@@ -180,10 +181,10 @@ function renderDay(){
   $("modeTable").innerHTML =
     "<tr><th></th><th>会計数</th><th>食数</th><th>売上</th><th>客単価</th><th>売上構成比</th></tr>" +
     `<tr><td>店内</td><td>${d.eatin}</td><td>${d.mealsEatin??"-"}</td><td>${yen(se)}</td>`+
-    `<td>${d.eatin?yen(Math.round(se/d.eatin)):"-"}</td>`+
+    `<td>${d.mealsEatin?yen(Math.round(se/d.mealsEatin)):"-"}</td>`+
     `<td>${d.sales?Math.round(100*se/d.sales)+"%":"-"}</td></tr>`+
     `<tr><td>持ち帰り</td><td>${d.togo}</td><td>${d.mealsTogo??"-"}</td><td>${yen(st)}</td>`+
-    `<td>${d.togo?yen(Math.round(st/d.togo)):"-"}</td>`+
+    `<td>${d.mealsTogo?yen(Math.round(st/d.mealsTogo)):"-"}</td>`+
     `<td>${d.sales?Math.round(100*st/d.sales)+"%":"-"}</td></tr>` +
     (!hasModeData ? '<tr><td colspan="6" style="text-align:left;color:#8a6a1a">※売上の店内/TG内訳はApps Script v4への更新後から記録されます</td></tr>' : "");
 
@@ -249,7 +250,7 @@ function renderWeek(){
       const w = weeks[k];
       return `<tr><td>${k.slice(5)}</td><td>${w.days}</td><td>${w.meals}</td><td>${yen(w.sales)}</td>`+
              `<td>${w.days?(w.meals/w.days).toFixed(1):"-"}</td>`+
-             `<td>${w.count?yen(Math.round(w.sales/w.count)):"-"}</td>`+
+             `<td>${w.meals?yen(Math.round(w.sales/w.meals)):"-"}</td>`+
              `<td>${w.eatin}/${w.togo}</td></tr>`;
     }).join("");
 }
@@ -270,7 +271,7 @@ function renderMonth(){
       const m = months[k];
       return `<tr><td>${k}</td><td>${m.days}</td><td>${m.meals}</td><td>${yen(m.sales)}</td>`+
              `<td>${m.days?(m.meals/m.days).toFixed(1):"-"}</td>`+
-             `<td>${m.count?yen(Math.round(m.sales/m.count)):"-"}</td>`+
+             `<td>${m.meals?yen(Math.round(m.sales/m.meals)):"-"}</td>`+
              `<td>${yen(m.salesEatin)}</td><td>${yen(m.salesTogo)}</td></tr>`;
     }).join("");
 }
