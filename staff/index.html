@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#2c4f39">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -10,87 +10,114 @@
 <link rel="apple-touch-icon" href="../icon-192.png">
 <title>ORION STAFF</title>
 <style>
-:root{ --g:#2c4f39; --g-d:#1f3a2a; --g-l:#e4eee7; --cream:#faf6ee; --cream-d:#ece4d2; --ink:#2b2a26; --mute:#7a7265; --red:#a33c2e; --amber:#b7791f; --line:#d9d1bd; }
+:root{ --g:#2c4f39; --g-d:#1f3a2a; --g-l:#e4eee7; --cream:#faf6ee; --cream-d:#ece4d2; --ink:#2b2a26; --mute:#7a7265; --red:#a33c2e; --red-l:#f6e3df; --amber:#b7791f; --amber-l:#f7ebd3; --blue:#3b5a9a; --blue-l:#e6ebf7; --line:#d9d1bd; --r:14px; --sat:env(safe-area-inset-top); --sab:env(safe-area-inset-bottom); }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
 body{font-family:-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:var(--cream);color:var(--ink);font-size:16px;line-height:1.5}
-.app{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
-header{background:var(--g);color:#fff;padding:14px 18px 12px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:5}
-header .t{font-size:12px;letter-spacing:4px;opacity:.85}
+button{font-family:inherit;color:inherit;cursor:pointer}
+.app{height:100%;height:100dvh;max-width:520px;margin:0 auto;display:flex;flex-direction:column;background:var(--cream)}
+header{flex:none;background:var(--g);color:#fff;padding:calc(10px + var(--sat)) 16px 10px;display:flex;justify-content:space-between;align-items:center}
+header .t{font-size:11px;letter-spacing:4px;opacity:.8}
 header .n{font-size:17px;font-weight:bold}
-header button{background:rgba(255,255,255,.15);border:0;color:#fff;border-radius:8px;padding:6px 10px;font-size:13px}
-main{flex:1;padding:16px 16px 90px}
-.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
-.card h2{font-size:12px;letter-spacing:3px;color:var(--g);margin-bottom:8px}
-.big{font-size:28px;font-weight:bold;line-height:1.2}
+header button{background:rgba(255,255,255,.15);border:0;color:#fff;border-radius:8px;padding:7px 12px;font-size:13px}
+main{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px 24px}
+nav{flex:none;background:#fff;border-top:1px solid var(--line);display:flex;padding-bottom:var(--sab)}
+nav button{flex:1;border:0;background:none;padding:8px 2px 6px;font-size:11px;color:var(--mute);min-height:56px}
+nav button i{display:block;font-style:normal;font-size:20px;line-height:1.2;margin-bottom:1px}
+nav button.on{color:var(--g);font-weight:bold}
+nav button .bd{display:inline-block;min-width:16px;padding:0 4px;border-radius:999px;background:var(--red);color:#fff;font-size:10px;line-height:16px;margin-left:3px;vertical-align:top}
+.hide{display:none !important}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.card h2{font-size:12px;letter-spacing:3px;color:var(--g);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.card h2 small{letter-spacing:0;color:var(--mute);font-weight:normal;font-size:12px}
+.big{font-size:30px;font-weight:bold;line-height:1.2;font-variant-numeric:tabular-nums}
 .sub{font-size:13px;color:var(--mute);margin-top:4px}
-.btn{display:block;width:100%;border:0;border-radius:14px;padding:20px;font-size:22px;font-weight:bold;color:#fff;background:var(--g);letter-spacing:2px}
+.mini{font-size:13px;color:var(--mute);line-height:1.5}
+.btn{display:block;width:100%;border:0;border-radius:var(--r);padding:18px 12px;font-size:21px;font-weight:bold;color:#fff;background:var(--g);letter-spacing:2px;line-height:1.3}
 .btn.out{background:var(--red)}
-.btn.sec{background:var(--cream-d);color:var(--ink);font-size:16px;padding:14px;letter-spacing:0}
+.btn.sec{background:var(--cream-d);color:var(--ink);font-size:16px;padding:14px 12px;letter-spacing:0}
+.btn.sm{font-size:15px;padding:12px}
 .btn:disabled{opacity:.45}
 .btn + .btn{margin-top:10px}
-.row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px dashed var(--line);font-size:15px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line);font-size:15px}
 .row:last-child{border-bottom:0}
-.row b{font-variant-numeric:tabular-nums}
-.pill{display:inline-block;border-radius:999px;padding:2px 10px;font-size:12px;background:var(--g-l);color:var(--g)}
-.pill.red{background:#f6e3df;color:var(--red)} .pill.amber{background:#f7ebd3;color:var(--amber)}
-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;max-width:520px;margin:0 auto;padding-bottom:env(safe-area-inset-bottom)}
-nav button{flex:1;border:0;background:none;padding:10px 4px 8px;font-size:11px;color:var(--mute)}
-nav button i{display:block;font-style:normal;font-size:20px;margin-bottom:2px}
-nav button.on{color:var(--g);font-weight:bold}
-.hide{display:none !important}
-.login{padding:40px 24px}
-.login h1{font-size:14px;letter-spacing:6px;color:var(--g);text-align:center;margin-bottom:6px}
-.login .store{text-align:center;color:var(--mute);font-size:13px;margin-bottom:28px}
-.sel{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
-.sel button{border:2px solid var(--line);background:#fff;border-radius:12px;padding:16px 8px;font-size:17px;font-weight:bold}
-.sel button.on{border-color:var(--g);background:var(--g-l)}
-input,select,textarea{width:100%;font-size:18px;padding:12px;border:2px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
-input:focus,select:focus,textarea:focus{outline:none;border-color:var(--g)}
-label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
-.msg{padding:12px 14px;border-radius:10px;font-size:14px;margin-bottom:12px}
-.msg.err{background:#f6e3df;color:var(--red)} .msg.ok{background:var(--g-l);color:var(--g)}
-.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px}
-.cal .h{text-align:center;font-size:11px;color:var(--mute);padding:4px 0}
-.cal .d{border:1px solid var(--line);border-radius:8px;min-height:54px;padding:4px;font-size:12px;background:#fff;position:relative}
-.cal .d.closed{background:var(--cream-d);color:#aaa}
-.cal .d .n{font-weight:bold}
-.cal .d .k{display:block;font-size:10px;margin-top:3px;border-radius:5px;padding:2px 1px;text-align:center;white-space:nowrap;overflow:hidden;line-height:1.3}
-.k.ok{background:var(--g-l);color:var(--g)} .k.ng{background:#f6e3df;color:var(--red)} .k.time{background:#f7ebd3;color:var(--amber)} .k.off{background:#e8e8f4;color:#4a4a8a}
-.cal .d.sun .n{color:var(--red)} .cal .d.sat .n{color:#2a5aa8}
-.cal .d.today{border-color:var(--g);border-width:2px}
-.kinds{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
-.kinds button{border:2px solid var(--line);background:#fff;border-radius:10px;padding:10px 2px;font-size:13px}
-.kinds button.on{border-color:var(--g);background:var(--g-l);font-weight:bold}
-.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:9}
-.toast.show{opacity:1}
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:8}
-.sheet{background:var(--cream);border-radius:18px 18px 0 0;padding:18px 18px 28px;width:100%;max-width:520px;max-height:90vh;overflow:auto}
-.sheet h3{font-size:16px;margin-bottom:10px}
-.mini{font-size:13px;color:var(--mute)}
-.center{text-align:center}
-.monthnav{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-.monthnav button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 14px;font-size:16px}
-.num{font-variant-numeric:tabular-nums}
-.status{display:flex;align-items:center;gap:10px;font-size:15px;color:var(--mute);margin-top:6px}
+.row b{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.row .l{min-width:0}
+.pill{display:inline-block;border-radius:999px;padding:2px 10px;font-size:12px;background:var(--g-l);color:var(--g);white-space:nowrap}
+.pill.red{background:var(--red-l);color:var(--red)} .pill.amber{background:var(--amber-l);color:var(--amber)} .pill.blue{background:var(--blue-l);color:var(--blue)}
+.status{display:flex;align-items:center;gap:10px;font-size:15px;color:var(--mute)}
 .dot{width:10px;height:10px;border-radius:50%;background:#c8c0ae;flex:none}
 .dot.on{background:#2e8b57;box-shadow:0 0 0 4px rgba(46,139,87,.18)}
 .dot.done{background:var(--g)}
-.timebox{display:grid;grid-template-columns:56px 1fr 56px;gap:8px;align-items:center;margin:12px 0 6px}
-.tdisp{position:relative;border:2px solid var(--line);border-radius:12px;background:#fff;text-align:center;font-size:38px;font-weight:bold;padding:8px 4px;font-variant-numeric:tabular-nums;letter-spacing:1px}
-.tdisp small{display:block;font-size:11px;font-weight:normal;color:var(--mute);letter-spacing:0}
-.tdisp input{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:16px}
-.timebox button{border:2px solid var(--line);background:#fff;border-radius:12px;padding:16px 0;font-size:16px;font-weight:bold}
-.chips{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
-.chips.c4{grid-template-columns:repeat(4,1fr)}
-.chip{border:2px solid var(--line);background:#fff;border-radius:12px;padding:12px 4px;font-size:15px;font-weight:bold}
+.login{padding:calc(36px + var(--sat)) 22px 40px;overflow-y:auto;height:100%}
+.login h1{font-size:14px;letter-spacing:6px;color:var(--g);text-align:center;margin-bottom:6px}
+.login .store{text-align:center;color:var(--mute);font-size:13px;margin-bottom:26px}
+.sel{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.sel button{border:2px solid var(--line);background:#fff;border-radius:12px;padding:16px 6px;font-size:17px;font-weight:bold;min-height:60px}
+.sel button.on{border-color:var(--g);background:var(--g-l)}
+input,select,textarea{width:100%;font-size:17px;padding:12px;border:2px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);font-family:inherit;min-height:50px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--g)}
+label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
+.msg{padding:12px 14px;border-radius:10px;font-size:14px;margin-bottom:12px;line-height:1.5}
+.msg.err{background:var(--red-l);color:var(--red)} .msg.ok{background:var(--g-l);color:var(--g)}
+.toast{position:fixed;left:50%;bottom:calc(84px + var(--sab));transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:9;max-width:92vw;text-align:center}
+.toast.show{opacity:1}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:8}
+.sheet{background:var(--cream);border-radius:18px 18px 0 0;padding:16px 16px calc(22px + var(--sab));width:100%;max-width:520px;max-height:92vh;max-height:92dvh;overflow-y:auto}
+.sheet h3{font-size:17px;margin-bottom:6px}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 12px}
+/* 時刻入力（表示は24時間、タップで端末のドラムピッカー） */
+.timebox{display:grid;grid-template-columns:60px 1fr 60px;gap:8px;align-items:stretch;margin:12px 0 8px}
+.timebox button{border:2px solid var(--line);background:#fff;border-radius:12px;font-size:15px;font-weight:bold;min-height:64px}
+.tdisp{position:relative;border:2px solid var(--line);border-radius:12px;background:#fff;text-align:center;font-size:40px;font-weight:bold;padding:6px 4px 4px;font-variant-numeric:tabular-nums;letter-spacing:1px;line-height:1.1}
+.tdisp small{display:block;font-size:11px;font-weight:normal;color:var(--mute);letter-spacing:0;line-height:1.4}
+.tdisp input{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:16px;min-height:0}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.chips.c3{grid-template-columns:repeat(3,1fr)} .chips.c4{grid-template-columns:repeat(4,1fr)}
+.chip{border:2px solid var(--line);background:#fff;border-radius:12px;padding:10px 4px;font-size:15px;font-weight:bold;min-height:52px;line-height:1.3}
 .chip.on{border-color:var(--g);background:var(--g-l)}
+.chip:disabled{opacity:.4}
 .chip small{display:block;font-weight:normal;font-size:11px;color:var(--mute)}
-.steps{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px}
-.steps span{background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 4px;font-size:12px;color:var(--mute);text-align:center;line-height:1.35}
-.steps span b{display:block;color:var(--g);font-size:13px}
-.cal .d.sel{border-color:var(--g);border-width:2px;background:var(--g-l)}
-.link{background:none;border:0;color:var(--g);text-decoration:underline;font-size:14px;padding:6px 0}
+/* 希望カレンダー */
+.modes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:10px 0}
+.modes button{border:2px solid var(--line);background:#fff;border-radius:12px;padding:8px 2px;font-size:13px;font-weight:bold;min-height:54px;line-height:1.3}
+.modes button small{display:block;font-weight:normal;font-size:10px;color:var(--mute)}
+.modes button.on.ok{border-color:var(--g);background:var(--g-l);color:var(--g)}
+.modes button.on.time{border-color:var(--amber);background:var(--amber-l);color:var(--amber)}
+.modes button.on.off{border-color:var(--blue);background:var(--blue-l);color:var(--blue)}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:6px}
+.cal .h{text-align:center;font-size:11px;color:var(--mute);padding:2px 0}
+.cal .d{border:1.5px solid var(--line);border-radius:9px;height:58px;padding:3px 2px;font-size:12px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;overflow:hidden;cursor:pointer;user-select:none}
+.cal .d.closed{background:var(--cream-d);color:#b5ad9c;cursor:default}
+.cal .d .n{font-weight:bold;line-height:1.2}
+.cal .d .k{font-size:10px;line-height:1.2;border-radius:5px;padding:2px 2px;width:100%;text-align:center;white-space:nowrap;overflow:hidden}
+.cal .d.ok{background:var(--g-l);border-color:var(--g)} .cal .d.ok .k{color:var(--g)}
+.cal .d.time{background:var(--amber-l);border-color:var(--amber)} .cal .d.time .k{color:var(--amber)}
+.cal .d.off{background:var(--blue-l);border-color:var(--blue)} .cal .d.off .k{color:var(--blue)}
+.cal .d.sun .n{color:var(--red)} .cal .d.sat .n{color:var(--blue)}
+.cal .d.closed .n{color:#b5ad9c}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--mute);margin-top:8px}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px;border:1px solid var(--line)}
+.legend .ok::before{background:var(--g-l);border-color:var(--g)} .legend .time::before{background:var(--amber-l);border-color:var(--amber)} .legend .off::before{background:var(--blue-l);border-color:var(--blue)} .legend .closed::before{background:var(--cream-d)}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0}
+.summary div{background:var(--cream);border-radius:10px;padding:8px 4px;text-align:center}
+.summary b{display:block;font-size:20px;line-height:1.2}
+.summary span{font-size:11px;color:var(--mute)}
+.tools{display:flex;gap:8px;margin-top:8px}
+.tools button{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 4px;font-size:13px;min-height:44px}
+.monthnav{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.monthnav button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 16px;font-size:16px;min-height:44px}
+.monthnav b{font-size:17px}
+.sticky-bottom{position:sticky;bottom:0;background:linear-gradient(to top,var(--cream) 70%,rgba(250,246,238,0));padding-top:10px;margin:0 -14px -24px;padding-left:14px;padding-right:14px;padding-bottom:12px}
+.link{background:none;border:0;color:var(--g);text-decoration:underline;font-size:14px;padding:8px 0}
+.editrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.editrow button{border:2px solid var(--line);background:#fff;border-radius:12px;padding:8px 4px;min-height:64px;text-align:center}
+.editrow button small{display:block;font-size:11px;color:var(--mute)}
+.editrow button b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
+.editrow button.changed{border-color:var(--amber);background:var(--amber-l)}
+.editrow button.changed b{color:var(--amber)}
+.num{font-variant-numeric:tabular-nums}
+.center{text-align:center}
 </style>
 </head>
 <body>
@@ -110,67 +137,65 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
   </div>
 
   <!-- 本体 -->
-  <div id="vApp" class="hide" style="display:flex;flex-direction:column;flex:1">
+  <div id="vApp" class="hide" style="display:flex;flex-direction:column;flex:1;min-height:0">
     <header>
       <div><div class="t">ORION STAFF</div><div class="n" id="hName">-</div></div>
       <button onclick="doLogout()">ログアウト</button>
     </header>
-    <main>
+    <main id="main">
       <div id="msg"></div>
+
       <!-- ホーム -->
       <section id="pHome">
         <div class="card">
-          <h2>本日 <span id="hToday" style="letter-spacing:0;color:var(--mute);font-weight:normal"></span></h2>
+          <h2>本日 <small id="hToday"></small></h2>
           <div class="big" id="hShift">-</div>
           <div class="sub" id="hShiftSub"></div>
         </div>
         <div id="punchArea"></div>
-        <div class="card" style="margin-top:14px">
-          <h2>次回の勤務</h2>
-          <div id="hNext" class="sub" style="font-size:15px;color:var(--ink)">-</div>
+        <div class="card">
+          <div class="row"><span class="l">次回の勤務</span><b id="hNext">-</b></div>
+          <div class="row" id="hWishRow"><span class="l">来月の希望</span><b id="hWish"></b></div>
         </div>
-        <div class="card" id="hWishCard">
-          <h2>希望シフト</h2>
-          <div id="hWish" class="sub" style="font-size:15px;color:var(--ink)"></div>
-          <button class="btn sec" style="margin-top:10px" onclick="go('wish')">希望を入力する</button>
-        </div>
+        <button class="btn sec" id="hWishBtn" onclick="go('wish')">来月の希望を入力する</button>
       </section>
 
       <!-- 希望シフト -->
       <section id="pWish" class="hide">
         <div class="card">
-          <h2>希望シフト提出</h2>
           <div class="monthnav"><button onclick="wishMove(-1)">◀</button><b id="wishMonth"></b><button onclick="wishMove(1)">▶</button></div>
           <div class="mini" id="wishInfo"></div>
-          <div class="cal" id="wishCal"></div>
-          <div class="steps"><span><b>① 日をタップ</b>灰色は定休日</span><span><b>② 区分を押す</b>押した瞬間に入ります</span><span><b>③ 提出する</b>一番下のボタン</span></div>
-        </div>
-        <div class="card" id="wishEdit">
-          <h2 id="wishEditDate">日を選んでください</h2>
-          <div class="kinds">
-            <button onclick="setKind('ok')" id="k_ok">出勤可</button>
-            <button onclick="setKind('ng')" id="k_ng">不可</button>
-            <button onclick="setKind('time')" id="k_time">時間指定</button>
-            <button onclick="setKind('off')" id="k_off">希望休</button>
-          </div>
-          <div id="timeRow" class="hide" style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-top:10px">
-            <input type="time" id="wStart" value="11:00" onchange="applyKind(true)"><span>〜</span><input type="time" id="wEnd" value="14:00" onchange="applyKind(true)">
-          </div>
-          <label>備考（任意）</label>
-          <input type="text" id="wNote" maxlength="60" placeholder="例: 午後は用事" onchange="applyKind(true)">
-          <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
-            <button class="btn sec" style="flex:1" onclick="nextDay()">次の日へ ▶</button>
-            <button class="link" onclick="clearKind()">この日を未入力に戻す</button>
+          <div id="wishBody">
+            <div class="modes" id="modes">
+              <button class="ok on" onclick="setMode('ok')">○ 出られる<small>タップで付け外し</small></button>
+              <button class="time" onclick="setMode('time')">時間を指定<small id="modeTimeLabel">11:00〜14:00</small></button>
+              <button class="off" onclick="setMode('off')">休み希望<small>この日は避けたい</small></button>
+            </div>
+            <div id="timePick" class="hide">
+              <div class="chips c3" id="timePresets"></div>
+              <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center">
+                <input type="time" id="wStart" value="11:00" onchange="syncTimeLabel()"><span>〜</span><input type="time" id="wEnd" value="14:00" onchange="syncTimeLabel()">
+              </div>
+              <div class="mini" style="margin-top:4px">この時間で、日をタップしてください</div>
+            </div>
+            <div class="cal" id="wishCal"></div>
+            <div class="legend"><span class="ok">出られる</span><span class="time">時間指定</span><span class="off">休み希望</span><span class="closed">定休日</span><span>白＝出られない</span></div>
+            <div class="tools"><button onclick="selectAllOpen()">営業日をぜんぶ○にする</button><button onclick="clearAll()">すべて消す</button></div>
           </div>
         </div>
-        <button class="btn" id="wishSaveBtn" onclick="saveWish()">希望を提出する</button>
-        <p class="mini center" style="margin-top:10px">締切後の変更は管理者に連絡してください</p>
+        <div id="wishFoot">
+          <div class="card" style="padding:10px 14px">
+            <div class="summary" id="wishSummary"></div>
+            <label style="margin-top:0">ひとこと（任意）</label>
+            <input type="text" id="wNote" maxlength="80" placeholder="例: 第2週は試験のため少なめ希望">
+          </div>
+          <div class="sticky-bottom"><button class="btn" id="wishSaveBtn" onclick="saveWish()">この内容で提出する</button></div>
+        </div>
       </section>
 
       <!-- 確定シフト -->
       <section id="pShift" class="hide">
         <div class="card">
-          <h2>確定シフト</h2>
           <div class="monthnav"><button onclick="shiftMove(-1)">◀</button><b id="shiftMonth"></b><button onclick="shiftMove(1)">▶</button></div>
           <div id="shiftList"></div>
         </div>
@@ -179,28 +204,24 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
       <!-- 勤務履歴 -->
       <section id="pHist" class="hide">
         <div class="card">
-          <h2>勤務履歴</h2>
           <div class="monthnav"><button onclick="histMove(-1)">◀</button><b id="histMonth"></b><button onclick="histMove(1)">▶</button></div>
-          <div class="row"><span>勤務日数</span><b id="histDays">-</b></div>
-          <div class="row"><span>労働時間</span><b id="histHours">-</b></div>
-          <div id="histList" style="margin-top:8px"></div>
+          <div class="summary" style="grid-template-columns:1fr 1fr"><div><b id="histDays">-</b><span>勤務日数</span></div><div><b id="histHours">-</b><span>労働時間</span></div></div>
+          <div class="mini" style="margin:4px 0 6px">時刻が違う日は、その行をタップして修正を申請できます</div>
+          <div id="histList"></div>
+        </div>
+        <div class="card" id="fixCard">
+          <h2>修正申請の状況</h2>
+          <div id="fixList"></div>
         </div>
         <div class="card">
-          <h2>打刻の修正</h2>
-          <div class="mini">時刻や休憩が違っていたら申請してください。管理者が承認すると反映されます。</div>
-          <button class="btn sec" style="margin-top:10px" onclick="openFix()">修正を申請する</button>
-          <div id="fixList" style="margin-top:10px"></div>
-        </div>
-        <div class="card">
-          <h2>パスコード変更</h2>
-          <input type="password" inputmode="numeric" id="npass" placeholder="新しいパスコード（6桁以上の数字）">
-          <button class="btn sec" style="margin-top:10px" onclick="changePass()">変更する</button>
+          <h2>パスコード</h2>
+          <button class="btn sec sm" onclick="openPass()">パスコードを変更する</button>
         </div>
       </section>
     </main>
     <nav>
       <button id="n_home" class="on" onclick="go('home')"><i>⌂</i>ホーム</button>
-      <button id="n_wish" onclick="go('wish')"><i>✎</i>希望</button>
+      <button id="n_wish" onclick="go('wish')"><i>✎</i>希望<span class="bd hide" id="bdWish">!</span></button>
       <button id="n_shift" onclick="go('shift')"><i>▦</i>シフト</button>
       <button id="n_hist" onclick="go('hist')"><i>≡</i>履歴</button>
     </nav>
@@ -216,7 +237,7 @@ let TOKEN = localStorage.getItem("os-token") || "";
 let ME = null, SET = null, HOME = null;
 let busy = false;
 
-function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2200); }
+function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2400); }
 function showMsg(el, text, cls){ el.innerHTML = text ? `<div class="msg ${cls||"err"}">${text}</div>` : ""; }
 async function api(action, body){
   body = Object.assign({action, token: TOKEN}, body||{});
@@ -231,6 +252,14 @@ function thisMonth(){ const d=new Date(); return d.getFullYear()+"/"+pad2(d.getM
 const YO = ["日","月","火","水","木","金","土"];
 function youbi(ds){ const [y,m,d]=ds.split("/").map(Number); return YO[new Date(y,m-1,d).getDay()]; }
 function fmtMin(m){ return Math.floor(m/60)+"時間"+pad2(m%60)+"分"; }
+function nowHM(){ const d=new Date(); return pad2(d.getHours())+":"+pad2(d.getMinutes()); }
+function round5(hm){ let [h,m]=hm.split(":").map(Number); m=Math.round(m/5)*5; if(m===60){m=0;h=(h+1)%24;} return pad2(h)+":"+pad2(m); }
+function toMinC(hm){ const [h,m]=String(hm).split(":").map(Number); return h*60+m; }
+function shortT(t){ return String(t).replace(/^0/,"").replace(/:00$/,""); }
+function mdLabel(ds){ return ds.slice(5)+"("+youbi(ds)+")"; }
+function monthLabel(ym){ return ym.replace("/","年")+"月"; }
+function closeOv(){ $("ov").innerHTML = ""; }
+function sheet(html){ $("ov").innerHTML = `<div class="overlay" onclick="if(event.target===this)closeOv()"><div class="sheet"><div class="grab"></div>${html}</div></div>`; }
 
 // ───── ログイン ─────
 async function showLogin(msg){
@@ -263,9 +292,9 @@ async function doLogout(){ if(!confirm("ログアウトしますか？")) return
 function enterApp(){ $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); go("home"); }
 function go(p){
   ["home","wish","shift","hist"].forEach(x=>{ $("p"+x[0].toUpperCase()+x.slice(1)).classList.toggle("hide", x!==p); $("n_"+x).classList.toggle("on", x===p); });
-  showMsg($("msg"), "");
+  showMsg($("msg"), ""); closeOv();
   if(p==="home") loadHome(); if(p==="wish") loadWish(); if(p==="shift") loadShift(); if(p==="hist") loadHist();
-  window.scrollTo(0,0);
+  $("main").scrollTo(0,0);
 }
 
 // ───── ホーム・打刻 ─────
@@ -273,21 +302,20 @@ async function loadHome(){
   const r = await api("home"); if(!r.ok){ showMsg($("msg"), r.error); return; }
   HOME = r; ME = r.staff; SET = r.settings;
   $("hName").textContent = ME.name + (ME.role==="admin" ? "（管理者）" : "");
-  $("hToday").textContent = r.today.slice(5) + "(" + youbi(r.today) + ")";
+  $("hToday").textContent = mdLabel(r.today);
   if (r.todayShift){ $("hShift").textContent = r.todayShift.start+" 〜 "+r.todayShift.end; $("hShiftSub").textContent = "本日の勤務予定"; }
-  else { $("hShift").textContent = "本日の予定なし"; $("hShiftSub").textContent = "予定外に働く場合もそのまま出勤を押せます"; }
-  $("hNext").textContent = r.next ? `${r.next.date.slice(5)}(${youbi(r.next.date)}) ${r.next.start}〜${r.next.end}` : "確定した予定はありません";
-  $("hWish").innerHTML = `${r.wishMonth.replace("/","年")}月分：${r.wishCount ? `<span class="pill">提出済み（${r.wishCount}日分）</span>` : `<span class="pill amber">未提出</span>`}`;
+  else { $("hShift").textContent = "予定なし"; $("hShiftSub").textContent = "予定外に働く場合もそのまま出勤を押せます"; }
+  $("hNext").textContent = r.next ? `${mdLabel(r.next.date)} ${r.next.start}〜${r.next.end}` : "未定";
+  const done = r.wishCount>0;
+  $("hWish").innerHTML = `${monthLabel(r.wishMonth).slice(5)}分 ${done ? `<span class="pill">提出済み ${r.wishCount}日</span>` : `<span class="pill amber">未提出</span>`}`;
+  $("hWishBtn").classList.toggle("hide", done); $("bdWish").classList.toggle("hide", done);
   renderPunch(r);
 }
-function nowHM(){ const d=new Date(); return pad2(d.getHours())+":"+pad2(d.getMinutes()); }
-function round5(hm){ let [h,m]=hm.split(":").map(Number); m=Math.round(m/5)*5; if(m===60){m=0;h=(h+1)%24;} return pad2(h)+":"+pad2(m); }
-function toMinC(hm){ const [h,m]=String(hm).split(":").map(Number); return h*60+m; }
 function renderPunch(r){
   const a = r.att; let html = "";
   if (!a){ html = `<div class="card"><div class="status"><span class="dot"></span>まだ出勤していません</div></div><button class="btn" onclick="punchSheet('in')">出勤する</button>`; }
   else if (a.status==="working"){ html = `<div class="card"><div class="status"><span class="dot on"></span>勤務中</div><div class="row"><span>出勤</span><b>${a.in}</b></div><div class="row"><span>経過</span><b>${fmtMin(Math.max(0,toMinC(nowHM())-toMinC(a.in)))}</b></div></div><button class="btn out" onclick="punchSheet('out')">退勤する</button>`; }
-  else { html = `<div class="card"><div class="status"><span class="dot done"></span>本日の勤務は完了</div><div class="row"><span>出勤</span><b>${a.in}</b></div><div class="row"><span>退勤</span><b>${a.out}</b></div>${a.breakMin?`<div class="row"><span>休憩</span><b>${a.breakMin}分</b></div>`:""}<div class="row"><span>実労働</span><b>${fmtMin(a.workMin)}</b></div><div class="sub">時刻が違うときは「履歴」から修正申請してください</div></div>`; }
+  else { html = `<div class="card"><div class="status"><span class="dot done"></span>本日の勤務は完了</div><div class="row"><span>出勤</span><b>${a.in}</b></div><div class="row"><span>退勤</span><b>${a.out}</b></div>${a.breakMin?`<div class="row"><span>休憩</span><b>${a.breakMin}分</b></div>`:""}<div class="row"><span>実労働</span><b>${fmtMin(a.workMin)}</b></div><button class="link" onclick="openFix(HOME.today)">時刻が違うときは修正を申請する</button></div>`; }
   $("punchArea").innerHTML = html;
 }
 function punchSheet(type){
@@ -295,26 +323,25 @@ function punchSheet(type){
   const planned = sh ? (isIn ? sh.start : sh.end) : null;
   const near = planned && Math.abs(toMinC(planned)-toMinC(now)) <= 30;
   const def = near ? planned : round5(now);
-  $("ov").innerHTML = `<div class="overlay" onclick="if(event.target===this)closeOv()"><div class="sheet">
+  sheet(`
     <h3>${isIn?"出勤":"退勤"}時刻を確認してください</h3>
-    <div class="mini">実際の時刻に合わせて直せます（未来の時刻は不可）。</div>
+    <div class="mini">時刻をタップすると選び直せます（未来の時刻は不可）</div>
     <div class="timebox"><button onclick="ptAdd(-5)">−5分</button><div class="tdisp"><span id="ptd">${def}</span><small>タップで時刻を選ぶ</small><input type="time" id="pt" value="${def}" step="300" onchange="ptSync()"></div><button onclick="ptAdd(5)">+5分</button></div>
     <div class="chips">
       <button class="chip" onclick="ptSet('${now}')">今の時刻<small>${now}</small></button>
-      ${planned?`<button class="chip" onclick="ptSet('${planned}')">シフト通り<small>${planned}</small></button>`:`<button class="chip" disabled style="opacity:.4">シフト通り<small>本日の予定なし</small></button>`}
+      ${planned?`<button class="chip" onclick="ptSet('${planned}')">シフト通り<small>${planned}</small></button>`:`<button class="chip" disabled>シフト通り<small>本日の予定なし</small></button>`}
     </div>
     ${isIn?"":`<label>休憩（取った場合だけ）</label>
-    <div class="chips c4">${[0,15,30,45].map(n=>`<button class="chip ${n===0?"on":""}" onclick="setBrk(this,${n})">${n}分</button>`).join("")}</div>
-    <input type="number" inputmode="numeric" id="brk" value="0" min="0" max="180" placeholder="その他の分数">`}
-    <div style="height:14px"></div>
+    <div class="chips c4" id="brkChips">${[0,15,30,45].map(n=>`<button class="chip ${n===0?"on":""}" onclick="setBrk(${n})">${n}分</button>`).join("")}</div>
+    <input type="hidden" id="brk" value="0">`}
+    <div style="height:12px"></div>
     <button class="btn ${isIn?"":"out"}" onclick="var b=Number(($('brk')||{}).value)||0;var t=$('pt').value;closeOv();punch('${type}', b, t)">${isIn?"出勤":"退勤"}を記録する</button>
-    <button class="btn sec" style="margin-top:10px" onclick="closeOv()">やめる</button>
-  </div></div>`;
+    <button class="btn sec" style="margin-top:10px" onclick="closeOv()">やめる</button>`);
 }
 function ptSet(v){ $("pt").value=v; ptSync(); }
 function ptSync(){ const v=$("pt").value; if(v) $("ptd").textContent=v; }
 function ptAdd(n){ const el=$("pt"); if(!el.value) return; let m=toMinC(el.value)+n; m=(m+1440)%1440; ptSet(pad2(Math.floor(m/60))+":"+pad2(m%60)); }
-function setBrk(btn,n){ document.querySelectorAll(".chips.c4 .chip").forEach(b=>b.classList.remove("on")); btn.classList.add("on"); $("brk").value=n; }
+function setBrk(n){ document.querySelectorAll("#brkChips .chip").forEach((b,i)=>b.classList.toggle("on",[0,15,30,45][i]===n)); $("brk").value=n; }
 async function punch(type, breakMin, time){
   if (busy) return; busy = true;
   const btns = document.querySelectorAll("#punchArea .btn"); btns.forEach(b=>b.disabled=true);
@@ -326,70 +353,65 @@ async function punch(type, breakMin, time){
   }catch(e){ showMsg($("msg"), "通信エラーです。電波のある場所でもう一度押してください（二重には記録されません）"); btns.forEach(b=>b.disabled=false); }
   finally{ busy = false; }
 }
-function closeOv(){ $("ov").innerHTML = ""; }
 
 // ───── 希望シフト ─────
-let WISH = {month:null, days:{}, sel:null, locked:false, openDays:[]};
+// 使い方：モード（○ / 時間 / 休）を選び、日をタップで付け外し。白＝出られない日。最後に提出。
+let WISH = {month:null, days:{}, locked:false, openDays:[], mode:"ok", note:""};
 async function loadWish(month){
   const r = await api("wishes_get", {month}); if(!r.ok){ showMsg($("msg"), r.error); return; }
-  WISH.month = r.month; WISH.locked = r.locked; WISH.openDays = r.openDays; WISH.days = {}; WISH.sel = null;
-  r.days.forEach(d=>{ WISH.days[d.date] = d; });
-  $("wishMonth").textContent = r.month.replace("/","年")+"月";
-  $("wishInfo").innerHTML = r.locked ? `<span class="pill red">締切済み（${r.deadline.slice(5)}）</span> この月の希望は締め切りました。変更したいときは松尾さん・長下さんに直接伝えてください（代わりに入力します）` : `締切 ${r.deadline.slice(5)}(${youbi(r.deadline)}) まで何度でも変更できます`;
-  $("wishSaveBtn").disabled = r.locked; $("wishEdit").classList.toggle("hide", r.locked);
-  $("wishEditDate").textContent = "日を選んでください";
-  renderWishCal();
+  WISH.month = r.month; WISH.locked = r.locked; WISH.openDays = r.openDays; WISH.days = {}; WISH.note = "";
+  r.days.forEach(d=>{ if (d.kind==="ng") return; WISH.days[d.date] = d; if (d.note && !WISH.note) WISH.note = d.note; });
+  $("wNote").value = WISH.note;
+  $("wishMonth").textContent = monthLabel(r.month);
+  $("wishInfo").innerHTML = r.locked
+    ? `<span class="pill red">締切済み（${r.deadline.slice(5)}）</span> この月の希望は締め切りました。変更は松尾さん・長下さんに直接伝えてください。`
+    : `締切 <b>${r.deadline.slice(5)}(${youbi(r.deadline)})</b>。出られる日をタップして○を付け、最後に「提出する」。締切までは何度でも直せます。`;
+  $("wishBody").classList.toggle("hide", r.locked); $("wishFoot").classList.toggle("hide", r.locked);
+  renderPresets(); setMode("ok"); renderWishCal();
 }
 function wishMove(n){ loadWish(ymAdd(WISH.month, n)); }
+function renderPresets(){
+  const ps = (SET && SET.presets && SET.presets.length) ? SET.presets : ["10:15-15:15","11:00-14:00","10:15-14:00"];
+  $("timePresets").innerHTML = ps.slice(0,3).map(p=>{ const [a,b]=p.split("-"); return `<button class="chip" onclick="setPreset('${a}','${b}')">${shortT(a)}〜${shortT(b)}</button>`; }).join("");
+}
+function setPreset(a,b){ $("wStart").value=a; $("wEnd").value=b; syncTimeLabel(); }
+function syncTimeLabel(){ const a=$("wStart").value, b=$("wEnd").value; if(a&&b) $("modeTimeLabel").textContent = a+"〜"+b; document.querySelectorAll("#timePresets .chip").forEach(c=>c.classList.toggle("on", c.textContent===shortT(a)+"〜"+shortT(b))); }
+function setMode(m){ WISH.mode = m; document.querySelectorAll("#modes button").forEach(b=>b.classList.toggle("on", b.classList.contains(m))); $("timePick").classList.toggle("hide", m!=="time"); syncTimeLabel(); }
 function renderWishCal(){
   const [y,m] = WISH.month.split("/").map(Number); const first = new Date(y,m-1,1).getDay();
   let html = YO.map(x=>`<div class="h">${x}</div>`).join("");
   for (let i=0;i<first;i++) html += `<div></div>`;
-  const KL = {ok:"○可", ng:"×不可", time:"時間", off:"休希望"};
-  const today = new Date(); const ts = today.getFullYear()+"/"+pad2(today.getMonth()+1)+"/"+pad2(today.getDate());
   WISH.openDays.forEach(d=>{
     const dn = Number(d.date.slice(8)); const dow = new Date(y,m-1,dn).getDay(); const w = WISH.days[d.date];
-    const cls = ["d", d.open?"":"closed", dow===0?"sun":dow===6?"sat":"", WISH.sel===d.date?"sel":""].join(" ");
-    html += `<div class="${cls}" onclick="selDay('${d.date}')"><span class="n">${dn}</span>${w?`<span class="k ${w.kind}">${w.kind==="time"?(w.start.replace(/^0/,"").replace(/:00$/,"")+"-"+w.end.replace(/^0/,"").replace(/:00$/,"")):KL[w.kind]}</span>`:""}</div>`;
+    const cls = ["d", d.open?"":"closed", dow===0?"sun":dow===6?"sat":"", w?w.kind:""].join(" ");
+    const k = !w ? "" : w.kind==="ok" ? "○" : w.kind==="off" ? "休" : shortT(w.start)+"-"+shortT(w.end);
+    html += `<div class="${cls}" onclick="tapDay('${d.date}')"><span class="n">${dn}</span>${k?`<span class="k">${k}</span>`:""}</div>`;
   });
   $("wishCal").innerHTML = html;
+  const c = {ok:0,time:0,off:0}; Object.values(WISH.days).forEach(w=>{ c[w.kind]=(c[w.kind]||0)+1; });
+  $("wishSummary").innerHTML = `<div><b>${c.ok}</b><span>出られる日</span></div><div><b>${c.time}</b><span>時間指定</span></div><div><b>${c.off}</b><span>休み希望</span></div>`;
 }
-function selDay(ds){
+function tapDay(ds){
   if (WISH.locked){ toast("締切を過ぎています。管理者に伝えてください"); return; }
   const od = WISH.openDays.find(x=>x.date===ds); if (od && !od.open){ toast("定休日です"); return; }
-  WISH.sel = ds; KIND = null; renderWishCal();
-  $("wishEditDate").textContent = ds.slice(5).replace("/","月")+"日（"+youbi(ds)+"）はどうしますか？";
-  const w = WISH.days[ds]; document.querySelectorAll(".kinds button").forEach(b=>b.classList.remove("on"));
-  if (w){ $("k_"+w.kind).classList.add("on"); $("timeRow").classList.toggle("hide", w.kind!=="time"); if(w.kind==="time"){ $("wStart").value=w.start; $("wEnd").value=w.end; } $("wNote").value = w.note||""; }
-  else { $("timeRow").classList.add("hide"); $("wNote").value=""; }
-  $("wishEdit").scrollIntoView({behavior:"smooth", block:"center"});
+  const cur = WISH.days[ds]; const m = WISH.mode;
+  if (m==="time"){ const a=$("wStart").value, b=$("wEnd").value; if(!a||!b){ toast("時間を入れてください"); return; } if(toMinC(a)>=toMinC(b)){ toast("終了は開始より後にしてください"); return; }
+    if (cur && cur.kind==="time" && cur.start===a && cur.end===b) delete WISH.days[ds]; else WISH.days[ds] = {date:ds, kind:"time", start:a, end:b}; }
+  else { if (cur && cur.kind===m) delete WISH.days[ds]; else WISH.days[ds] = {date:ds, kind:m}; }
+  renderWishCal();
 }
-function nextDay(){
-  if (!WISH.sel) return; const opens = WISH.openDays.filter(d=>d.open).map(d=>d.date); const i = opens.indexOf(WISH.sel);
-  if (i < 0 || i+1 >= opens.length){ toast("最後の日です。下の「提出する」を押してください"); return; }
-  selDay(opens[i+1]);
-}
-let KIND = null;
-function setKind(k){
-  if (!WISH.sel){ toast("先にカレンダーの日をタップしてください"); return; }
-  KIND = k; document.querySelectorAll(".kinds button").forEach(b=>b.classList.remove("on")); $("k_"+k).classList.add("on"); $("timeRow").classList.toggle("hide", k!=="time");
-  applyKind(true);
-}
-function applyKind(silent){
-  if (!WISH.sel) return;
-  const k = KIND || (WISH.days[WISH.sel]||{}).kind; if(!k) return;
-  if (k==="time" && (!$("wStart").value || !$("wEnd").value)){ toast("時間を入れてください"); return; }
-  WISH.days[WISH.sel] = {date:WISH.sel, kind:k, start:$("wStart").value, end:$("wEnd").value, note:$("wNote").value};
-  renderWishCal(); if(!silent) toast("反映しました");
-}
-function clearKind(){ if(!WISH.sel) return; delete WISH.days[WISH.sel]; KIND=null; document.querySelectorAll(".kinds button").forEach(b=>b.classList.remove("on")); $("timeRow").classList.add("hide"); renderWishCal(); }
+function selectAllOpen(){ WISH.openDays.filter(d=>d.open).forEach(d=>{ if(!WISH.days[d.date]) WISH.days[d.date]={date:d.date, kind:"ok"}; }); renderWishCal(); toast("営業日をすべて○にしました。出られない日をタップして外してください"); }
+function clearAll(){ if(!confirm("この月の入力をすべて消しますか？（提出するまで保存はされません）")) return; WISH.days={}; renderWishCal(); }
 async function saveWish(){
-  const days = Object.values(WISH.days); if(!days.length && !confirm("1日も入っていません。空で提出しますか？")) return;
+  const note = $("wNote").value.trim();
+  const days = Object.values(WISH.days).map((w,i)=>Object.assign({}, w, {note: i===0 ? note : ""}));
+  if(!days.length && !confirm("1日も○が付いていません。「出られる日なし」で提出しますか？")) return;
   $("wishSaveBtn").disabled = true;
   const r = await api("wishes_save", {month:WISH.month, days});
   $("wishSaveBtn").disabled = false;
   if(!r.ok){ showMsg($("msg"), r.error); return; }
-  toast(`${r.saved}日分を提出しました`); showMsg($("msg"), `${WISH.month.replace("/","年")}月分の希望を提出しました（${r.saved}日分）。締切までは何度でも直せます。`, "ok");
+  toast(`${r.saved}日分を提出しました`); showMsg($("msg"), `${monthLabel(WISH.month)}分の希望を提出しました（${r.saved}日分）。締切までは何度でも直せます。`, "ok");
+  $("main").scrollTo({top:0, behavior:"smooth"}); $("bdWish").classList.add("hide");
 }
 
 // ───── 確定シフト ─────
@@ -397,50 +419,79 @@ let SHM = thisMonth();
 function shiftMove(n){ SHM = ymAdd(SHM, n); loadShift(); }
 async function loadShift(){
   const r = await api("shifts", {month:SHM}); if(!r.ok){ showMsg($("msg"), r.error); return; }
-  $("shiftMonth").textContent = r.month.replace("/","年")+"月";
+  $("shiftMonth").textContent = monthLabel(r.month);
   if (!r.shifts.length){ $("shiftList").innerHTML = `<div class="sub">確定したシフトはまだありません</div>`; return; }
-  const totalMin = r.shifts.reduce((s,x)=>{ const [a,b]=[x.start,x.end].map(t=>{const [h,m]=t.split(":").map(Number);return h*60+m;}); return s+(b-a); },0);
-  $("shiftList").innerHTML = `<div class="row"><span>勤務日数</span><b>${r.shifts.length}日</b></div><div class="row"><span>予定時間</span><b>${fmtMin(totalMin)}</b></div>` +
-    r.shifts.map(s=>`<div class="row"><span>${s.date.slice(5)}(${youbi(s.date)})<br><span class="mini">${(r.others[s.date]||[]).join("、")||"—"}</span></span><b>${s.start}〜${s.end}</b></div>`).join("");
+  const totalMin = r.shifts.reduce((s,x)=>s+(toMinC(x.end)-toMinC(x.start)),0);
+  const today = HOME ? HOME.today : "";
+  $("shiftList").innerHTML = `<div class="summary" style="grid-template-columns:1fr 1fr"><div><b>${r.shifts.length}日</b><span>勤務日数</span></div><div><b>${fmtMin(totalMin)}</b><span>予定時間</span></div></div>` +
+    r.shifts.map(s=>`<div class="row" ${s.date===today?'style="background:var(--g-l);margin:0 -6px;padding:10px 6px;border-radius:8px"':""}><span class="l">${mdLabel(s.date)}<br><span class="mini">${(r.others[s.date]||[]).length?"一緒: "+(r.others[s.date]||[]).join("、"):"ひとり"}</span></span><b>${s.start}〜${s.end}</b></div>`).join("");
 }
 
 // ───── 履歴・修正・パス変更 ─────
-let HM = thisMonth();
+let HM = thisMonth(); let HIST = null;
 function histMove(n){ HM = ymAdd(HM, n); loadHist(); }
 async function loadHist(){
   const r = await api("history", {month:HM}); if(!r.ok){ showMsg($("msg"), r.error); return; }
-  $("histMonth").textContent = r.month.replace("/","年")+"月";
+  HIST = r;
+  $("histMonth").textContent = monthLabel(r.month);
   $("histDays").textContent = r.days+"日"; $("histHours").textContent = fmtMin(r.totalMin);
-  $("histList").innerHTML = r.list.map(a=>`<div class="row"><span>${a.date.slice(5)}(${youbi(a.date)})${a.note?`<br><span class="mini">${a.note}</span>`:""}</span><b>${a.in||"--:--"}〜${a.out||"<span style='color:var(--red)'>未退勤</span>"}${a.breakMin?` <span class="mini">休${a.breakMin}</span>`:""}<br><span class="mini">${a.status==="done"?fmtMin(a.workMin):""}</span></b></div>`).join("") || `<div class="sub">記録がありません</div>`;
+  $("histList").innerHTML = r.list.map(a=>`<div class="row" onclick="openFix('${a.date}')" style="cursor:pointer"><span class="l">${mdLabel(a.date)}${a.note?`<br><span class="mini">${a.note}</span>`:""}</span><b>${a.in||"--:--"}〜${a.out||"<span style='color:var(--red)'>未退勤</span>"}${a.breakMin?`<br><span class="mini">休憩${a.breakMin}分</span>`:""}<br><span class="mini">${a.status==="done"?fmtMin(a.workMin):""}</span></b></div>`).join("") || `<div class="sub">記録がありません</div>`;
   const ST = {pending:"<span class='pill amber'>確認中</span>", approved:"<span class='pill'>承認</span>", rejected:"<span class='pill red'>却下</span>"};
-  $("fixList").innerHTML = r.fixes.length ? `<div class="mini" style="margin-bottom:4px">申請履歴</div>` + r.fixes.map(f=>`<div class="row"><span>${f.date.slice(5)} ${f.field} ${f.current}→${f.wanted}</span>${ST[f.status]||f.status}</div>`).join("") : "";
+  $("fixList").innerHTML = r.fixes.length ? r.fixes.map(f=>`<div class="row"><span class="l">${f.date.slice(5)} ${f.field}<br><span class="mini">${f.current} → ${f.wanted}</span></span>${ST[f.status]||f.status}</div>`).join("") : `<div class="sub">申請はありません</div>`;
 }
-function openFix(){
-  const d = new Date(); const today = d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());
-  $("ov").innerHTML = `<div class="overlay" onclick="if(event.target===this)closeOv()"><div class="sheet">
-    <h3>打刻の修正を申請</h3>
-    <label>日付</label><input type="date" id="fxDate" value="${today}">
-    <label>直したい項目</label>
-    <select id="fxField"><option value="出勤">出勤時刻</option><option value="退勤">退勤時刻</option><option value="休憩">休憩（分）</option></select>
-    <label>正しい値</label><input type="text" id="fxWanted" placeholder="例: 10:15（休憩なら 15）">
-    <label>理由</label><input type="text" id="fxReason" maxlength="100" placeholder="例: 打刻を忘れた">
-    <div style="height:14px"></div>
-    <button class="btn" onclick="sendFix()">申請する</button>
-    <button class="btn sec" style="margin-top:10px" onclick="closeOv()">やめる</button>
-  </div></div>`;
+// 修正申請：その日の記録を表示し、直したい値をタップして選ぶ（時刻は端末のピッカー）
+let FIX = null;
+function openFix(date){
+  const a = (HIST && HIST.list.find(x=>x.date===date)) || (HOME && HOME.att && HOME.today===date ? HOME.att : null);
+  FIX = {date, cur:{in:a?a.in:"", out:a?a.out:"", brk:a?a.breakMin:0}, want:{in:a?a.in:"", out:a?a.out:"", brk:a?a.breakMin:0}};
+  sheet(`
+    <h3>${mdLabel(date)} の打刻を修正</h3>
+    <div class="mini">直したい項目をタップして、正しい値を選んでください</div>
+    <div class="editrow" style="margin:12px 0">
+      <button id="fxIn" onclick="pickTime('in')"><small>出勤</small><b>${FIX.cur.in||"--:--"}</b></button>
+      <button id="fxOut" onclick="pickTime('out')"><small>退勤</small><b>${FIX.cur.out||"--:--"}</b></button>
+      <button id="fxBrk" onclick="pickBrk()"><small>休憩</small><b>${FIX.cur.brk}分</b></button>
+    </div>
+    <div id="fxPick"></div>
+    <label>理由</label>
+    <select id="fxReason"><option>打刻を忘れた</option><option>押すのが遅れた</option><option>早く押しすぎた</option><option>休憩の入力を間違えた</option><option>その他</option></select>
+    <div style="height:12px"></div>
+    <button class="btn" onclick="sendFix()">この内容で申請する</button>
+    <button class="btn sec" style="margin-top:10px" onclick="closeOv()">やめる</button>`);
 }
+function pickTime(f){
+  const v = FIX.want[f] || FIX.cur[f] || (f==="in" ? "10:15" : "15:15");
+  $("fxPick").innerHTML = `<div class="mini">${f==="in"?"出勤":"退勤"}の正しい時刻</div><div class="timebox"><button onclick="fxAdd('${f}',-5)">−5分</button><div class="tdisp"><span id="fxd">${v}</span><small>タップで時刻を選ぶ</small><input type="time" id="fxt" value="${v}" step="300" onchange="fxSet('${f}', this.value)"></div><button onclick="fxAdd('${f}',5)">+5分</button></div>`;
+  fxSet(f, v);
+}
+function fxSet(f, v){ if(!v) return; FIX.want[f]=v; const d=$("fxd"); if(d) d.textContent=v; const t=$("fxt"); if(t) t.value=v; const b=$(f==="in"?"fxIn":"fxOut"); b.querySelector("b").textContent=v; b.classList.toggle("changed", v!==FIX.cur[f]); }
+function fxAdd(f,n){ let m=toMinC(FIX.want[f]||FIX.cur[f]||"10:00")+n; m=(m+1440)%1440; fxSet(f, pad2(Math.floor(m/60))+":"+pad2(m%60)); }
+function pickBrk(){
+  $("fxPick").innerHTML = `<div class="mini">休憩の正しい分数</div><div class="chips c4" style="margin-top:6px">${[0,15,30,45,60,75,90,120].map(n=>`<button class="chip ${FIX.want.brk===n?"on":""}" onclick="fxBrk(${n})">${n}分</button>`).join("")}</div>`;
+}
+function fxBrk(n){ FIX.want.brk=n; document.querySelectorAll("#fxPick .chip").forEach(c=>c.classList.toggle("on", c.textContent===n+"分")); const b=$("fxBrk"); b.querySelector("b").textContent=n+"分"; b.classList.toggle("changed", n!==FIX.cur.brk); }
 async function sendFix(){
-  const date = $("fxDate").value.replace(/-/g,"/"), field = $("fxField").value, wanted = $("fxWanted").value.trim(), reason = $("fxReason").value.trim();
-  if(!date||!wanted){ toast("日付と正しい値を入れてください"); return; }
-  if(field!=="休憩" && !/^\d{1,2}:\d{2}$/.test(wanted)){ toast("時刻は 10:15 の形で入れてください"); return; }
-  if(!confirm(`${date.slice(5)} の${field}を「${wanted}」に修正申請します。よろしいですか？`)) return;
-  const r = await api("fix_request", {date, field, wanted, reason}); if(!r.ok){ showMsg($("msg"), r.error); return; }
-  closeOv(); toast("申請しました。管理者の承認をお待ちください"); loadHist();
+  const reqs = [];
+  if (FIX.want.in && FIX.want.in!==FIX.cur.in) reqs.push({field:"出勤", wanted:FIX.want.in});
+  if (FIX.want.out && FIX.want.out!==FIX.cur.out) reqs.push({field:"退勤", wanted:FIX.want.out});
+  if (FIX.want.brk!==FIX.cur.brk) reqs.push({field:"休憩", wanted:String(FIX.want.brk)});
+  if (!reqs.length){ toast("変更がありません。直したい項目をタップしてください"); return; }
+  if (FIX.want.in && FIX.want.out && toMinC(FIX.want.out) <= toMinC(FIX.want.in)){ toast("退勤は出勤より後にしてください"); return; }
+  const reason = $("fxReason").value;
+  if(!confirm(`${mdLabel(FIX.date)}：${reqs.map(r=>r.field+"→"+r.wanted+(r.field==="休憩"?"分":"")).join("、")} で申請します。よろしいですか？`)) return;
+  for (const q of reqs){ const r = await api("fix_request", {date:FIX.date, field:q.field, wanted:q.wanted, reason}); if(!r.ok){ showMsg($("msg"), r.error); closeOv(); return; } }
+  closeOv(); toast("申請しました。管理者の承認をお待ちください"); loadHist(); if(HOME && HOME.today===FIX.date) loadHome();
+}
+function openPass(){
+  sheet(`<h3>パスコードを変更</h3><div class="mini">6桁以上の数字。次回から新しいパスコードでログインします。</div>
+    <label>新しいパスコード</label><input type="password" inputmode="numeric" id="npass" placeholder="●●●●●●">
+    <label>もう一度</label><input type="password" inputmode="numeric" id="npass2" placeholder="●●●●●●">
+    <div style="height:12px"></div><button class="btn" onclick="changePass()">変更する</button><button class="btn sec" style="margin-top:10px" onclick="closeOv()">やめる</button>`);
 }
 async function changePass(){
-  const p = $("npass").value.trim(); if(!/^\d{6,}$/.test(p)){ toast("6桁以上の数字にしてください"); return; }
-  if(!confirm("パスコードを変更します。よろしいですか？")) return;
-  const r = await api("change_pass", {newpass:p}); if(!r.ok){ showMsg($("msg"), r.error); return; } $("npass").value=""; toast("変更しました");
+  const p = $("npass").value.trim(), p2 = $("npass2").value.trim();
+  if(!/^\d{6,}$/.test(p)){ toast("6桁以上の数字にしてください"); return; } if(p!==p2){ toast("2回の入力が一致しません"); return; }
+  const r = await api("change_pass", {newpass:p}); if(!r.ok){ showMsg($("msg"), r.error); return; } closeOv(); toast("パスコードを変更しました");
 }
 
 // ───── 起動 ─────
