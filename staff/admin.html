@@ -30,6 +30,7 @@ main{flex:1;padding:14px 14px 60px}
 .btn.sec{background:var(--cream-d);color:var(--ink);font-weight:normal} .btn.red{background:var(--red)} .btn.sm{padding:6px 10px;font-size:13px;border-radius:8px}
 .btn:disabled{opacity:.45}
 .pill{display:inline-block;border-radius:999px;padding:1px 9px;font-size:12px;background:var(--g-l);color:var(--g);white-space:nowrap}
+.pickrow{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 10px} .pick{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--line);border-radius:10px;padding:10px 14px;font-size:16px;font-weight:bold;cursor:pointer;background:#fff} .pick:has(input:checked){border-color:var(--g);background:var(--g-l)} .pick input{margin:0}
 .pill.red{background:#f6e3df;color:var(--red)} .pill.amber{background:#f7ebd3;color:var(--amber)} .pill.gray{background:#eee;color:#666} .pill.blue{background:#e3eaf7;color:var(--blue)}
 input,select,textarea{font-size:15px;padding:9px 10px;border:1.5px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);width:100%}
 input:focus,select:focus{outline:none;border-color:var(--g)}
@@ -331,19 +332,20 @@ async function loadAtt(){ if(!$("pAtt").dataset.loaded) $("pAtt").innerHTML = lo
 async function decide(req_id, approve){ if(!confirm(approve?"この修正を承認して勤怠に反映します":"この申請を却下します")) return; const r = await api("admin.fix_decide",{req_id, approve}); if(!r.ok){ showMsg(r.error); return; } toast(approve?"承認しました":"却下しました"); loadAtt(); }
 function editAtt(a){
   const staffOpts = (SD&&SD.s?SD.s.staff:[]);
-  modal(`<h3>${a?`${a.date.slice(5)} ${esc(a.name)} の勤怠を修正`:"勤怠を手入力で追加"}</h3>
-    ${a?"":`<label>スタッフ</label><select id="eSt">${staffOpts.map(s=>`<option value="${s.staff_id}">${esc(s.name)}</option>`).join("")}</select><label>日付</label><input type="date" id="eD">`}
+  const pick = list => list.filter(s=>s.status!=="stopped").map((s,i)=>`<label class="pick"><input type="radio" name="eSt" value="${s.staff_id}" ${i===0?"checked":""}><span>${esc(s.name)}</span></label>`).join("");
+  modal(`<h3>${a?`${a.date.slice(5)} ${esc(a.name)} の勤怠を修正`:"勤怠を代わりに入力"}</h3>
+    ${a?"":`<div class="mini" style="margin-bottom:6px">本人が打刻できなかった日の記録を管理者が入れます</div><label>誰の勤怠？</label><div id="eStBox" class="pickrow">${pick(staffOpts)||"<span class='mini'>読み込み中…</span>"}</div><label>日付</label><input type="date" id="eD" value="${new Date(Date.now()+9*3600e3).toISOString().slice(0,10)}">`}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>出勤</label><input type="time" id="eI" value="${a?a.in:"10:15"}"></div><div><label>退勤</label><input type="time" id="eO" value="${a?a.out:"15:15"}"></div></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>休憩（分）</label><input type="number" id="eB" value="${a?a.breakMin:0}"></div><div><label>交通費（円）</label><input type="number" id="eT" value="${a?a.transport:""}" placeholder="マスターの値"></div></div>
     <label>メモ</label><input id="eN" value="${a?esc(a.note||""):""}">
     <div class="mini" style="margin-top:6px">元の打刻は監査ログに残ります</div>
     <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" style="flex:1" onclick="saveAtt(${a?`'${a.att_id}'`:"null"})">保存</button><button class="btn sec" onclick="closeOv()">閉じる</button></div>
     ${a?`<div style="margin-top:14px;text-align:right"><button class="btn sec sm" id="delAttBtn" onclick="deleteAtt('${a.att_id}','${a.date.slice(5)} ${esc(a.name)}')">この記録を削除</button></div>`:""}`);
-  if(!a && !staffOpts.length){ api("admin.staff_list").then(r=>{ $("eSt").innerHTML = r.staff.filter(s=>s.status==="active").map(s=>`<option value="${s.staff_id}">${esc(s.name)}</option>`).join(""); }); }
+  if(!a && !staffOpts.length){ api("admin.staff_list").then(r=>{ $("eStBox").innerHTML = pick(r.staff); }); }
 }
 async function saveAtt(att_id){
   const body = {att_id, in:$("eI").value, out:$("eO").value, breakMin:Number($("eB").value)||0, note:$("eN").value}; if($("eT").value!=="") body.transport=Number($("eT").value);
-  if(!att_id){ body.create=true; body.staff_id=$("eSt").value; body.date=$("eD").value.replace(/-/g,"/"); if(!body.date){ toast("日付を入れてください"); return; } }
+  if(!att_id){ body.create=true; const picked=document.querySelector('input[name="eSt"]:checked'); if(!picked){ toast("誰の勤怠か選んでください"); return; } body.staff_id=picked.value; body.date=$("eD").value.replace(/-/g,"/"); if(!body.date){ toast("日付を入れてください"); return; } }
   const r = await api("admin.att_edit", body); if(!r.ok){ toast(r.error); return; } closeOv(); toast("保存しました"); loadAtt();
 }
 async function deleteAtt(att_id, label){
@@ -400,7 +402,7 @@ async function closeMonth(){
 async function loadStaff(){ if(!$("pStaff").dataset.loaded) $("pStaff").innerHTML = loadingHtml(); $("pStaff").dataset.loaded="1";
   $("pStaff").innerHTML = `<div class="mini">読み込み中…</div>`;
   const r = await api("admin.staff_list"); if(!r.ok){ showMsg(r.error); return; }
-  const rows = r.staff.map(s=>`<div class="row"><span><b>${esc(s.name)}</b> ${s.role==="admin"?`<span class="pill blue">管理者</span>`:""} ${s.status==="stopped"?`<span class="pill gray">停止</span>`:""} ${!s.hasPass?`<span class="pill amber">パス未設定</span>`:""} ${s.locked?`<span class="pill red">ロック中</span>`:""}<br><span class="mini">時給 ${s.wage.toLocaleString()}円・交通費 ${s.transport}円/日・${s.joined}〜</span></span><button class="btn sec sm" onclick='editStaff(${JSON.stringify(s).replace(/'/g,"&#39;")})'>編集</button></div>`).join("");
+  const rows = r.staff.map(s=>`<div class="row"><span><b>${esc(s.name)}</b> ${s.role==="admin"?`<span class="pill blue">管理者</span>`:""} ${s.status==="stopped"?`<span class="pill gray">停止</span>`:""} ${s.last?`<span class="pill amber">最終 ${s.last.slice(5)}</span>`:""} ${!s.hasPass?`<span class="pill amber">パス未設定</span>`:""} ${s.locked?`<span class="pill red">ロック中</span>`:""}<br><span class="mini">時給 ${s.wage.toLocaleString()}円・交通費 ${s.transport}円/日・${s.joined}〜</span></span><button class="btn sec sm" onclick='editStaff(${JSON.stringify(s).replace(/'/g,"&#39;")})'>編集</button></div>`).join("");
   $("pStaff").innerHTML = `<div class="card"><h2>スタッフ <small><button class="btn sm" onclick="editStaff(null)">＋ 新規登録</button></small></h2>${rows}</div>
     <div class="card"><h2>パスコードの渡し方</h2><div class="mini">1. 「編集」→「パスコードを設定」で4桁以上の数字を決める　2. 本人に口頭かLINEで伝える　3. 本人はスタッフ画面の「履歴」タブで自分のパスコードに変更できます。5回間違えると15分ロックされ、ここで解除できます。</div></div>`;
 }
@@ -409,7 +411,8 @@ function editStaff(s){
     <label>名前</label><input id="sN" value="${s?esc(s.name):""}">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>役割</label><select id="sR"><option value="staff" ${s&&s.role==="staff"?"selected":""}>スタッフ</option><option value="admin" ${s&&s.role==="admin"?"selected":""}>管理者</option></select></div><div><label>状態</label><select id="sS"><option value="active" ${!s||s.status==="active"?"selected":""}>在籍</option><option value="stopped" ${s&&s.status==="stopped"?"selected":""}>停止（退職）</option></select></div></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>時給（円）</label><input type="number" id="sW" value="${s?s.wage:1500}"></div><div><label>交通費 日額（上限1,000）</label><input type="number" id="sT" value="${s?s.transport:0}"></div></div>
-    <label>入社日</label><input type="date" id="sJ" value="${s&&s.joined?s.joined.replace(/\//g,"-"):new Date().toISOString().slice(0,10)}">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>入社日</label><input type="date" id="sJ" value="${s&&s.joined?s.joined.replace(/\//g,"-"):new Date().toISOString().slice(0,10)}"></div><div><label>最終勤務日（退職予定）</label><input type="date" id="sL" value="${s&&s.last?s.last.replace(/\//g,"-"):""}"></div></div>
+    <div class="mini">最終勤務日を入れると、その翌月以降のシフト表・希望一覧から外れます。勤怠と給与はそのまま残るので、給与を締めたあとに「停止」にしてください</div>
     <label>備考</label><input id="sM" value="${s?esc(s.note||""):""}">
     ${s?`<div style="border-top:1px dashed var(--line);margin-top:14px;padding-top:10px"><label>パスコード（4桁以上の数字）</label><div style="display:flex;gap:8px"><input type="text" inputmode="numeric" id="sP" placeholder="新しいパスコード"><button class="btn sec" onclick="setPass('${s.staff_id}')">設定</button></div>${s.locked?`<button class="btn sec sm" style="margin-top:8px" onclick="unlock('${s.staff_id}')">ロック解除</button>`:""}</div>
     <div style="border-top:1px dashed var(--line);margin-top:14px;padding-top:10px"><h3 style="font-size:14px">振込口座 <span class="mini">（管理者のみ閲覧）</span></h3><div id="bankBox" class="mini">読み込み中…</div></div>`:""}
@@ -425,7 +428,7 @@ async function loadBank(staff_id){
 }
 async function saveBank(staff_id){ const r = await api("admin.bank_set",{staff_id, bank:{bank:$("bB").value, branch:$("bBr").value, type:$("bT").value, number:$("bN").value, holder:$("bH").value}}); toast(r.ok?"口座を保存しました":r.error); }
 async function saveStaff(staff_id){
-  const st = {staff_id:staff_id||undefined, name:$("sN").value.trim(), role:$("sR").value, status:$("sS").value, wage:Number($("sW").value)||0, transport:Number($("sT").value)||0, joined:$("sJ").value.replace(/-/g,"/"), note:$("sM").value};
+  const st = {staff_id:staff_id||undefined, name:$("sN").value.trim(), role:$("sR").value, status:$("sS").value, wage:Number($("sW").value)||0, transport:Number($("sT").value)||0, joined:$("sJ").value.replace(/-/g,"/"), last:$("sL").value.replace(/-/g,"/"), note:$("sM").value};
   if(!st.name){ toast("名前を入れてください"); return; }
   if(staff_id && st.status==="stopped" && !confirm("停止するとログインできなくなります。よろしいですか？")) return;
   const r = await api("admin.staff_save",{staff:st}); if(!r.ok){ toast(r.error); return; }
