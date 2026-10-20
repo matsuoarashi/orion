@@ -366,30 +366,38 @@ function loadQueue(){
 function saveQueue(q){ try{ localStorage.setItem(queueKey(), JSON.stringify(q)); }catch(e){} }
 
 let _flushing = false;
+// キューの各レコードには必ず id を付ける（同じ会計・締め・在庫を二重送信しないため）
+function queueId(){ return "q" + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function enqueueRec(rec){ if(!rec.id) rec.id = queueId(); const q = loadQueue(); q.push(rec); saveQueue(q); flushQueue(); }
+let _flushFails = 0;
 async function flushQueue(){
   if(!SHEET_URL) return;
   if(_flushing) return;           // 二重送信ガード: 送信中は重ねて走らせない
   _flushing = true;
+  let failed = false;
   try{
     let q = loadQueue();
+    // id の無い古いレコードには付けておく（過去バージョンのキュー対策）
+    q.forEach(r => { if(!r.id) r.id = queueId(); }); saveQueue(q);
     if(!q.length) return;
-    const rest = [];
-    const sent = new Set();
+    const doneIds = new Set();
     for(const rec of q){
-      if(rec.id && sent.has(rec.id)) continue;   // 同じ会計は1回だけ
+      if(doneIds.has(rec.id)) continue;   // 同じ id は1回だけ
       try{
         await fetch(SHEET_URL, {method:"POST", mode:"no-cors",
           headers:{"Content-Type":"text/plain"}, body: JSON.stringify(rec)});
-        if(rec.id) sent.add(rec.id);
-      }catch(e){ rest.push(rec); }
+        doneIds.add(rec.id);
+      }catch(e){ failed = true; }
     }
-    // 送信中に増えた分は残す
+    // 送信済みの id を除いたものを残す（送信中に増えた分はそのまま残る）
     const now = loadQueue();
-    const extra = now.filter(r => !q.includes(r) && !q.some(x => x.id && x.id === r.id));
-    saveQueue(rest.concat(extra));
+    saveQueue(now.filter(r => !doneIds.has(r.id)));
   } finally {
     _flushing = false;
-    if(loadQueue().length) setTimeout(flushQueue, 1500);
+    const left = loadQueue().length;
+    if(left && failed){ _flushFails++; setTimeout(flushQueue, Math.min(60000, 3000 * _flushFails)); }  // 失敗時は間隔を広げて再送（最大60秒）
+    else if(left){ _flushFails = 0; setTimeout(flushQueue, 1500); }
+    else _flushFails = 0;
   }
 }
 
@@ -432,8 +440,7 @@ async function finishSale(){
     change: tender - saleTotal,
     pay: payMethod === "paypay" ? "PayPay" : "現金",
   };
-  const q = loadQueue(); q.push(rec); saveQueue(q);
-  flushQueue();
+  enqueueRec(rec);
   pushSaleTime(rec);
 
   items = []; tender = 0; payMethod = "cash";
@@ -537,8 +544,7 @@ async function saveShime(){
     prep: s.prep, sales: s.sales, expected: s.expected, cash: s.cash, diff: s.diff, paypay: s.paypay || 0, keep: PREP_DEFAULT, bank: s.bank || 0,
     vendor: s.vendor || 0, slips: s.slips || {}, app: s.app || {}, slipOk: s.slipOk
   };
-  const q = loadQueue(); q.push(rec); saveQueue(q);
-  flushQueue();
+  enqueueRec(rec);
   $("shimeOv").classList.remove("show");
   alert("レジ締めを記録しました" + (s.diff===0 ? "(差異なし)" : ""));
 }
@@ -674,8 +680,7 @@ async function saveStock(){
     time: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
     stocks
   };
-  const q = loadQueue(); q.push(rec); saveQueue(q);
-  flushQueue();
+  enqueueRec(rec);
   const needs = stocks.filter(x=>x.need).map(x=>x.n);
   $("stockOv").classList.remove("show");
   alert(needs.length ? "記録しました。要発注: " + needs.join("・") : "記録しました(発注不要)");
@@ -723,7 +728,7 @@ function openVisits(keepOpen){
 function visitCancelId(id){
   const v = loadVisits(); const x = v.find(r=>r.id===id); if(!x || x.x) return;
   x.x = true; saveVisits(v);
-  const q = loadQueue(); q.push({ type:"visit_cancel", id: "x"+x.id, vid: x.id, ts: new Date().toISOString() }); saveQueue(q); flushQueue();
+  enqueueRec({ type:"visit_cancel", id: "x"+x.id, vid: x.id, ts: new Date().toISOString() });
   refreshVisits(); openVisits(true);
 }
 
@@ -787,7 +792,7 @@ function visitAdd(g){
     date: now.getFullYear()+"/"+pad(now.getMonth()+1)+"/"+pad(now.getDate()),
     time: pad(now.getHours())+":"+pad(now.getMinutes())+":"+pad(now.getSeconds()),
     youbi: ["日","月","火","水","木","金","土"][now.getDay()], ts: now.toISOString() };
-  const q = loadQueue(); q.push(rec); saveQueue(q); flushQueue();
+  enqueueRec(rec);
   refreshVisits();
   const c = visitCounts(v);
   visitFlash(g, g==="m" ? "男性 ＋1" : "女性 ＋1", `本日 男 ${c.m}　女 ${c.f}　計 ${c.total}人`);
@@ -797,7 +802,7 @@ function visitUndo(){
   const last = v.filter(x=>!x.x).slice(-1)[0];
   if(!last){ visitFlash("x", "取消なし", "本日の来店記録はありません"); return; }
   last.x = true; saveVisits(v);
-  const q = loadQueue(); q.push({ type:"visit_cancel", id: "x"+last.id, vid: last.id, ts: new Date().toISOString() }); saveQueue(q); flushQueue();
+  enqueueRec({ type:"visit_cancel", id: "x"+last.id, vid: last.id, ts: new Date().toISOString() });
   refreshVisits();
   const c = visitCounts(v);
   visitFlash("x", (last.g==="m" ? "男性" : "女性") + " を取消", `本日 男 ${c.m}　女 ${c.f}　計 ${c.total}人`);
