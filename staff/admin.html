@@ -337,13 +337,21 @@ function editAtt(a){
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>休憩（分）</label><input type="number" id="eB" value="${a?a.breakMin:0}"></div><div><label>交通費（円）</label><input type="number" id="eT" value="${a?a.transport:""}" placeholder="マスターの値"></div></div>
     <label>メモ</label><input id="eN" value="${a?esc(a.note||""):""}">
     <div class="mini" style="margin-top:6px">元の打刻は監査ログに残ります</div>
-    <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" style="flex:1" onclick="saveAtt(${a?`'${a.att_id}'`:"null"})">保存</button><button class="btn sec" onclick="closeOv()">閉じる</button></div>`);
+    <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" style="flex:1" onclick="saveAtt(${a?`'${a.att_id}'`:"null"})">保存</button><button class="btn sec" onclick="closeOv()">閉じる</button></div>
+    ${a?`<div style="margin-top:14px;text-align:right"><button class="btn sec sm" id="delAttBtn" onclick="deleteAtt('${a.att_id}','${a.date.slice(5)} ${esc(a.name)}')">この記録を削除</button></div>`:""}`);
   if(!a && !staffOpts.length){ api("admin.staff_list").then(r=>{ $("eSt").innerHTML = r.staff.filter(s=>s.status==="active").map(s=>`<option value="${s.staff_id}">${esc(s.name)}</option>`).join(""); }); }
 }
 async function saveAtt(att_id){
   const body = {att_id, in:$("eI").value, out:$("eO").value, breakMin:Number($("eB").value)||0, note:$("eN").value}; if($("eT").value!=="") body.transport=Number($("eT").value);
   if(!att_id){ body.create=true; body.staff_id=$("eSt").value; body.date=$("eD").value.replace(/-/g,"/"); if(!body.date){ toast("日付を入れてください"); return; } }
   const r = await api("admin.att_edit", body); if(!r.ok){ toast(r.error); return; } closeOv(); toast("保存しました"); loadAtt();
+}
+async function deleteAtt(att_id, label){
+  const b = $("delAttBtn"); if(!b) return;
+  if(b.dataset.arm!=="1"){ b.dataset.arm="1"; b.textContent="もう一度押すと削除（"+label+"）"; b.style.color="#b3261e"; setTimeout(()=>{ if(b.isConnected){ b.dataset.arm=""; b.textContent="この記録を削除"; b.style.color=""; } }, 5000); return; }
+  b.disabled = true;
+  const r = await api("admin.att_delete", {att_id}); if(!r.ok){ toast(r.error); b.disabled=false; return; }
+  closeOv(); toast("削除しました"); loadAtt();
 }
 
 // ───── 給与 ─────
