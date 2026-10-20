@@ -221,6 +221,8 @@
   <div class="sheet">
     <h2>本 日 の 日 計</h2>
     <div class="sum-list" id="sumList">記録がありません</div>
+    <div style="font-size:12px;color:#8a7a5c;margin-top:6px">未送信 <span id="sumQueue">0</span> 件　｜　スプレッドシートに今日の会計が無い時は下のボタンで再送できます</div>
+    <button class="cancel" style="color:var(--midori);border-color:var(--midori)" onclick="resendTodaySales()">今日の会計をシートへ再送</button>
     <button class="cancel" onclick="document.getElementById('sumOv').classList.remove('show')">閉じる</button>
   </div>
 </div>
@@ -441,7 +443,7 @@ async function finishSale(){
     pay: payMethod === "paypay" ? "PayPay" : "現金",
   };
   enqueueRec(rec);
-  pushSaleTime(rec);
+  pushSaleTime(rec); pushSaleLog(rec);
 
   items = []; tender = 0; payMethod = "cash";
   hidePay(); refresh(); refreshDaily();
@@ -690,6 +692,18 @@ async function saveStock(){
 function saleTimesKey(){ const d = new Date(); return "orion-saletimes-" + d.getFullYear() + "-" + (d.getMonth()+1) + "-" + d.getDate(); }
 function loadSaleTimes(){ try{ return JSON.parse(localStorage.getItem(saleTimesKey()) || "[]"); }catch(e){ return []; } }
 function pushSaleTime(rec){ try{ const a = loadSaleTimes(); a.push({ t: rec.time, mode: rec.mode, meals: rec.meals }); localStorage.setItem(saleTimesKey(), JSON.stringify(a)); }catch(e){} }
+// その日の会計を丸ごと端末に残す（シートに届かなかった時の「再送」用）
+function saleLogKey(){ const d = new Date(); return "orion-salelog-" + d.getFullYear() + "-" + (d.getMonth()+1) + "-" + d.getDate(); }
+function loadSaleLog(){ try{ return JSON.parse(localStorage.getItem(saleLogKey()) || "[]"); }catch(e){ return []; } }
+function pushSaleLog(rec){ try{ const a = loadSaleLog(); a.push(rec); localStorage.setItem(saleLogKey(), JSON.stringify(a)); }catch(e){} }
+// 今日の会計をシートへ再送（シート側で同じ会計は重複登録されない）
+function resendTodaySales(){
+  const log = loadSaleLog();
+  if(!log.length){ alert("今日の会計の記録がこの端末にありません"); return; }
+  const d = new Date(); const pad = n => String(n).padStart(2,"0");
+  enqueueRec({ type:"sale_resend", date: d.getFullYear()+"/"+pad(d.getMonth()+1)+"/"+pad(d.getDate()), sales: log });
+  alert("今日の会計 " + log.length + " 件をスプレッドシートへ再送しました（届いていた分は二重になりません）");
+}
 function toMinStr(t){ const m = String(t||"").match(/(\d{1,2}):(\d{2})/); return m ? Number(m[1])*60+Number(m[2]) : -1; }
 // 入店(1人1件)と店内の食数ぶんの会計時刻を先着順で突き合わせて滞在時間を推定（分析シート側と同じ考え方）
 function estimateStayLocal(visits, sales){
@@ -749,6 +763,7 @@ async function openSummary(){
     html += `<div class="li"><span>商品別の記録はまだありません</span><span></span></div>`;
   }
   $("sumList").innerHTML = html;
+  $("sumQueue").textContent = loadQueue().length;
   $("sumOv").classList.add("show");
 }
 
