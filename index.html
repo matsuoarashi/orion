@@ -450,7 +450,7 @@ async function finishSale(){
 }
 
 // ===== 出退勤（この端末に記録。日計と一緒にLINEへ貼る） =====
-const STAFF = ["柴村","大崎","マリエル","臨時"];
+const STAFF = ["久田","大崎","マリエル","臨時"];
 function clockKey(){ const d = new Date(); return "orion-clock-" + d.getFullYear() + "-" + (d.getMonth()+1) + "-" + d.getDate(); }
 function loadClock(){ try{ return JSON.parse(localStorage.getItem(clockKey()) || "{}"); }catch(e){ return {}; } }
 function saveClock(c){ try{ localStorage.setItem(clockKey(), JSON.stringify(c)); }catch(e){} }
