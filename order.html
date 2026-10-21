@@ -2,82 +2,107 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#4e2d12">
 <title>テイクアウト予約 | 洋食オリオン 神田淡路町店</title>
 <style>
-  :root{ --wood:#6b3f1c; --wood-d:#4e2d12; --cream:#fdf6e8; --cream-d:#e8dcc2; --enji:#93332a; --midori:#2c4f39; --ink:#3a2a18; }
-  *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif;background:linear-gradient(#7a4b22,#5c3413);min-height:100vh;color:var(--ink);display:flex;justify-content:center;padding:14px}
-  .app{width:100%;max-width:520px;display:flex;flex-direction:column;gap:12px}
-  header{color:#f3ddb0;text-align:center;padding:4px 0}
-  header small{display:block;font-size:11px;letter-spacing:4px;color:#c8a866}
-  header b{font-size:22px;letter-spacing:4px}
-  .card{background:var(--cream);border-radius:14px;padding:14px;border:3px solid var(--wood-d)}
-  .card h2{font-size:13px;letter-spacing:3px;color:var(--midori);margin-bottom:8px}
-  .item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #c9b891;gap:8px}
-  .item:last-child{border-bottom:none}
-  .item .n b{display:block;font-size:15px}
-  .item .n small{font-size:11px;color:#6b5a40}
-  .item .p{font-size:13px;white-space:nowrap;color:#6b5a40}
-  .qty{display:flex;align-items:center;gap:4px}
-  .qty button{width:36px;height:36px;border-radius:10px;border:2px solid var(--wood-d);background:var(--cream-d);font-size:20px;font-weight:bold;color:var(--ink)}
-  .qty span{min-width:28px;text-align:center;font-size:18px;font-weight:bold;font-variant-numeric:tabular-nums}
-  .slots{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
-  .slots button{padding:10px 2px;border-radius:10px;border:2px solid var(--wood-d);background:var(--cream-d);font-size:14px;font-weight:bold;color:var(--ink)}
+  :root{ --wood:#6b3f1c; --wood-d:#4e2d12; --cream:#fdf6e8; --cream-d:#efe3c8; --enji:#93332a; --midori:#2c4f39; --ink:#3a2a18; --mute:#7a6650; }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{font-size:16px}
+  body{font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic',sans-serif;background:var(--wood-d);color:var(--ink);min-height:100vh}
+  .app{max-width:480px;margin:0 auto;padding:0 0 calc(96px + env(safe-area-inset-bottom))}
+  .hero{background:linear-gradient(#5c3413,#4e2d12);padding:26px 20px 18px;text-align:center}
+  .hero img{width:62%;max-width:260px;display:block;margin:0 auto 10px}
+  .hero .sub{color:#d8bf8c;font-size:13px;letter-spacing:5px}
+  .hero .ttl{color:#fdf6e8;font-size:20px;font-weight:bold;letter-spacing:6px;margin-top:4px}
+  .sheet{background:var(--cream);border-radius:22px 22px 0 0;padding:18px 16px 8px;min-height:60vh}
+  .step{display:flex;align-items:center;gap:8px;margin:14px 0 10px}
+  .step i{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--midori);color:#fff;font-style:normal;font-size:13px;font-weight:bold}
+  .step b{font-size:15px;letter-spacing:2px;color:var(--midori)}
+  .note{background:#fff3f0;border:1.5px solid #e2b3ab;border-radius:14px;padding:12px 14px;font-size:13.5px;line-height:1.75;color:#5a2a22}
+  .note b{display:block;font-size:15px;color:var(--enji);margin-bottom:2px}
+  .item{display:flex;align-items:center;gap:10px;background:#fff;border-radius:14px;padding:12px 12px;margin-bottom:8px;border:1.5px solid #e6d9bd}
+  .item.on{border-color:var(--midori);box-shadow:0 0 0 2px rgba(44,79,57,.15)}
+  .item .n{flex:1;min-width:0}
+  .item .n b{display:block;font-size:16px}
+  .item .n small{display:block;font-size:11.5px;color:var(--mute);line-height:1.5;margin-top:2px}
+  .item .n .p{font-size:14px;font-weight:bold;color:var(--ink);margin-top:4px}
+  .qty{display:flex;align-items:center;gap:0;flex-shrink:0}
+  .qty button{width:42px;height:42px;border-radius:12px;border:none;background:var(--cream-d);font-size:22px;font-weight:bold;color:var(--ink)}
+  .qty button:active{background:#dccda8}
+  .qty button:disabled{opacity:.3}
+  .qty span{min-width:34px;text-align:center;font-size:20px;font-weight:bold;font-variant-numeric:tabular-nums}
+  .slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .slots button{padding:11px 4px 9px;border-radius:14px;border:1.5px solid #e6d9bd;background:#fff;font-size:17px;font-weight:bold;color:var(--ink);font-variant-numeric:tabular-nums}
   .slots button.on{background:var(--midori);color:#fff;border-color:var(--midori)}
   .slots button:disabled{opacity:.35}
-  .slots small{display:block;font-size:9px;font-weight:normal}
-  label{display:block;font-size:12px;color:#6b5a40;margin:8px 0 4px}
-  input,textarea{width:100%;padding:10px;border-radius:10px;border:2px solid var(--wood-d);background:#fff;font-size:16px;font-family:inherit}
-  .total{display:flex;justify-content:space-between;align-items:baseline;font-size:15px;margin-top:6px}
-  .total b{font-size:24px}
-  .go{width:100%;padding:16px;border-radius:12px;border:none;background:var(--enji);color:#fff;font-size:18px;font-weight:bold;letter-spacing:2px;margin-top:10px}
-  .go:disabled{opacity:.4}
-  .msg{font-size:13px;line-height:1.7;color:#6b5a40}
-  .err{background:#fff3f0;border-radius:10px;padding:10px;color:#8d2f26;font-size:13px;display:none;margin-top:8px}
-  .done{text-align:center}
-  .done .no{font-size:34px;font-weight:bold;letter-spacing:2px;color:var(--midori);margin:6px 0}
-  .done .t{font-size:20px;font-weight:bold}
-  .hide{display:none}
-  footer{text-align:center;color:#c8a866;font-size:11px;padding:6px 0 12px;line-height:1.8}
+  .slots small{display:block;font-size:10.5px;font-weight:normal;margin-top:2px;opacity:.8}
+  .hint{font-size:12.5px;color:var(--mute);line-height:1.7;margin-top:8px}
+  label{display:block;font-size:12.5px;color:var(--mute);margin:10px 0 5px}
+  input{width:100%;padding:13px 14px;border-radius:14px;border:1.5px solid #e6d9bd;background:#fff;font-size:17px;font-family:inherit}
+  input:focus{outline:none;border-color:var(--midori)}
+  .err{background:#fff3f0;border-radius:12px;padding:10px 12px;color:#8d2f26;font-size:13.5px;display:none;margin-top:10px}
+  .bar{position:fixed;left:0;right:0;bottom:0;background:rgba(78,45,18,.96);backdrop-filter:blur(6px);padding:10px 16px calc(10px + env(safe-area-inset-bottom));z-index:9}
+  .bar .in{max-width:480px;margin:0 auto;display:flex;align-items:center;gap:12px}
+  .bar .sum{color:#fdf6e8;line-height:1.2;flex:1}
+  .bar .sum small{display:block;font-size:11px;color:#d8bf8c;letter-spacing:1px}
+  .bar .sum b{font-size:24px;font-variant-numeric:tabular-nums}
+  .bar .sum em{font-style:normal;font-size:12px;color:#d8bf8c;margin-left:6px}
+  .go{padding:15px 26px;border-radius:14px;border:none;background:var(--enji);color:#fff;font-size:17px;font-weight:bold;letter-spacing:2px;white-space:nowrap}
+  .go:disabled{opacity:.45}
+  .done{text-align:center;padding-top:6px}
+  .done .chk{width:58px;height:58px;border-radius:50%;background:var(--midori);color:#fff;font-size:30px;line-height:58px;margin:0 auto 10px}
+  .done h2{font-size:18px;letter-spacing:3px;color:var(--midori);margin-bottom:12px}
+  .done .t{font-size:24px;font-weight:bold;margin:4px 0}
+  .done .lbl{font-size:12px;color:var(--mute);margin-top:10px;letter-spacing:2px}
+  .done .no{font-size:38px;font-weight:bold;letter-spacing:3px;color:var(--enji);font-variant-numeric:tabular-nums}
+  .done .box{background:#fff;border-radius:14px;padding:12px 14px;text-align:left;font-size:14.5px;line-height:1.9;margin:14px 0;border:1.5px solid #e6d9bd}
+  .done .box b{font-size:17px}
+  .btn2{display:block;width:100%;padding:14px;border-radius:14px;border:1.5px solid var(--midori);background:#fff;color:var(--midori);font-size:15px;font-weight:bold;margin-top:8px}
+  .closed{padding:30px 10px;text-align:center;font-size:15px;line-height:1.8}
+  .hide{display:none!important}
+  footer{text-align:center;color:#c8a866;font-size:11px;padding:18px 16px 10px;line-height:1.9}
 </style>
 </head>
 <body>
 <div class="app">
-  <header><small>洋食オリオン 神田淡路町店</small><b>テイクアウト予約</b></header>
+  <div class="hero"><img src="logo.png" alt="洋食オリオン"><div class="sub">神田淡路町店</div><div class="ttl">テイクアウト予約</div></div>
 
-  <div id="closed" class="card hide"><h2>本日の受付</h2><div class="msg" id="closedMsg"></div></div>
+  <div class="sheet">
+    <div id="closed" class="closed hide"></div>
 
-  <div id="form">
-    <div class="card" style="background:#fff3f0;border-color:var(--enji)"><h2 style="color:var(--enji)">お持ち帰りのご注意</h2>
-      <div class="msg" style="color:#5a2a22"><b>持ち帰りのオリオンには目玉焼きが付きません</b>（ミートボール2個・コロッケ付き）。瓶ドリンクは店内のみです。<br>ご要望は「副菜追加」以外はお受けしていません。</div></div>
+    <div id="form">
+      <div class="note"><b>持ち帰りのオリオンは目玉焼きなし</b>ミートボール2個・コロッケ付きでお作りします。瓶ドリンクは店内のみ。ご要望は「副菜追加（ハンバーグ・コロッケ）」のみ承ります。</div>
 
-    <div class="card"><h2>1. 商品を選ぶ</h2><div id="menu"></div>
-      <div class="total"><span>合計</span><b id="total">0円</b></div>
-      <div class="msg" id="mealNote">ナポリタン1食以上・1回のご注文は10食まで</div></div>
+      <div class="step"><i>1</i><b>商品を選ぶ</b></div>
+      <div id="menu"></div>
+      <div class="hint" id="mealNote">ナポリタン1食以上・1回のご注文は10食まで</div>
 
-    <div class="card"><h2>2. 受け取り時刻（本日）</h2>
+      <div class="step"><i>2</i><b>受け取り時刻（本日）</b></div>
       <div class="slots" id="slots"></div>
-      <div class="msg" style="margin-top:8px">受け取りの20分前まで予約できます。残り食数の少ない枠は薄く表示されます。</div></div>
+      <div class="hint">受け取りの20分前まで予約できます。「満席」の枠は選べません。</div>
 
-    <div class="card"><h2>3. お名前・連絡先</h2>
+      <div class="step"><i>3</i><b>お名前・連絡先</b></div>
       <label>お名前（受け取り時にお呼びします）</label><input id="name" placeholder="例：山田" autocomplete="name">
-      <label>携帯番号（確認用。お店からの連絡にのみ使います）</label><input id="phone" type="tel" placeholder="例：09012345678" autocomplete="tel">
+      <label>携帯番号（お店からの連絡にのみ使います）</label><input id="phone" type="tel" inputmode="numeric" placeholder="例：09012345678" autocomplete="tel">
       <div class="err" id="err"></div>
-      <button class="go" id="go" onclick="submitOrder()">予約する</button>
-      <div class="msg" style="margin-top:8px">お支払いは受け取り時に店頭で（PayPay・現金）。事前決済はありません。</div></div>
+      <div class="hint" style="margin-top:14px">お支払いは受け取り時に店頭で（PayPay・現金）。事前決済はありません。</div>
+    </div>
+
+    <div id="done" class="done hide">
+      <div class="chk">✓</div>
+      <h2>ご予約を受け付けました</h2>
+      <div class="t" id="doneSlot"></div>
+      <div class="lbl">受付番号</div><div class="no" id="doneNo"></div>
+      <div class="box" id="doneText"></div>
+      <div class="hint" style="text-align:left">受け取り時刻に店頭でお名前をお伝えください。お支払いは店頭で（PayPay・現金）。この画面はスクリーンショットで保存しておくと安心です。</div>
+      <button class="btn2" onclick="location.reload()">別の予約をする</button>
+    </div>
+
+    <footer>洋食オリオン 神田淡路町店<br>千代田区神田淡路町1-15 塚崎ビル1階<br>営業 11:00〜14:30 ／ 日曜定休</footer>
   </div>
 
-  <div id="done" class="card done hide">
-    <h2>ご予約を受け付けました</h2>
-    <div class="t" id="doneSlot"></div>
-    <div>受付番号</div><div class="no" id="doneNo"></div>
-    <div class="msg" id="doneText" style="text-align:left"></div>
-    <div class="msg" style="margin-top:10px">受け取り時刻にテイクアウト窓口でお名前をお伝えください。お支払いは店頭で（PayPay・現金）。<br>この画面はスクリーンショットで保存しておくと安心です。</div>
-    <button class="go" style="background:var(--midori)" onclick="location.reload()">別の予約をする</button>
-  </div>
-
-  <footer>洋食オリオン 神田淡路町店（千代田区神田淡路町1-15 塚崎ビル1階）<br>営業 11:00〜14:30 ／ 日曜定休</footer>
+  <div class="bar" id="bar"><div class="in"><div class="sum"><small>合計（税込）</small><b id="total">0円</b><em id="sumMeals"></em></div><button class="go" id="go" onclick="submitOrder()">予約する</button></div></div>
 </div>
 
 <script>
@@ -88,21 +113,31 @@ let S = null, qty = {}, slot = null;
 async function init(){
   try{
     const r = await fetch(API + "?mode=slots&t=" + Date.now(), {cache:"no-store"}); S = await r.json();
-  }catch(e){ showClosed("ただいま予約システムに接続できません。少し時間をおいて開き直してください。"); return; }
+  }catch(e){ showClosed("ただいま予約システムに接続できません。<br>少し時間をおいて開き直してください。"); return; }
   if(!S.open){ showClosed(S.reason || "本日の受付は終了しました"); return; }
-  $("menu").innerHTML = S.menu.map(m=>`<div class="item"><div class="n"><b>${m.name.replace(/^TG/,"")}</b><small>${m.desc||""}</small></div><div class="p">${m.price.toLocaleString()}円</div>
-    <div class="qty"><button onclick="chg('${m.name}',-1)">−</button><span id="q_${m.name}">0</span><button onclick="chg('${m.name}',1)">＋</button></div></div>`).join("");
+  const rows = [];
+  S.menu.forEach(m=>{
+    if(m.opts && m.opts.length){ m.opts.forEach(o=>{ const k = m.name+"::"+o; rows.push({k, title:m.name+"　"+o, desc:o+"を1品追加", price:m.price}); }); }
+    else rows.push({k:m.name, title:m.name.replace(/^TG/,""), desc:m.desc||"", price:m.price});
+  });
+  $("menu").innerHTML = rows.map(r=>`<div class="item" id="it_${r.k}"><div class="n"><b>${r.title}</b><small>${r.desc}</small><div class="p">${r.price.toLocaleString()}円</div></div>
+    <div class="qty"><button onclick="chg('${r.k}',-1)" aria-label="減らす">−</button><span id="q_${r.k}">0</span><button onclick="chg('${r.k}',1)" aria-label="増やす">＋</button></div></div>`).join("");
   renderSlots();
   $("mealNote").textContent = `ナポリタン1食以上・1回のご注文は${S.maxPerOrder}食まで`;
 }
-function showClosed(msg){ $("form").classList.add("hide"); $("closed").classList.remove("hide"); $("closedMsg").textContent = msg; }
-function meals(){ return S.menu.reduce((a,m)=>a+(m.meal*(qty[m.name]||0)),0); }
+function showClosed(msg){ $("form").classList.add("hide"); $("bar").classList.add("hide"); $("closed").classList.remove("hide"); $("closed").innerHTML = msg; }
+function base(k){ return k.split("::")[0]; }
+function menuOf(k){ return S.menu.find(x=>x.name===base(k)); }
+function qtyOf(name){ return Object.keys(qty).reduce((a,k)=>a+(base(k)===name?qty[k]:0),0); }
+function meals(){ return S.menu.reduce((a,m)=>a+(m.meal*qtyOf(m.name)),0); }
 function chg(n, d){
-  const m = S.menu.find(x=>x.name===n); const nv = Math.max(0, (qty[n]||0)+d);
+  const m = menuOf(n); const nv = Math.max(0, (qty[n]||0)+d);
   if(d>0 && m.meal && meals()+1 > S.maxPerOrder) return;
   if(d>0 && !m.meal && nv > 10) return;
-  qty[n] = nv; $("q_"+n).textContent = nv;
-  $("total").textContent = S.menu.reduce((a,x)=>a+x.price*(qty[x.name]||0),0).toLocaleString()+"円";
+  qty[n] = nv; document.getElementById("q_"+n).textContent = nv;
+  document.getElementById("it_"+n).classList.toggle("on", nv>0);
+  $("total").textContent = S.menu.reduce((a,x)=>a+x.price*qtyOf(x.name),0).toLocaleString()+"円";
+  const ms = meals(); $("sumMeals").textContent = ms ? ms+"食" : "";
   renderSlots();
 }
 function renderSlots(){
@@ -120,17 +155,19 @@ async function submitOrder(){
   if(phone.length < 10) return showErr("携帯番号を入力してください（ハイフンなし）");
   $("go").disabled = true; $("go").textContent = "送信中…";
   try{
-    const items = {}; S.menu.forEach(m=>{ if(qty[m.name]) items[m.name] = qty[m.name]; });
-    const r = await fetch(API, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({type:"order_new", slot, name, phone, note:"", items})});
+    const items = {}, notes = []; S.menu.forEach(m=>{ const q = qtyOf(m.name); if(q) items[m.name] = q;
+      if(m.opts) m.opts.forEach(o=>{ const v = qty[m.name+"::"+o]||0; if(v) notes.push(o+"×"+v); }); });
+    const note = notes.length ? "副菜: "+notes.join("、") : "";
+    const r = await fetch(API, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({type:"order_new", slot, name, phone, note, items})});
     const j = await r.json();
     if(j.error){ showErr(j.message || "予約できませんでした。時間を選び直してください"); await init(); $("go").disabled=false; $("go").textContent="予約する"; return; }
-    $("form").classList.add("hide"); $("done").classList.remove("hide");
+    $("form").classList.add("hide"); $("bar").classList.add("hide"); $("done").classList.remove("hide");
     $("doneSlot").textContent = `本日 ${j.slot} 受け取り`; $("doneNo").textContent = j.id;
-    $("doneText").innerHTML = `${j.text.split("　").map(x=>"・"+x.replace(/^TG/,"")).join("<br>")}<br>合計 <b>${j.total.toLocaleString()}円</b>（${name} 様）`;
+    $("doneText").innerHTML = `${j.text.split("　").filter(x=>!(note&&x.startsWith("副菜追加"))).map(x=>"・"+x.replace(/^TG/,"")).join("<br>")}${note?"<br>・"+note.replace("副菜: ","副菜追加 "):""}<br>合計 <b>${j.total.toLocaleString()}円</b>（${name} 様）`;
     window.scrollTo(0,0);
   }catch(e){ showErr("送信に失敗しました。電波の良いところでもう一度お試しください"); $("go").disabled=false; $("go").textContent="予約する"; }
 }
-function showErr(m){ const e=$("err"); e.textContent = m; e.style.display = "block"; }
+function showErr(m){ const e=$("err"); e.textContent = m; e.style.display = "block"; e.scrollIntoView({block:"center",behavior:"smooth"}); }
 init();
 </script>
 </body>
