@@ -379,14 +379,14 @@ function renderPnl(){
       ["− 人件費", -cur.labor, `${cur.hours}h・人時売上 ${cur.salesPerHour.toLocaleString()}円`],
       ["− 変動経費", -cur.exp, ""],
       ["− 固定費(月額満額)", -cur.fixed, ""],
-    ].map(([k,v,n])=>`<div class="pl"><span>${k} <small style="color:#6b5a40">${n}</small></span><b>${(v<0?"−":"")+Math.abs(Math.round(v)).toLocaleString()}円</b></div>`).join("")
+    ].concat(cur.laborPre ? [["− 開業前の人件費(準備・研修)", -cur.laborPre, "営業日あたりの計算には含めない"]] : []).map(([k,v,n])=>`<div class="pl"><span>${k} <small style="color:#6b5a40">${n}</small></span><b>${(v<0?"−":"")+Math.abs(Math.round(v)).toLocaleString()}円</b></div>`).join("")
       + `<div class="pl total"><span>営業利益</span>${signed(cur.profit)}</div>`;
     $("pnlNote").textContent = cur.status + "。原価は商品原価マスター×個数の概算、固定費は固定費シートの月額。";
   }
   $("pnlFc").innerHTML = fc ? [
       ["営業利益", signed(fc.profit), "利益率 "+pct(fc.margin)],
       ["売上", Math.round(fc.sales).toLocaleString()+"円", `想定営業 ${fc.days}日`],
-      ["人件費", Math.round(fc.labor).toLocaleString()+"円", ""],
+      ["人件費", Math.round(fc.labor).toLocaleString()+"円", fc.laborPre?`＋開業前 ${Math.round(fc.laborPre).toLocaleString()}円`:""],
       ["原価", Math.round(fc.cost).toLocaleString()+"円", "原価率 "+pct(fc.costRate)]
     ].map(([k,v,n])=>`<div class="c"><small>${k}</small><b>${v}</b><i>${n}</i></div>`).join("") : "<div class='sub'>-</div>";
   // 日別
