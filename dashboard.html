@@ -69,6 +69,17 @@
 .pd-sub em{font-style:normal;font-size:11px;margin-left:3px;font-weight:normal}
 .pd-sub em.up{color:var(--midori)} .pd-sub em.dn{color:var(--enji)}
 .hide{display:none}
+.pnlGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+.pnlGrid .c{background:var(--cream-d);border-radius:10px;padding:8px 10px}
+.pnlGrid .c small{display:block;font-size:10px;letter-spacing:2px;color:var(--midori)}
+.pnlGrid .c b{display:block;font-size:20px;font-variant-numeric:tabular-nums;line-height:1.2}
+.pnlGrid .c i{font-style:normal;font-size:11px;color:#6b5a40}
+.pos{color:var(--midori)} .neg{color:var(--enji)}
+.pl{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px dotted #d9ccb0;padding:4px 0;font-size:13px}
+.pl b{font-variant-numeric:tabular-nums}
+.pl.total{border-bottom:none;border-top:2px solid var(--wood-d);margin-top:4px;padding-top:6px;font-size:15px}
+.daygrid{font-size:12px}
+.daygrid td,.daygrid th{padding:4px 2px}
 </style>
 </head>
 <body>
@@ -84,6 +95,7 @@
     <button id="tab-day" class="on" onclick="setTab('day')">日次</button>
     <button id="tab-week" onclick="setTab('week')">週次</button>
     <button id="tab-month" onclick="setTab('month')">月次</button>
+    <button id="tab-pnl" onclick="setTab('pnl')">収支</button>
   </div>
 
   <!-- ===== 日次 ===== -->
@@ -108,6 +120,10 @@
       <div class="card"><h2>ドリンク率(本÷食数)</h2><div class="big" id="dDrink">-</div>
         <div class="sub">計画 30%</div></div>
 
+      <div class="card wide"><h2>この日の粗利（概算）</h2>
+        <div class="pnlGrid" id="dPnl"></div>
+        <div class="sub">売上 − 原価（商品原価マスター×個数） − 人件費（勤怠から）。固定費は含まない</div></div>
+
       <div class="card wide"><h2>店内 / 持ち帰り</h2>
         <table id="modeTable"></table></div>
 
@@ -129,6 +145,24 @@
   <div id="view-week" class="hide">
     <div class="cards"><div class="card wide"><h2>週次集計(月曜始まり・直近12週)</h2>
       <div id="weekTable"></div></div></div>
+  </div>
+
+  <!-- ===== 収支 ===== -->
+  <div id="view-pnl" class="hide">
+    <div class="cards">
+      <div class="card wide"><h2 id="pnlTitle">今月の収支（暫定）</h2>
+        <div class="pnlGrid" id="pnlTop"></div>
+        <div id="pnlLines" style="margin-top:8px"></div>
+        <div class="sub" id="pnlNote"></div></div>
+      <div class="card wide"><h2>着地予測（今のペースで月末まで営業した場合）</h2>
+        <div class="pnlGrid" id="pnlFc"></div></div>
+      <div class="card wide"><h2>日別の粗利（今月）</h2>
+        <div style="overflow-x:auto"><table class="daygrid" id="pnlDays"></table></div>
+        <div class="sub">粗利 = 売上 − 原価(概算) − 人件費。人件費率 = 人件費 ÷ 売上</div></div>
+      <div class="card"><h2>固定費（月額）</h2><div id="pnlFixed"></div></div>
+      <div class="card"><h2>今月の経費（変動）</h2><div id="pnlExp"></div></div>
+      <div class="card wide"><h2>前月との比較</h2><div style="overflow-x:auto"><table id="pnlMonths"></table></div></div>
+    </div>
   </div>
 
   <!-- ===== 月次 ===== -->
@@ -154,7 +188,7 @@ const yen = n => (n||0).toLocaleString() + "円";
 let DATA = null, viewDate = null;
 
 function setTab(t){
-  ["day","week","month"].forEach(x=>{
+  ["day","week","month","pnl"].forEach(x=>{
     $("view-"+x).classList.toggle("hide", x!==t);
     $("tab-"+x).classList.toggle("on", x===t);
   });
@@ -188,6 +222,7 @@ function renderDay(){
   const fk = (d.items||{})["副菜追加"] || 0;
   $("dCount").textContent = `${d.count}会計 / 副菜追加 ${fk}個${d.meals?"("+Math.round(100*fk/d.meals)+"%)":""}`;
   $("dGoal").textContent = `目標 ${GOAL_MEALS}食まであと ${Math.max(0, GOAL_MEALS - d.meals)}食`;
+  renderDayPnl(d);
   $("goalBar").style.width = Math.min(100, 100*d.meals/GOAL_MEALS) + "%";
 
   // 店内/持ち帰りテーブル
@@ -307,7 +342,69 @@ function renderMonth(){
 
 function renderAll(){
   if(!viewDate || !dayByDate(viewDate)) viewDate = DATA.todayKey;
-  renderDay(); renderWeek(); renderMonth();
+  renderDay(); renderWeek(); renderMonth(); renderPnl();
+}
+
+// ===== 収支 =====
+function pnlData(){ return (DATA && DATA.pnl) || {months:[], fixed:[], laborDaily:{}, costDaily:{}, expenses:[]}; }
+function signed(n){ return `<span class="${n>=0?"pos":"neg"}">${n>=0?"":"−"}${Math.abs(Math.round(n)).toLocaleString()}円</span>`; }
+function pct(n){ return (n===null||n===undefined||isNaN(n)) ? "-" : Math.round(n*1000)/10 + "%"; }
+function renderDayPnl(d){
+  const p = pnlData(); const cost = p.costDaily[viewDate] || 0; const lab = p.laborDaily[viewDate] || null;
+  const gp = d.sales - cost - (lab?lab.cost:0);
+  $("dPnl").innerHTML = [
+    ["売上", d.sales.toLocaleString()+"円", ""],
+    ["原価(概算)", cost.toLocaleString()+"円", d.sales?"原価率 "+pct(cost/d.sales):""],
+    ["人件費", lab?lab.cost.toLocaleString()+"円":"-", lab?`${lab.staff}人・${(lab.minutes/60).toFixed(1)}h${d.sales?"・人件費率 "+pct(lab.cost/d.sales):""}`:"勤怠確定後に反映"],
+    ["粗利", signed(gp), d.sales?"粗利率 "+pct(gp/d.sales):""]
+  ].map(([k,v,n])=>`<div class="c"><small>${k}</small><b>${v}</b><i>${n}</i></div>`).join("");
+}
+function renderPnl(){
+  const p = pnlData(); const curKey = DATA.todayKey.slice(0,7);
+  const cur = p.months.find(m=>m.key===curKey) || null;
+  const fc = p.months.find(m=>m.key===curKey+" 着地予測") || null;
+  const hist = p.months.filter(m=>!/着地予測/.test(m.key)).sort((a,b)=>a.key<b.key?1:-1);
+  $("pnlTitle").textContent = curKey.replace("/","年")+"月の収支（暫定）";
+  if(!cur){ $("pnlTop").innerHTML = ""; $("pnlLines").innerHTML = "<div class='sub'>今月の損益データがまだありません（分析シートの dailyPnlJob 実行後に表示）</div>"; }
+  else {
+    $("pnlTop").innerHTML = [
+      ["営業利益", signed(cur.profit), "利益率 "+pct(cur.margin)],
+      ["売上", cur.sales.toLocaleString()+"円", `営業${cur.days}日・${cur.meals}食`],
+      ["FL率(原価+人件費)", pct(cur.fl), "目安 60%以下"],
+      ["損益分岐", cur.bep?cur.bep+"食/日":"-", "固定費と人件費を賄う食数"]
+    ].map(([k,v,n])=>`<div class="c"><small>${k}</small><b>${v}</b><i>${n}</i></div>`).join("");
+    $("pnlLines").innerHTML = [
+      ["売上", cur.sales, ""],
+      ["− 原価(概算)", -cur.cost, "原価率 "+pct(cur.costRate)],
+      ["− 人件費", -cur.labor, `${cur.hours}h・人時売上 ${cur.salesPerHour.toLocaleString()}円`],
+      ["− 変動経費", -cur.exp, ""],
+      ["− 固定費(月額満額)", -cur.fixed, ""],
+    ].map(([k,v,n])=>`<div class="pl"><span>${k} <small style="color:#6b5a40">${n}</small></span><b>${(v<0?"−":"")+Math.abs(Math.round(v)).toLocaleString()}円</b></div>`).join("")
+      + `<div class="pl total"><span>営業利益</span>${signed(cur.profit)}</div>`;
+    $("pnlNote").textContent = cur.status + "。原価は商品原価マスター×個数の概算、固定費は固定費シートの月額。";
+  }
+  $("pnlFc").innerHTML = fc ? [
+      ["営業利益", signed(fc.profit), "利益率 "+pct(fc.margin)],
+      ["売上", Math.round(fc.sales).toLocaleString()+"円", `想定営業 ${fc.days}日`],
+      ["人件費", Math.round(fc.labor).toLocaleString()+"円", ""],
+      ["原価", Math.round(fc.cost).toLocaleString()+"円", "原価率 "+pct(fc.costRate)]
+    ].map(([k,v,n])=>`<div class="c"><small>${k}</small><b>${v}</b><i>${n}</i></div>`).join("") : "<div class='sub'>-</div>";
+  // 日別
+  const days = DATA.daily.filter(d=>d.date.slice(0,7)===curKey && d.count>0).slice().reverse();
+  let tS=0,tC=0,tL=0;
+  $("pnlDays").innerHTML = "<tr><th>日</th><th>売上</th><th>原価</th><th>人件費</th><th>人件費率</th><th>粗利</th></tr>" + days.map(d=>{
+    const c = p.costDaily[d.date]||0, l = (p.laborDaily[d.date]||{}).cost||0, g = d.sales-c-l; tS+=d.sales; tC+=c; tL+=l;
+    return `<tr><td>${d.date.slice(5)}(${youbi(d.date)})</td><td>${d.sales.toLocaleString()}</td><td>${c.toLocaleString()}</td><td>${l?l.toLocaleString():"-"}</td><td>${l&&d.sales?pct(l/d.sales):"-"}</td><td>${signed(g)}</td></tr>`;
+  }).join("") + (days.length?`<tr><th>合計</th><th>${tS.toLocaleString()}</th><th>${tC.toLocaleString()}</th><th>${tL.toLocaleString()}</th><th>${tS?pct(tL/tS):"-"}</th><th>${signed(tS-tC-tL)}</th></tr>`:"<tr><td colspan='6'>記録なし</td></tr>");
+  // 固定費
+  const ft = p.fixed.reduce((a,x)=>a+x.amount,0);
+  $("pnlFixed").innerHTML = p.fixed.map(x=>`<div class="pl"><span>${x.name}</span><b>${x.amount.toLocaleString()}円</b></div>`).join("") + `<div class="pl total"><span>合計</span><b>${ft.toLocaleString()}円</b></div>`;
+  // 経費
+  const ex = p.expenses.filter(e=>e.date.slice(0,7)===curKey && !e.fixed).sort((a,b)=>a.date<b.date?1:-1);
+  const byAcct = {}; ex.forEach(e=>{ byAcct[e.acct]=(byAcct[e.acct]||0)+e.amount; });
+  $("pnlExp").innerHTML = (Object.keys(byAcct).length ? Object.entries(byAcct).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="pl"><span>${k}</span><b>${v.toLocaleString()}円</b></div>`).join("") + `<div class="pl total"><span>合計</span><b>${ex.reduce((a,e)=>a+e.amount,0).toLocaleString()}円</b></div>` : "<div class='sub'>まだ経費の登録がありません（分析シートの「経費」に入力）</div>");
+  // 月比較
+  $("pnlMonths").innerHTML = "<tr><th>月</th><th>売上</th><th>原価率</th><th>人件費</th><th>固定費</th><th>営業利益</th><th>利益率</th></tr>" + (hist.map(m=>`<tr><td>${m.key}</td><td>${m.sales.toLocaleString()}</td><td>${pct(m.costRate)}</td><td>${m.labor.toLocaleString()}</td><td>${m.fixed.toLocaleString()}</td><td>${signed(m.profit)}</td><td>${pct(m.margin)}</td></tr>`).join("") || "<tr><td colspan='7'>記録なし</td></tr>");
 }
 
 async function load(){
