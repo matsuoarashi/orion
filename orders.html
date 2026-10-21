@@ -8,47 +8,69 @@
   :root{ --wood:#6b3f1c; --wood-d:#4e2d12; --cream:#fdf6e8; --cream-d:#e8dcc2; --enji:#93332a; --midori:#2c4f39; --ink:#3a2a18; --amber:#b8862b; }
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:'Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif;background:linear-gradient(#7a4b22,#5c3413);min-height:100vh;color:var(--ink);display:flex;justify-content:center;padding:10px}
-  .app{width:100%;max-width:640px;display:flex;flex-direction:column;gap:10px}
+  .app{width:100%;max-width:680px;display:flex;flex-direction:column;gap:10px}
   header{display:flex;justify-content:space-between;align-items:center;color:#f3ddb0}
   header b{font-size:20px;letter-spacing:3px}
-  .bar{display:flex;gap:6px;flex-wrap:wrap}
-  .bar button{flex:1;padding:10px 6px;border-radius:10px;border:2px solid var(--wood-d);background:var(--cream-d);font-size:13px;font-weight:bold;color:var(--ink);white-space:nowrap}
-  .bar button.on{background:var(--midori);color:#fff;border-color:var(--midori)}
-  .bar button.warn{background:var(--enji);color:#fff;border-color:var(--enji)}
-  .card{background:var(--cream);border-radius:14px;padding:12px 14px;border:3px solid var(--wood-d)}
+  #clock{font-size:30px;font-weight:bold;font-variant-numeric:tabular-nums}
+  /* 状態パネル */
+  .panel{background:var(--cream);border-radius:14px;border:3px solid var(--wood-d);padding:10px 12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .ctl{border-radius:12px;padding:10px 8px;border:2px solid var(--wood-d);background:var(--cream-d);text-align:center;cursor:pointer}
+  .ctl small{display:block;font-size:10px;letter-spacing:2px;color:#6b5a40}
+  .ctl b{display:block;font-size:15px;margin:2px 0}
+  .ctl i{font-style:normal;font-size:11px;color:#6b5a40}
+  .ctl.ok{background:#dfeee3;border-color:var(--midori)} .ctl.ok b{color:var(--midori)}
+  .ctl.ng{background:#f6e3df;border-color:var(--enji)} .ctl.ng b{color:var(--enji)}
+  .sum{display:flex;gap:10px;justify-content:space-between;color:#f3ddb0;font-size:13px;padding:0 6px}
+  .sum b{font-size:20px;margin-left:2px}
+  .msg{font-size:12px;color:#e8d5ac;text-align:center;min-height:16px}
+  h3{color:#f3ddb0;font-size:13px;letter-spacing:3px;margin:6px 4px 0}
+  /* 注文カード */
+  .card{background:var(--cream);border-radius:14px;padding:12px 14px;border:3px solid var(--wood-d);display:grid;grid-template-columns:118px 1fr;gap:10px}
   .card.new{border-color:var(--enji);box-shadow:0 0 0 3px #f3c7c0}
   .card.ready{border-color:var(--amber)}
-  .card.done{opacity:.55}
-  .top{display:flex;justify-content:space-between;align-items:baseline}
-  .top .slot{font-size:26px;font-weight:bold;letter-spacing:1px}
-  .top .id{font-size:12px;color:#6b5a40}
-  .who{font-size:16px;font-weight:bold;margin:4px 0}
-  .who small{font-weight:normal;color:#6b5a40;margin-left:8px}
-  .items{font-size:15px;line-height:1.7}
-  .items b{font-size:17px}
-  .note{font-size:13px;color:#8d2f26;margin-top:4px}
-  .acts{display:flex;gap:6px;margin-top:8px}
-  .acts button{flex:1;padding:10px 4px;border-radius:10px;border:2px solid var(--wood-d);background:var(--cream-d);font-size:13px;font-weight:bold;color:var(--ink)}
-  .acts button.p{background:var(--midori);color:#fff;border-color:var(--midori)}
-  .status{font-size:12px;color:#6b5a40;text-align:center}
-  .sum{display:flex;gap:8px;justify-content:space-around;color:#f3ddb0;font-size:13px}
-  .sum b{font-size:18px}
-  .empty{color:#c8a866;text-align:center;padding:30px 0}
+  .card.done,.card.cancel{opacity:.5}
+  .t{border-right:2px dashed #c9b891;padding-right:8px}
+  .t .lab{font-size:10px;letter-spacing:2px;color:var(--midori)}
+  .t .slot{font-size:34px;font-weight:bold;line-height:1.05;font-variant-numeric:tabular-nums}
+  .t .left{font-size:13px;font-weight:bold;margin-top:2px}
+  .t .left.soon{color:var(--amber)} .t .left.late{color:var(--enji)}
+  .t .at{font-size:11px;color:#6b5a40;margin-top:6px;line-height:1.5}
+  .b .who{font-size:18px;font-weight:bold}
+  .b .who small{font-weight:normal;font-size:12px;color:#6b5a40;margin-left:6px}
+  .b .items{font-size:15px;line-height:1.6;margin:4px 0}
+  .b .items b{font-size:17px;margin-left:6px}
+  .b .tot{font-size:13px;color:#6b5a40}
+  .b .note{font-size:13px;color:#8d2f26;background:#fff3f0;border-radius:8px;padding:4px 8px;margin-top:4px}
+  .acts{grid-column:1/-1;display:flex;gap:6px}
+  .acts button{flex:1;padding:12px 4px;border-radius:10px;border:2px solid var(--wood-d);background:var(--cream-d);font-size:14px;font-weight:bold;color:var(--ink)}
+  .acts button.go{background:var(--midori);color:#fff;border-color:var(--midori)}
+  .acts button.sub{flex:0 0 64px;font-size:12px}
+  .pill{display:inline-block;font-size:10px;padding:2px 6px;border-radius:6px;background:var(--cream-d);color:#6b5a40;margin-left:4px;vertical-align:middle}
+  .empty{color:#c8a866;text-align:center;padding:26px 10px;line-height:1.9;font-size:13px}
   .hide{display:none}
+  #preview{background:#fff;padding:10px;border-radius:12px;text-align:center}
+  #preview img{width:288px;border:1px solid #ccc}
 </style>
 </head>
 <body>
 <div class="app">
-  <header><div><small style="display:block;font-size:10px;letter-spacing:3px;color:#c8a866">洋食オリオン</small><b>テイクアウト注文</b></div><span id="clock" style="font-size:22px;font-weight:bold"></span></header>
-  <div class="sum"><span>本日 <b id="sMeals">0</b>食</span><span>未対応 <b id="sNew">0</b></span><span>次の受取 <b id="sNext">—</b></span></div>
-  <div class="bar">
-    <button id="bStart" onclick="start()">▶ 受信開始</button>
-    <button id="bPrint" onclick="connectPrinter()">🖨 プリンター接続</button>
-    <button id="bOpen" onclick="toggleOpen()">受付: —</button>
-    <button onclick="poll(true)">↻</button>
+  <header><div><small style="display:block;font-size:10px;letter-spacing:3px;color:#c8a866">洋食オリオン</small><b>テイクアウト注文</b></div><span id="clock"></span></header>
+
+  <div class="panel">
+    <div class="ctl ng" id="cRecv" onclick="start()"><small>新着チェック</small><b>停止中</b><i>タップで開始</i></div>
+    <div class="ctl ng" id="cPrint" onclick="connectPrinter()"><small>プリンター</small><b>未接続</b><i>タップで接続</i></div>
+    <div class="ctl" id="cOpen" onclick="toggleOpen()"><small>お客様の予約</small><b>—</b><i></i></div>
   </div>
-  <div class="status" id="st">「受信開始」を押すと新着の通知音とプリンターの自動印刷が有効になります</div>
-  <div id="list"></div>
+  <div class="msg" id="st"></div>
+  <div class="sum"><span>本日 <b id="sCnt">0</b>件 <b id="sMeals">0</b>食</span><span>未対応 <b id="sNew">0</b></span><span>次の受取 <b id="sNext">—</b></span></div>
+
+  <div id="preview" class="hide"></div>
+
+  <h3 id="hLive">これから渡す</h3>
+  <div id="live"></div>
+  <h3 id="hDone" class="hide">渡し済み・取消</h3>
+  <div id="done"></div>
+  <div style="text-align:center;margin:8px 0 16px"><button onclick="testPrint()" style="background:none;border:1px solid #a98d5c;color:#e8d5ac;border-radius:8px;padding:6px 14px;font-size:12px">テスト印刷 / 伝票プレビュー</button></div>
   <canvas id="cv" class="hide"></canvas>
 </div>
 
@@ -57,56 +79,79 @@ const API = "https://script.google.com/macros/s/AKfycbzFNl4UM3fkoANru-agWmuOox-h
 const $ = id => document.getElementById(id);
 const KEY = new URLSearchParams(location.search).get("key") || localStorage.getItem("orderKey") || "";
 if (KEY) localStorage.setItem("orderKey", KEY);
-let ORDERS = [], seen = new Set(JSON.parse(localStorage.getItem("seenOrders")||"[]")), running = false, timer = null, isOpen = null, audio = null;
+let ORDERS = [], seen = new Set(JSON.parse(localStorage.getItem("seenOrders")||"[]")), running = false, isOpen = null, audio = null;
 let printer = { device:null, ch:null, withResp:false };
-const todayKey = () => { const d = new Date(); return d.getFullYear()+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+String(d.getDate()).padStart(2,"0"); };
-setInterval(()=>{ const d=new Date(); $("clock").textContent = String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }, 1000);
+const pad = n => String(n).padStart(2,"0");
+const todayKey = () => { const d = new Date(); return d.getFullYear()+"/"+pad(d.getMonth()+1)+"/"+pad(d.getDate()); };
+const nowHM = () => { const d = new Date(); return pad(d.getHours())+":"+pad(d.getMinutes()); };
+const minOf = hm => { const [h,m] = hm.split(":").map(Number); return h*60+m; };
+setInterval(()=>{ $("clock").textContent = nowHM(); if(ORDERS.length) render(); }, 15000); $("clock").textContent = nowHM();
 
+function setCtl(id, ok, label, hint){ const el = $(id); el.classList.toggle("ok", ok===true); el.classList.toggle("ng", ok===false); el.querySelector("b").textContent = label; el.querySelector("i").textContent = hint||""; }
 function start(){
+  if(running) return;
   audio = new (window.AudioContext||window.webkitAudioContext)(); beep(1);
-  running = true; $("bStart").classList.add("on"); $("bStart").textContent = "● 受信中"; $("st").textContent = "20秒ごとに新着を確認しています";
-  poll(true); timer = setInterval(()=>poll(false), 20000);
+  running = true; setCtl("cRecv", true, "動作中", "20秒ごとに確認");
+  poll(true); setInterval(()=>poll(false), 20000);
 }
 function beep(n){ if(!audio) return; for(let i=0;i<n;i++){ const o=audio.createOscillator(), g=audio.createGain(); o.connect(g); g.connect(audio.destination); o.frequency.value=880; g.gain.value=0.3; o.start(audio.currentTime+i*0.35); o.stop(audio.currentTime+i*0.35+0.25); } }
 
 async function poll(manual){
-  if(!KEY){ $("st").textContent = "URLに店用キーが必要です（分析シートの「注文設定」の店用キー）"; return; }
+  if(!KEY){ $("st").textContent = "URLに店用キーが必要です（分析シート「注文設定」の店用キー）"; return; }
   try{
     const r = await fetch(`${API}?mode=orders&date=${encodeURIComponent(todayKey())}&key=${encodeURIComponent(KEY)}&t=${Date.now()}`, {cache:"no-store"});
     const j = await r.json(); if(j.error){ $("st").textContent = j.error==="key" ? "店用キーが違います" : "エラー: "+j.error; return; }
-    ORDERS = j.orders; isOpen = j.open; $("bOpen").textContent = "受付: " + (isOpen ? "ON" : "停止中"); $("bOpen").classList.toggle("warn", !isOpen);
+    ORDERS = j.orders; isOpen = j.open;
+    setCtl("cOpen", isOpen, isOpen ? "受付中" : "停止中", isOpen ? "タップで停止" : "タップで再開");
     const fresh = ORDERS.filter(o=>o.status==="new" && !seen.has(o.id));
     render();
     if(fresh.length && running){ beep(3); for(const o of fresh){ if(printer.ch && !o.printed){ try{ await printOrder(o); await update(o.id, {printed:true}); o.printed=true; }catch(e){ $("st").textContent = "印刷失敗: "+e.message; } } } }
     fresh.forEach(o=>seen.add(o.id)); localStorage.setItem("seenOrders", JSON.stringify([...seen].slice(-300)));
-    if(running) $("st").textContent = `最終確認 ${new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})}${printer.ch?"・プリンター接続中":"・プリンター未接続"}`;
+    $("st").textContent = `最終確認 ${nowHM()}` + (running ? "" : "（新着チェックは停止中。左上をタップして開始）");
   }catch(e){ $("st").textContent = "通信エラー（電波を確認）"; }
 }
+function leftText(slot){
+  const d = minOf(slot) - minOf(nowHM());
+  if(d > 60) return {t:`あと${Math.floor(d/60)}時間${d%60}分`, c:""};
+  if(d > 10) return {t:`あと${d}分`, c:""};
+  if(d >= 0) return {t:`あと${d}分`, c:"soon"};
+  return {t:`${-d}分過ぎ`, c:"late"};
+}
+function card(o){
+  const lf = leftText(o.slot); const live = o.status==="new" || o.status==="ready";
+  return `<div class="card ${o.status}">
+    <div class="t"><div class="lab">受取</div><div class="slot">${o.slot}</div>${live?`<div class="left ${lf.c}">${lf.t}</div>`:""}<div class="at">受付 ${o.at}<br>#${o.id}</div></div>
+    <div class="b"><div class="who">${esc(o.name)} 様 <small>${o.phone?fmtTel(o.phone):""}</small>${o.status==="ready"?'<span class="pill">調理中</span>':""}${o.status==="done"?'<span class="pill">渡し済み</span>':""}${o.status==="cancel"?'<span class="pill">取消</span>':""}${o.printed?'<span class="pill">印刷済</span>':""}</div>
+      <div class="items">${Object.entries(o.items).map(([k,v])=>`${esc(k.replace(/^TG/,""))}<b>×${v}</b>`).join("<br>")}</div>
+      <div class="tot">合計 ${o.total.toLocaleString()}円・店頭払い（${o.meals}食）</div>
+      ${o.note?`<div class="note">※ ${esc(o.note)}</div>`:""}</div>
+    ${live?`<div class="acts">
+      <button class="sub" onclick="doPrint('${o.id}')">🖨</button>
+      ${o.status==="new"?`<button onclick="setStatus('${o.id}','ready')">調理に入った</button>`:""}
+      <button class="go" onclick="setStatus('${o.id}','done')">渡した</button>
+      <button class="sub" onclick="if(confirm('この注文を取り消しますか？')) setStatus('${o.id}','cancel')">取消</button>
+    </div>`:""}
+  </div>`;
+}
 function render(){
-  const live = ORDERS.filter(o=>o.status!=="cancel");
-  $("sMeals").textContent = live.filter(o=>o.status!=="cancel").reduce((a,o)=>a+o.meals,0);
-  $("sNew").textContent = live.filter(o=>o.status==="new").length;
-  const nxt = live.filter(o=>o.status!=="done").sort((a,b)=>a.slot<b.slot?-1:1)[0]; $("sNext").textContent = nxt ? nxt.slot : "—";
-  const order = {new:0, ready:1, done:2, cancel:3};
-  const list = ORDERS.slice().sort((a,b)=> (order[a.status]-order[b.status]) || (a.slot<b.slot?-1:a.slot>b.slot?1:0));
-  $("list").innerHTML = list.map(o=>`<div class="card ${o.status}">
-    <div class="top"><span class="slot">${o.slot}</span><span class="id">#${o.id}・${o.at}受付${o.printed?"・印刷済":""}</span></div>
-    <div class="who">${esc(o.name)} 様 <small>${o.phone?fmtTel(o.phone):""}</small></div>
-    <div class="items">${Object.entries(o.items).map(([k,v])=>`${esc(k.replace(/^TG/,""))} <b>×${v}</b>`).join("<br>")}<br><span style="color:#6b5a40">合計 ${o.total.toLocaleString()}円（店頭払い）</span></div>
-    ${o.note?`<div class="note">※ ${esc(o.note)}</div>`:""}
-    <div class="acts">
-      <button onclick="doPrint('${o.id}')">🖨 印刷</button>
-      ${o.status==="new"?`<button class="p" onclick="setStatus('${o.id}','ready')">調理OK</button>`:""}
-      ${o.status!=="done"&&o.status!=="cancel"?`<button class="p" onclick="setStatus('${o.id}','done')">受取済</button>`:""}
-      ${o.status!=="cancel"&&o.status!=="done"?`<button onclick="if(confirm('この注文をキャンセルしますか？')) setStatus('${o.id}','cancel')">取消</button>`:""}
-    </div></div>`).join("") || `<div class="empty">本日の注文はまだありません</div>`;
+  const live = ORDERS.filter(o=>o.status==="new"||o.status==="ready").sort((a,b)=>a.slot<b.slot?-1:a.slot>b.slot?1:0);
+  const rest = ORDERS.filter(o=>o.status==="done"||o.status==="cancel").sort((a,b)=>a.slot<b.slot?1:-1);
+  const valid = ORDERS.filter(o=>o.status!=="cancel");
+  $("sCnt").textContent = valid.length; $("sMeals").textContent = valid.reduce((a,o)=>a+o.meals,0);
+  $("sNew").textContent = ORDERS.filter(o=>o.status==="new").length;
+  $("sNext").textContent = live[0] ? live[0].slot : "—";
+  $("live").innerHTML = live.map(card).join("") || `<div class="empty">これから渡す注文はありません<br>お客様が予約すると、ここに受取時刻順で並びます（新着は赤枠＋音）</div>`;
+  $("hDone").classList.toggle("hide", !rest.length); $("done").innerHTML = rest.map(card).join("");
 }
 function esc(s){ return String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 function fmtTel(p){ return p.length===11 ? p.slice(0,3)+"-"+p.slice(3,7)+"-"+p.slice(7) : p; }
 async function update(id, fields){ const r = await fetch(API, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(Object.assign({type:"order_update", id, key:KEY}, fields))}); return r.json(); }
 async function setStatus(id, status){ const o = ORDERS.find(x=>x.id===id); if(o) o.status = status; render(); await update(id, {status}); poll(false); }
-async function toggleOpen(){ if(isOpen===null) return; if(!confirm(isOpen ? "受付を停止しますか？（注文サイトが「受付終了」になります）" : "受付を再開しますか？")) return; await fetch(API, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({type:"order_toggle", key:KEY, open:!isOpen})}); poll(true); }
-async function doPrint(id){ const o = ORDERS.find(x=>x.id===id); if(!o) return; if(!printer.ch){ alert("先に「プリンター接続」を押してください"); return; } try{ await printOrder(o); await update(id,{printed:true}); poll(false); }catch(e){ alert("印刷失敗: "+e.message); } }
+async function toggleOpen(){ if(isOpen===null) return; if(!confirm(isOpen ? "お客様からの予約受付を停止しますか？\n（注文サイトが「本日の受付は終了」になります）" : "予約受付を再開しますか？")) return; await fetch(API, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({type:"order_toggle", key:KEY, open:!isOpen})}); poll(true); }
+async function doPrint(id){ const o = ORDERS.find(x=>x.id===id); if(!o) return; if(!printer.ch){ showPreview(o); alert("プリンター未接続のため画面にプレビューを出しました。印刷するには上の「プリンター」をタップして接続してください"); return; } try{ await printOrder(o); await update(id,{printed:true}); poll(false); }catch(e){ alert("印刷失敗: "+e.message); } }
+const SAMPLE = { id:"1022-003", at:"11:42", slot:"12:15", name:"山田", phone:"09012345678", items:{"TGオリオン":2,"TGナシナシ ハーフ":1,"副菜追加":1,"コカ・コーラ":1}, total:3300, meals:3, note:"ケチャップ多め。袋を2つに分けてください" };
+async function testPrint(){ if(printer.ch){ try{ await printOrder(SAMPLE); }catch(e){ alert("印刷失敗: "+e.message); } } showPreview(SAMPLE); }
+function showPreview(o){ const cv = ticketCanvas(o); const p = $("preview"); p.classList.remove("hide"); p.innerHTML = `<div style="font-size:12px;color:#6b5a40;margin-bottom:6px">伝票プレビュー（58mm幅）<button onclick="document.getElementById('preview').classList.add('hide')" style="margin-left:10px;font-size:11px">閉じる</button></div><img src="${cv.toDataURL()}">`; window.scrollTo(0,0); }
 
 // ===== Bluetooth レシートプリンター（ESC/POS, 58mm = 384dot）=====
 // 日本語フォントの無いプリンターでも出るように、伝票を画像(ラスター)にして送る
@@ -120,40 +165,52 @@ async function connectPrinter(){
     for(const s of services){ const chs = await s.getCharacteristics(); for(const c of chs){ if(c.properties.writeWithoutResponse || c.properties.write){ found = c; printer.withResp = !c.properties.writeWithoutResponse; break; } } if(found) break; }
     if(!found) throw new Error("書き込み可能な接続先が見つかりません");
     printer.device = device; printer.ch = found;
-    device.addEventListener("gattserverdisconnected", ()=>{ printer.ch = null; $("bPrint").classList.remove("on"); $("bPrint").textContent = "🖨 プリンター接続"; $("st").textContent = "プリンターが切断されました"; });
-    $("bPrint").classList.add("on"); $("bPrint").textContent = "🖨 " + (device.name||"接続中");
-    await sendBytes(new Uint8Array([0x1b,0x40])); // 初期化
-    $("st").textContent = "プリンター接続OK: " + (device.name||"");
+    device.addEventListener("gattserverdisconnected", ()=>{ printer.ch = null; setCtl("cPrint", false, "切断", "タップで再接続"); });
+    setCtl("cPrint", true, device.name || "接続中", "自動印刷ON");
+    await sendBytes(new Uint8Array([0x1b,0x40]));
   }catch(e){ if(!/cancel/i.test(e.message)) alert("接続できませんでした: " + e.message); }
 }
 async function sendBytes(bytes){
   const CH = 180; for(let i=0;i<bytes.length;i+=CH){ const part = bytes.slice(i, i+CH); if(printer.withResp) await printer.ch.writeValue(part); else await printer.ch.writeValueWithoutResponse(part); await new Promise(r=>setTimeout(r, 12)); }
 }
 function ticketCanvas(o){
-  const W = 384, cv = $("cv"), ctx = cv.getContext("2d"); const lines = [];
+  const W = 384, cv = $("cv"), ctx = cv.getContext("2d");
   const items = Object.entries(o.items);
-  const H = 300 + items.length*46 + (o.note?60:0); cv.width = W; cv.height = H;
+  const noteLines = o.note ? Math.ceil(o.note.length/14) + 1 : 0;
+  const H = 330 + items.length*44 + noteLines*30; cv.width = W; cv.height = H;
   ctx.fillStyle = "#fff"; ctx.fillRect(0,0,W,H); ctx.fillStyle = "#000"; ctx.textBaseline = "top";
-  let y = 8;
-  ctx.font = "bold 28px sans-serif"; ctx.fillText("テイクアウト予約", 8, y); y += 40;
-  ctx.font = "bold 64px sans-serif"; ctx.fillText(o.slot, 8, y); ctx.font = "bold 26px sans-serif"; ctx.fillText("受取", 220, y+30); y += 78;
-  ctx.font = "bold 34px sans-serif"; ctx.fillText(o.name + " 様", 8, y); y += 44;
-  ctx.font = "22px sans-serif"; ctx.fillText("#" + o.id + "  " + o.at + "受付" + (o.phone?"  " + fmtTel(o.phone):""), 8, y); y += 30;
-  ctx.fillRect(8, y, W-16, 3); y += 12;
+  const line = y => { ctx.fillRect(0, y, W, 3); };
+  let y = 6;
+  ctx.font = "bold 24px sans-serif"; ctx.fillText("テイクアウト予約", 0, y);
+  ctx.font = "22px sans-serif"; ctx.textAlign = "right"; ctx.fillText("#"+o.id, W, y+2); ctx.textAlign = "left"; y += 34;
+  line(y); y += 10;
+  // 受取（最重要・特大）
+  ctx.font = "bold 26px sans-serif"; ctx.fillText("受取", 0, y+28);
+  ctx.font = "bold 84px sans-serif"; ctx.fillText(o.slot, 64, y-4); y += 92;
+  // 受付時刻と経過
+  const diff = minOf(o.slot) - minOf(o.at);
+  ctx.font = "bold 26px sans-serif"; ctx.fillText("受付 " + o.at, 0, y);
+  ctx.font = "22px sans-serif"; ctx.fillText("（受取まで " + diff + "分）", 150, y+3); y += 36;
+  line(y); y += 10;
+  ctx.font = "bold 36px sans-serif"; ctx.fillText(o.name + " 様", 0, y); y += 44;
+  if(o.phone){ ctx.font = "22px sans-serif"; ctx.fillText(fmtTel(o.phone), 0, y); y += 28; }
+  line(y); y += 10;
   ctx.font = "bold 30px sans-serif";
-  items.forEach(([k,v])=>{ ctx.fillText(k.replace(/^TG/,""), 8, y); ctx.fillText("x" + v, W-70, y); y += 44; });
-  ctx.fillRect(8, y, W-16, 3); y += 12;
-  ctx.font = "bold 28px sans-serif"; ctx.fillText("合計 " + o.total.toLocaleString() + "円  店頭払い", 8, y); y += 40;
-  if(o.note){ ctx.font = "24px sans-serif"; wrap(ctx, "※ " + o.note, 8, y, W-16, 30); y += 60; }
+  items.forEach(([k,v])=>{ ctx.fillText(k.replace(/^TG/,""), 0, y); ctx.textAlign = "right"; ctx.fillText("×" + v, W, y); ctx.textAlign = "left"; y += 44; });
+  line(y); y += 10;
+  ctx.font = "bold 28px sans-serif"; ctx.fillText("合計 " + o.total.toLocaleString() + "円", 0, y);
+  ctx.font = "22px sans-serif"; ctx.textAlign = "right"; ctx.fillText("店頭払い（未収）", W, y+4); ctx.textAlign = "left"; y += 38;
+  if(o.note){ ctx.font = "bold 24px sans-serif"; y = wrap(ctx, "※ " + o.note, 0, y, W, 30) + 8; }
+  ctx.font = "18px sans-serif"; ctx.fillText("印刷 " + nowHM() + "　洋食オリオン", 0, y);
   return cv;
 }
-function wrap(ctx, text, x, y, maxW, lh){ let line = ""; for(const ch of text){ if(ctx.measureText(line+ch).width > maxW){ ctx.fillText(line, x, y); y += lh; line = ch; } else line += ch; } ctx.fillText(line, x, y); }
+function wrap(ctx, text, x, y, maxW, lh){ let line = ""; for(const ch of text){ if(ctx.measureText(line+ch).width > maxW){ ctx.fillText(line, x, y); y += lh; line = ch; } else line += ch; } ctx.fillText(line, x, y); return y + lh; }
 function rasterBytes(cv){
   const ctx = cv.getContext("2d"), W = cv.width, H = cv.height, img = ctx.getImageData(0,0,W,H).data, bpr = W/8;
   const data = new Uint8Array(bpr*H);
   for(let yy=0; yy<H; yy++) for(let xx=0; xx<W; xx++){ const i=(yy*W+xx)*4; const dark = (img[i]+img[i+1]+img[i+2])/3 < 160; if(dark) data[yy*bpr + (xx>>3)] |= (0x80 >> (xx&7)); }
   const head = [0x1d,0x76,0x30,0x00, bpr&0xff, (bpr>>8)&0xff, H&0xff, (H>>8)&0xff];
-  const tail = [0x1b,0x64,0x04, 0x1d,0x56,0x42,0x00]; // 4行送り + カット（カッター無し機種は無視される）
+  const tail = [0x1b,0x64,0x04, 0x1d,0x56,0x42,0x00];
   const out = new Uint8Array(2 + head.length + data.length + tail.length);
   out.set([0x1b,0x40],0); out.set(head,2); out.set(data,2+head.length); out.set(tail, 2+head.length+data.length);
   return out;
@@ -161,6 +218,7 @@ function rasterBytes(cv){
 async function printOrder(o){ const cv = ticketCanvas(o); await sendBytes(rasterBytes(cv)); }
 
 poll(true); setInterval(()=>{ if(!running) poll(false); }, 60000);
+if (new URLSearchParams(location.search).get("preview")) setTimeout(()=>showPreview(SAMPLE), 300);
 </script>
 </body>
 </html>
