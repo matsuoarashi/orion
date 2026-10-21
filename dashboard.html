@@ -114,8 +114,8 @@
         <div class="sub" id="dCount"></div></div>
       <div class="card"><h2>客単価(売上÷食数)</h2><div class="big" id="dAvg">-</div>
         <div class="sub">計画 945円</div></div>
-      <div class="card"><h2>ドリンク率(本÷食数)</h2><div class="big" id="dDrink">-</div>
-        <div class="sub">計画 30%</div></div>
+      <div class="card"><h2>副菜追加率(個÷食数)</h2><div class="big" id="dFuku">-</div>
+        <div class="sub" id="dFukuNote">客単価を動かすレバー</div></div>
 
       <div class="card wide"><h2>この日の粗利（概算）</h2>
         <div class="pnlGrid" id="dPnl"></div>
@@ -127,9 +127,17 @@
       <div class="card wide"><h2>直近14日の食数(緑=表示中の日)</h2>
         <div class="bar" id="chart"></div><div style="height:16px"></div></div>
 
-      <div class="card wide"><h2>店頭カメラ(人流)</h2>
-        <div class="camGrid" id="camGrid"></div>
-        <div class="sub" id="camNote"></div></div>
+      <div class="card wide"><h2 id="paceTitle">今日のペース</h2>
+        <div class="pnlGrid" id="paceGrid"></div>
+        <table id="paceTable" style="margin-top:8px"></table>
+        <div class="sub" id="paceNote"></div></div>
+
+      <div class="card wide"><h2>商品ミックス</h2>
+        <div class="camGrid" id="mixGrid"></div>
+        <div class="sub" id="mixNote"></div></div>
+
+      <div class="card wide"><h2>持ち帰りの推移（直近7営業日）</h2>
+        <table id="togoTable"></table></div>
 
       <div class="card"><h2>時間帯別 会計数</h2><div class="sub" id="dHours" style="font-size:13px"></div></div>
       <div class="card"><h2>商品別 売れ数(上位)</h2><div class="sub" id="dItemsMini" style="font-size:13px"></div></div>
@@ -146,7 +154,8 @@
 
   <!-- ===== 収支 ===== -->
   <div id="view-pnl" class="hide">
-    <div class="cards">
+    <div class="tabs" style="margin-bottom:8px"><button id="ptab-run" class="on" onclick="pnlMode('run')">ランニング（毎月）</button><button id="ptab-init" onclick="pnlMode('init')">イニシャル（開業投資）</button></div>
+    <div id="pnlRun" class="cards">
       <div class="card wide"><h2 id="pnlTitle">今月の収支（暫定）</h2>
         <div class="pnlGrid" id="pnlTop"></div>
         <div id="pnlLines" style="margin-top:8px"></div>
@@ -159,6 +168,16 @@
       <div class="card"><h2>固定費（月額）</h2><div id="pnlFixed"></div></div>
       <div class="card"><h2>今月の経費（変動）</h2><div id="pnlExp"></div></div>
       <div class="card wide"><h2>前月との比較</h2><div style="overflow-x:auto"><table id="pnlMonths"></table></div></div>
+    </div>
+    <div id="pnlInit" class="cards hide">
+      <div class="card wide"><h2>開業投資と回収</h2>
+        <div class="pnlGrid" id="initTop"></div>
+        <div class="sub" id="initNote"></div></div>
+      <div class="card"><h2>投資の内訳</h2><div id="initCat"></div></div>
+      <div class="card"><h2>資金調達</h2><div id="initFund"></div>
+        <div class="sub">公庫返済は営業利益から返す「財務」のお金。ランニングの損益には入れていません。</div></div>
+      <div class="card wide"><h2>開業費の明細</h2><div style="overflow-x:auto"><table class="daygrid" id="initItems"></table></div>
+        <div class="sub">分析シート「開業費」で編集。「見積」は実額が出たら差し替え、「未入力」は金額を入れてください。研修費と開業日前の仕入は自動加算。</div></div>
     </div>
   </div>
 
@@ -214,9 +233,10 @@ function renderDay(){
   $("dMeals").innerHTML = d.meals + '<small> 食</small>';
   $("dSales").textContent = yen(d.sales);
   $("dAvg").textContent = d.meals ? yen(Math.round(d.sales/d.meals)) : "-";
-  $("dDrink").textContent = d.meals ? Math.round(100*d.drinks/d.meals) + "%" : "-";
   const fk = (d.items||{})["副菜追加"] || 0;
-  $("dCount").textContent = `${d.count}会計 / 副菜追加 ${fk}個${d.meals?"("+Math.round(100*fk/d.meals)+"%)":""}`;
+  $("dFuku").textContent = d.meals ? Math.round(100*fk/d.meals) + "%" : "-";
+  $("dFukuNote").textContent = `${fk}個・ドリンク率 ${d.meals?Math.round(100*d.drinks/d.meals)+"%":"-"}`;
+  $("dCount").textContent = `${d.count}会計 / 持ち帰り ${d.mealsTogo||0}食`;
   $("dGoal").textContent = `目標 ${GOAL_MEALS}食まであと ${Math.max(0, GOAL_MEALS - d.meals)}食`;
   renderDayPnl(d);
   $("goalBar").style.width = Math.min(100, 100*d.meals/GOAL_MEALS) + "%";
@@ -244,26 +264,9 @@ function renderDay(){
     return `<div class="${r.dt===viewDate?"today":""}" style="height:${h}%" title="${r.dt}: ${r.meals}食"><span>${r.dt.slice(5)}</span></div>`;
   }).join("");
 
-  // カメラ詳細
-  const c = d.camera;
-  if(c){
-    const passers = c["通行"]||0, joined = c["行列参加"]||0, entries = c["入店"]||0;
-    const cells = [
-      ["通行", passers + "人"],
-      ["入店", entries + "人"],
-      ["行列参加", joined + "人"],
-      ["離脱", (c["離脱"]||0) + "人"],
-      ["最大行列", (c["最大行列"]||0) + "人"],
-      ["平均待ち", fmtWait(c["平均待ち秒"])],
-      ["行列参加率", passers ? Math.round(100*joined/passers)+"%" : "-"],
-      ["入店転換率", passers ? Math.round(100*entries/passers)+"%" : "-"],
-    ];
-    $("camGrid").innerHTML = cells.map(([k,v])=>`<div class="c"><b>${v}</b><span>${k}</span></div>`).join("");
-    $("camNote").textContent = "行列参加率=行列に並んだ人÷通行人 / 入店転換率=入店÷通行人";
-  }else{
-    $("camGrid").innerHTML = "";
-    $("camNote").textContent = "この日のカメラデータはありません(人流システム稼働後に表示されます)";
-  }
+  renderPace(d);
+  renderMix(d);
+  renderTogoTrend();
 
   $("dHours").innerHTML = Object.keys(d.hours).sort().map(h=>`${h}時台 <b>${d.hours[h]}</b>件`).join("<br>") || "-";
 
@@ -271,6 +274,81 @@ function renderDay(){
   $("dItemsMini").innerHTML = items.slice(0,4).map(([n,q])=>`${n} <b>${q}</b>`).join("<br>") || "-";
   $("dItems").innerHTML = "<tr><th>商品</th><th>個数</th></tr>" +
     (items.map(([n,q])=>`<tr><td>${n}</td><td>${q}</td></tr>`).join("") || "<tr><td>記録なし</td><td></td></tr>");
+}
+
+// ===== 今日のペース（時間帯別の累計を過去の営業日と比較し、着地を見込む） =====
+function cumByHour(day){ // 会計件数の累計 {10:..,11:..,..,15:..}
+  const out = {}; let acc = 0;
+  for (let h=10; h<=15; h++){ acc += Number((day.hours||{})[String(h)]||0); out[h] = acc; }
+  return out;
+}
+function renderPace(d){
+  const isToday = viewDate === DATA.todayKey;
+  const past = DATA.daily.filter(x=>x.count>0 && x.date!==viewDate && x.date<viewDate);
+  $("paceTitle").textContent = isToday ? "今日のペース" : "この日の時間帯の進み方";
+  if(!past.length){ $("paceGrid").innerHTML=""; $("paceTable").innerHTML=""; $("paceNote").textContent="比較できる過去の営業日がまだありません"; return; }
+  // 過去日の「各時刻までの会計件数の割合」の平均
+  const cums = past.map(x=>({date:x.date, cum:cumByHour(x), total:x.count, meals:x.meals}));
+  const share = {}; for (let h=10; h<=15; h++) share[h] = cums.reduce((a,c)=>a+(c.total?c.cum[h]/c.total:0),0)/cums.length;
+  const mine = cumByHour(d);
+  const now = new Date(); const H = now.getHours(), M = now.getMinutes();
+  let proj = null, pos = null;
+  if(isToday && H>=11 && H<=15 && d.count>0){
+    const prev = H-1>=10 ? share[H-1] : 0; const cur = share[Math.min(H,15)];
+    const f = Math.min(0.999, prev + (M/60)*(cur-prev));   // 現在時刻までに出ているはずの割合
+    const mealsPerCheck = d.meals/d.count;
+    proj = Math.round(d.count/f*mealsPerCheck);
+    // 同時刻の過去平均（食数換算）
+    const avgAt = cums.reduce((a,c)=>{ const pv = H-1>=10 ? c.cum[H-1] : 0; const cv = c.cum[Math.min(H,15)]; return a + (pv + (M/60)*(cv-pv))*(c.total?c.meals/c.total:1); },0)/cums.length;
+    const rank = cums.filter(c=>{ const pv = H-1>=10 ? c.cum[H-1] : 0; const cv = c.cum[Math.min(H,15)]; return (pv + (M/60)*(cv-pv))*(c.total?c.meals/c.total:1) > d.meals; }).length + 1;
+    pos = {avgAt: Math.round(avgAt*10)/10, rank, n: cums.length+1};
+  }
+  const avgTotal = cums.reduce((a,c)=>a+c.meals,0)/cums.length;
+  $("paceGrid").innerHTML = (isToday ? [
+      ["現在の食数", d.meals+"食", pos?`同時刻の平均 ${pos.avgAt}食`:""],
+      ["着地見込み", proj!==null ? "約"+proj+"食" : "—", proj!==null ? `目標${GOAL_MEALS}食まで ${proj>=GOAL_MEALS?"届く見込み":"あと"+(GOAL_MEALS-proj)+"食"}` : (H<11?"11時以降に表示":"営業時間外")],
+      ["過去の平均", Math.round(avgTotal)+"食/日", `営業${cums.length}日の平均`],
+      ["今日の位置", pos?`${pos.n}日中 ${pos.rank}位`:"—", "同時刻の食数で比較"]
+    ] : [
+      ["この日の食数", d.meals+"食", `${d.count}会計`],
+      ["過去の平均", Math.round(avgTotal)+"食/日", `それ以前の営業${cums.length}日`]
+    ]).map(([k,v,n])=>`<div class="c"><small>${k}</small><b>${v}</b><i>${n}</i></div>`).join("");
+  // 時刻別の累計テーブル（この日 vs 平均）
+  const hs = [11,12,13,14];
+  const avgCum = {}; hs.forEach(h=>{ avgCum[h] = cums.reduce((a,c)=>a+c.cum[h],0)/cums.length; });
+  const best = {}; hs.forEach(h=>{ best[h] = Math.max(...cums.map(c=>c.cum[h])); });
+  $("paceTable").innerHTML = "<tr><th></th>" + hs.map(h=>`<th>${h}時まで</th>`).join("") + "</tr>"
+    + `<tr><td>${isToday?"今日":"この日"}</td>` + hs.map(h=>`<td><b>${mine[h]}</b></td>`).join("") + "</tr>"
+    + `<tr><td>平均</td>` + hs.map(h=>`<td>${Math.round(avgCum[h])}</td>`).join("") + "</tr>"
+    + `<tr><td>最高</td>` + hs.map(h=>`<td>${best[h]}</td>`).join("") + "</tr>";
+  $("paceNote").textContent = "数字は会計件数の累計（時間帯別の記録より）。着地見込み = 現在の件数 ÷ 過去の同時刻までの平均構成比 × 1会計あたり食数";
+}
+// ===== 商品ミックス =====
+function renderMix(d){
+  const it = d.items||{}; const g = n=>Number(it[n]||0);
+  const full = g("オリオン")+g("ナシナシ")+g("TGオリオン")+g("TGナシナシ");
+  const half = g("オリオン ハーフ")+g("ナシナシ ハーフ")+g("TGオリオン ハーフ")+g("TGナシナシ ハーフ");
+  const orion = g("オリオン")+g("オリオン ハーフ")+g("TGオリオン")+g("TGオリオン ハーフ");
+  const nashi = g("ナシナシ")+g("ナシナシ ハーフ")+g("TGナシナシ")+g("TGナシナシ ハーフ");
+  const meals = full+half; const fk = g("副菜追加");
+  const cells = [
+    ["フル比率", meals?Math.round(100*full/meals)+"%":"-"],
+    ["ハーフ比率", meals?Math.round(100*half/meals)+"%":"-"],
+    ["オリオン比率", meals?Math.round(100*orion/meals)+"%":"-"],
+    ["持ち帰り比率", d.meals?Math.round(100*(d.mealsTogo||0)/d.meals)+"%":"-"],
+    ["副菜追加率", d.meals?Math.round(100*fk/d.meals)+"%":"-"],
+    ["ドリンク率", d.meals?Math.round(100*d.drinks/d.meals)+"%":"-"],
+    ["PayPay比率", d.salesPaypay!==undefined&&d.sales?Math.round(100*d.salesPaypay/d.sales)+"%":"-"],
+    ["会計あたり食数", d.count?(d.meals/d.count).toFixed(2):"-"]
+  ];
+  $("mixGrid").innerHTML = cells.map(([k,v])=>`<div class="c"><b>${v}</b><span>${k}</span></div>`).join("");
+  $("mixNote").textContent = `フル ${full}・ハーフ ${half}／オリオン系 ${orion}・ナシナシ系 ${nashi}。計画はオリオン:ナシナシ=50:50、ドリンク率30%`;
+}
+// ===== 持ち帰りの推移 =====
+function renderTogoTrend(){
+  const days = DATA.daily.filter(x=>x.count>0 && x.date<=viewDate).slice(-7).reverse();
+  $("togoTable").innerHTML = "<tr><th>日</th><th>食数</th><th>持ち帰り</th><th>比率</th><th>TO売上</th></tr>" +
+    (days.map(x=>`<tr${x.date===viewDate?' style="font-weight:bold"':''}><td>${x.date.slice(5)}(${youbi(x.date)})</td><td>${x.meals}</td><td>${x.mealsTogo||0}</td><td>${x.meals?Math.round(100*(x.mealsTogo||0)/x.meals)+"%":"-"}</td><td>${yen(x.salesTogo||0)}</td></tr>`).join("") || "<tr><td colspan='5'>記録なし</td></tr>");
 }
 
 function mondayOf(dt){
@@ -352,7 +430,9 @@ function renderDayPnl(d){
     ["売上", d.sales.toLocaleString()+"円", ""],
     ["原価(概算)", cost.toLocaleString()+"円", d.sales?"原価率 "+pct(cost/d.sales):""],
     ["人件費", lab?lab.cost.toLocaleString()+"円":"-", lab?`${lab.staff}人・${(lab.minutes/60).toFixed(1)}h${d.sales?"・人件費率 "+pct(lab.cost/d.sales):""}`:"勤怠確定後に反映"],
-    ["粗利", signed(gp), d.sales?"粗利率 "+pct(gp/d.sales):""]
+    ["粗利", signed(gp), d.sales?"粗利率 "+pct(gp/d.sales):""],
+    ["人時売上高", lab&&lab.minutes?Math.round(d.sales/(lab.minutes/60)).toLocaleString()+"円/h":"-", "売上 ÷ 労働時間。目安 3,500円/h"],
+    ["人時食数", lab&&lab.minutes?(d.meals/(lab.minutes/60)).toFixed(1)+"食/h":"-", "食数 ÷ 労働時間"]
   ].map(([k,v,n])=>`<div class="c"><small>${k}</small><b>${v}</b><i>${n}</i></div>`).join("");
 }
 function renderPnl(){
@@ -375,14 +455,14 @@ function renderPnl(){
       ["− 人件費", -cur.labor, `${cur.hours}h・人時売上 ${cur.salesPerHour.toLocaleString()}円`],
       ["− 変動経費", -cur.exp, ""],
       ["− 固定費(月額満額)", -cur.fixed, ""],
-    ].concat(cur.laborPre ? [["− 研修費(開業前)", -cur.laborPre, "開業前の人件費をまとめて計上・日割り計算には含めない"]] : []).map(([k,v,n])=>`<div class="pl"><span>${k} <small style="color:#6b5a40">${n}</small></span><b>${(v<0?"−":"")+Math.abs(Math.round(v)).toLocaleString()}円</b></div>`).join("")
+    ].map(([k,v,n])=>`<div class="pl"><span>${k} <small style="color:#6b5a40">${n}</small></span><b>${(v<0?"−":"")+Math.abs(Math.round(v)).toLocaleString()}円</b></div>`).join("")
       + `<div class="pl total"><span>営業利益</span>${signed(cur.profit)}</div>`;
-    $("pnlNote").textContent = cur.status + "。原価は商品原価マスター×個数の概算、固定費は固定費シートの月額。";
+    $("pnlNote").textContent = cur.status + "。原価は商品原価マスター×個数の概算、固定費は固定費シートの月額。開業前の費用（研修費・初期仕入など）はイニシャル側。";
   }
   $("pnlFc").innerHTML = fc ? [
       ["営業利益", signed(fc.profit), "利益率 "+pct(fc.margin)],
       ["売上", Math.round(fc.sales).toLocaleString()+"円", `想定営業 ${fc.days}日`],
-      ["人件費", Math.round(fc.labor).toLocaleString()+"円", fc.laborPre?`＋研修費 ${Math.round(fc.laborPre).toLocaleString()}円`:""],
+      ["人件費", Math.round(fc.labor).toLocaleString()+"円", ""],
       ["原価", Math.round(fc.cost).toLocaleString()+"円", "原価率 "+pct(fc.costRate)]
     ].map(([k,v,n])=>`<div class="c"><small>${k}</small><b>${v}</b><i>${n}</i></div>`).join("") : "<div class='sub'>-</div>";
   // 日別
@@ -401,6 +481,44 @@ function renderPnl(){
   $("pnlExp").innerHTML = (Object.keys(byAcct).length ? Object.entries(byAcct).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="pl"><span>${k}</span><b>${v.toLocaleString()}円</b></div>`).join("") + `<div class="pl total"><span>合計</span><b>${ex.reduce((a,e)=>a+e.amount,0).toLocaleString()}円</b></div>` : "<div class='sub'>まだ経費の登録がありません（分析シートの「経費」に入力）</div>");
   // 月比較
   $("pnlMonths").innerHTML = "<tr><th>月</th><th>売上</th><th>原価率</th><th>人件費</th><th>固定費</th><th>営業利益</th><th>利益率</th></tr>" + (hist.map(m=>`<tr><td>${m.key}</td><td>${m.sales.toLocaleString()}</td><td>${pct(m.costRate)}</td><td>${m.labor.toLocaleString()}</td><td>${m.fixed.toLocaleString()}</td><td>${signed(m.profit)}</td><td>${pct(m.margin)}</td></tr>`).join("") || "<tr><td colspan='7'>記録なし</td></tr>");
+  renderInit(p, hist, fc);
+}
+
+// ===== イニシャル（開業投資と回収） =====
+// 資金調達は創業計画書ベース（実行額が違えばここを直す）
+const FUNDING = [["日本政策金融公庫（借入）", 6000000], ["自己資金", 2000000]];
+function pnlMode(m){
+  $("pnlRun").classList.toggle("hide", m!=="run"); $("pnlInit").classList.toggle("hide", m!=="init");
+  $("ptab-run").classList.toggle("on", m==="run"); $("ptab-init").classList.toggle("on", m==="init");
+}
+function renderInit(p, hist, fc){
+  const it = p.initial;
+  if(!it){ $("initTop").innerHTML = ""; $("initNote").textContent = "開業費データがまだありません（分析シートで setupInitialCostSheet を実行後に表示）"; $("initCat").innerHTML=""; $("initFund").innerHTML=""; $("initItems").innerHTML=""; return; }
+  const cum = hist.reduce((a,m)=>a+(m.profit||0),0);           // 営業開始からの累計営業利益（ランニング）
+  const pace = fc ? fc.profit : (hist[0] ? hist[0].profit : 0);  // 月あたりの回収ペース（着地予測）
+  const remain = it.total - cum;
+  const rate = it.total ? cum/it.total : 0;
+  const back = pace>0 ? Math.ceil(remain/pace) : null;
+  $("initTop").innerHTML = [
+    ["投資総額", it.total.toLocaleString()+"円", it.pending?`未入力 ${it.pending}件あり`:"保証金を除く"],
+    ["回収済み", signed(cum), "回収率 "+pct(rate)],
+    ["回収完了まで", back===null ? "—" : `あと約${back}か月`, pace>0 ? `月${Math.round(pace).toLocaleString()}円ペース` : "今のペースでは回収が進みません"],
+    ["保証金（別枠）", it.deposit.toLocaleString()+"円", "退去時に返還"]
+  ].map(([k,v,n])=>`<div class="c"><small>${k}</small><b>${v}</b><i>${n}</i></div>`).join("");
+  $("initNote").textContent = "回収率 = 営業開始以降の累計営業利益 ÷ 投資総額。ペースは着地予測の月間営業利益。減価償却・税金は考慮していません。";
+  const cats = Object.entries(it.byCat).sort((a,b)=>b[1]-a[1]);
+  $("initCat").innerHTML = cats.map(([k,v])=>`<div class="pl"><span>${k} <small style="color:#6b5a40">${it.total?pct(v/it.total):""}</small></span><b>${Math.round(v).toLocaleString()}円</b></div>`).join("") + `<div class="pl total"><span>合計</span><b>${it.total.toLocaleString()}円</b></div>`;
+  const fsum = FUNDING.reduce((a,x)=>a+x[1],0);
+  const loan = p.fixed.find(x=>/公庫|返済/.test(x.name));
+  $("initFund").innerHTML = FUNDING.map(([k,v])=>`<div class="pl"><span>${k}</span><b>${v.toLocaleString()}円</b></div>`).join("")
+    + `<div class="pl total"><span>合計</span><b>${fsum.toLocaleString()}円</b></div>`
+    + `<div class="pl"><span>うち投資に使った額（保証金含む）</span><b>${(it.total+it.deposit).toLocaleString()}円</b></div>`
+    + `<div class="pl"><span>運転資金として残る額（計算上）</span><b>${(fsum-it.total-it.deposit).toLocaleString()}円</b></div>`
+    + (loan ? `<div class="pl"><span>公庫返済（月額・固定費シート）</span><b>${loan.amount.toLocaleString()}円</b></div>` : "");
+  const rows = it.items.slice().sort((a,b)=>b.amount-a.amount);
+  $("initItems").innerHTML = "<tr><th>項目</th><th>区分</th><th>金額</th><th>状態</th></tr>" + rows.map(r=>`<tr><td>${r.name}${r.refundable?" <small>(返還)</small>":""}</td><td>${r.cat}</td><td>${r.amount.toLocaleString()}</td><td>${r.status==="未入力"?"<b style='color:#b03a2e'>未入力</b>":r.status}</td></tr>`).join("")
+    + (it.training?`<tr><td>研修費（開業前の人件費・自動）</td><td>研修費</td><td>${it.training.toLocaleString()}</td><td>自動</td></tr>`:"")
+    + (it.preOpenExpenses?`<tr><td>開業日前の仕入・経費（経費シートより・自動）</td><td>初期仕入</td><td>${it.preOpenExpenses.toLocaleString()}</td><td>自動</td></tr>`:"");
 }
 
 async function load(){
