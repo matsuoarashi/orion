@@ -117,7 +117,7 @@
       <div class="card"><h2>副菜追加率(個÷食数)</h2><div class="big" id="dFuku">-</div>
         <div class="sub" id="dFukuNote">客単価を動かすレバー</div></div>
 
-      <div class="card wide"><h2>この日の粗利（概算）</h2>
+      <div class="card wide" id="dPnlCard"><h2>この日の粗利（概算）</h2>
         <div class="pnlGrid" id="dPnl"></div>
         <div class="sub">売上 − 原価（商品原価マスター×個数） − 人件費（勤怠から）。固定費は含まない</div></div>
 
@@ -139,7 +139,7 @@
       <div class="card wide"><h2>持ち帰りの推移（直近7営業日）</h2>
         <table id="togoTable"></table></div>
 
-      <div class="card"><h2>時間帯別 会計数</h2><div class="sub" id="dHours" style="font-size:13px"></div></div>
+      <div class="card"><h2>時間帯別 食数</h2><div class="sub" id="dHours" style="font-size:13px"></div></div>
       <div class="card"><h2>商品別 売れ数(上位)</h2><div class="sub" id="dItemsMini" style="font-size:13px"></div></div>
 
       <div class="card wide"><h2>商品別 売れ数(この日・全品)</h2><table id="dItems"></table></div>
@@ -238,6 +238,7 @@ function renderDay(){
   $("dFukuNote").textContent = `${fk}個・ドリンク率 ${d.meals?Math.round(100*d.drinks/d.meals)+"%":"-"}`;
   $("dCount").textContent = `${d.count}会計 / 持ち帰り ${d.mealsTogo||0}食`;
   $("dGoal").textContent = `目標 ${GOAL_MEALS}食まであと ${Math.max(0, GOAL_MEALS - d.meals)}食`;
+  $("dPnlCard").classList.toggle("hide", viewDate===DATA.todayKey);   // 当日は勤怠が未確定なので営業終了後（翌日）に表示
   renderDayPnl(d);
   $("goalBar").style.width = Math.min(100, 100*d.meals/GOAL_MEALS) + "%";
 
@@ -268,7 +269,8 @@ function renderDay(){
   renderMix(d);
   renderTogoTrend();
 
-  $("dHours").innerHTML = Object.keys(d.hours).sort().map(h=>`${h}時台 <b>${d.hours[h]}</b>件`).join("<br>") || "-";
+  const hm = d.hoursMeals || null;
+  $("dHours").innerHTML = Object.keys(hm||d.hours).sort().map(h=>`${h}時台 <b>${hm?hm[h]:d.hours[h]}</b>${hm?"食":"件"} <small>${hm?(d.hours[h]||0)+"件":""}</small>`).join("<br>") || "-";
 
   const items = Object.entries(d.items||{}).sort((a,b)=>b[1]-a[1]);
   $("dItemsMini").innerHTML = items.slice(0,4).map(([n,q])=>`${n} <b>${q}</b>`).join("<br>") || "-";
@@ -277,9 +279,10 @@ function renderDay(){
 }
 
 // ===== 今日のペース（時間帯別の累計を過去の営業日と比較し、着地を見込む） =====
-function cumByHour(day){ // 会計件数の累計 {10:..,11:..,..,15:..}
+function cumByHour(day){ // 食数の累計 {10:..,11:..,..,15:..}（食数の時間帯データが無い古い形式なら会計件数）
+  const src = day.hoursMeals || day.hours || {};
   const out = {}; let acc = 0;
-  for (let h=10; h<=15; h++){ acc += Number((day.hours||{})[String(h)]||0); out[h] = acc; }
+  for (let h=10; h<=15; h++){ acc += Number(src[String(h)]||0); out[h] = acc; }
   return out;
 }
 function renderPace(d){
@@ -288,7 +291,7 @@ function renderPace(d){
   $("paceTitle").textContent = isToday ? "今日のペース" : "この日の時間帯の進み方";
   if(!past.length){ $("paceGrid").innerHTML=""; $("paceTable").innerHTML=""; $("paceNote").textContent="比較できる過去の営業日がまだありません"; return; }
   // 過去日の「各時刻までの会計件数の割合」の平均
-  const cums = past.map(x=>({date:x.date, cum:cumByHour(x), total:x.count, meals:x.meals}));
+  const cums = past.map(x=>({date:x.date, cum:cumByHour(x), total:(x.hoursMeals?x.meals:x.count)||0, meals:x.meals}));
   const share = {}; for (let h=10; h<=15; h++) share[h] = cums.reduce((a,c)=>a+(c.total?c.cum[h]/c.total:0),0)/cums.length;
   const mine = cumByHour(d);
   const now = new Date(); const H = now.getHours(), M = now.getMinutes();
@@ -296,8 +299,8 @@ function renderPace(d){
   if(isToday && H>=11 && H<=15 && d.count>0){
     const prev = H-1>=10 ? share[H-1] : 0; const cur = share[Math.min(H,15)];
     const f = Math.min(0.999, prev + (M/60)*(cur-prev));   // 現在時刻までに出ているはずの割合
-    const mealsPerCheck = d.meals/d.count;
-    proj = Math.round(d.count/f*mealsPerCheck);
+    const nowCum = d.hoursMeals ? d.meals : d.count; const mealsPerUnit = d.hoursMeals ? 1 : d.meals/d.count;
+    proj = Math.round(nowCum/f*mealsPerUnit);
     // 同時刻の過去平均（食数換算）
     const avgAt = cums.reduce((a,c)=>{ const pv = H-1>=10 ? c.cum[H-1] : 0; const cv = c.cum[Math.min(H,15)]; return a + (pv + (M/60)*(cv-pv))*(c.total?c.meals/c.total:1); },0)/cums.length;
     const rank = cums.filter(c=>{ const pv = H-1>=10 ? c.cum[H-1] : 0; const cv = c.cum[Math.min(H,15)]; return (pv + (M/60)*(cv-pv))*(c.total?c.meals/c.total:1) > d.meals; }).length + 1;
@@ -321,7 +324,7 @@ function renderPace(d){
     + `<tr><td>${isToday?"今日":"この日"}</td>` + hs.map(h=>`<td><b>${mine[h]}</b></td>`).join("") + "</tr>"
     + `<tr><td>平均</td>` + hs.map(h=>`<td>${Math.round(avgCum[h])}</td>`).join("") + "</tr>"
     + `<tr><td>最高</td>` + hs.map(h=>`<td>${best[h]}</td>`).join("") + "</tr>";
-  $("paceNote").textContent = "数字は会計件数の累計（時間帯別の記録より）。着地見込み = 現在の件数 ÷ 過去の同時刻までの平均構成比 × 1会計あたり食数";
+  $("paceNote").textContent = "数字は食数の累計。着地見込み = 現在の食数 ÷ 過去の営業日の同時刻までの平均構成比";
 }
 // ===== 商品ミックス =====
 function renderMix(d){
