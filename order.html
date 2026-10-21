@@ -24,7 +24,10 @@
   .item{display:flex;align-items:center;gap:10px;background:#fff;border-radius:14px;padding:12px 12px;margin-bottom:8px;border:1.5px solid #e6d9bd}
   .item.on{border-color:var(--midori);box-shadow:0 0 0 2px rgba(44,79,57,.15)}
   .item .n{flex:1;min-width:0}
-  .item .n b{display:block;font-size:16px}
+  .item .n b{display:block;font-size:15.5px;line-height:1.35}
+  .item .n .v{display:block;margin:3px 0 2px}
+  .item .n .v em{font-style:normal;font-weight:bold;font-size:14px;color:var(--enji);margin-right:6px}
+  .item .n .g{display:inline-block;background:var(--cream-d);border-radius:6px;padding:1px 7px;font-size:12.5px;font-weight:bold;color:var(--ink)}
   .item .n small{display:block;font-size:11.5px;color:var(--mute);line-height:1.5;margin-top:2px}
   .item .n .p{font-size:14px;font-weight:bold;color:var(--ink);margin-top:4px}
   .qty{display:flex;align-items:center;gap:0;flex-shrink:0}
@@ -66,7 +69,7 @@
 </head>
 <body>
 <div class="app">
-  <div class="hero"><img src="logo.png" alt="洋食オリオン"><div class="sub">神田淡路町店</div><div class="ttl">テイクアウト予約</div></div>
+  <div class="hero"><img src="logo.png" alt="洋食オリオン"><div class="sub">ナポリタン専門店 ／ 神田淡路町</div><div class="ttl">テイクアウト予約</div></div>
 
   <div class="sheet">
     <div id="closed" class="closed hide"></div>
@@ -99,7 +102,7 @@
       <button class="btn2" onclick="location.reload()">別の予約をする</button>
     </div>
 
-    <footer>洋食オリオン 神田淡路町店<br>千代田区神田淡路町1-15 塚崎ビル1階<br>営業 11:00〜14:30 ／ 日曜定休</footer>
+    <footer>洋食オリオン 神田淡路町店<br>千代田区神田淡路町1-15 塚崎ビル1階<br>営業 11:00〜14:00（月〜土）／ 日祝休</footer>
   </div>
 
   <div class="bar" id="bar"><div class="in"><div class="sum"><small>合計（税込）</small><b id="total">0円</b><em id="sumMeals"></em></div><button class="go" id="go" onclick="submitOrder()">予約する</button></div></div>
@@ -117,8 +120,8 @@ async function init(){
   if(!S.open){ showClosed(S.reason || "本日の受付は終了しました"); return; }
   const rows = [];
   S.menu.forEach(m=>{
-    if(m.opts && m.opts.length){ m.opts.forEach(o=>{ const k = m.name+"::"+o; rows.push({k, title:m.name+"　"+o, desc:o+"を1品追加", price:m.price}); }); }
-    else rows.push({k:m.name, title:m.name.replace(/^TG/,""), desc:m.desc||"", price:m.price});
+    if(m.opts && m.opts.length){ m.opts.forEach(o=>{ const k = m.name+"::"+o; rows.push({k, title:m.label||m.name, desc:`<span class="v"><em>${o}</em></span>`+o+"を1品追加", price:m.price}); }); }
+    else rows.push({k:m.name, title:m.label||m.name.replace(/^TG/,""), desc:((m.sub||m.g)?`<span class="v">${m.sub?`<em>${m.sub}</em>`:""}${m.g?`<span class="g">${m.g}g</span>`:""}</span>`:"")+(m.desc||""), price:m.price});
   });
   $("menu").innerHTML = rows.map(r=>`<div class="item" id="it_${r.k}"><div class="n"><b>${r.title}</b><small>${r.desc}</small><div class="p">${r.price.toLocaleString()}円</div></div>
     <div class="qty"><button onclick="chg('${r.k}',-1)" aria-label="減らす">−</button><span id="q_${r.k}">0</span><button onclick="chg('${r.k}',1)" aria-label="増やす">＋</button></div></div>`).join("");
