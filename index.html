@@ -80,6 +80,8 @@
   .visit .vm{background:linear-gradient(#3f6fb0,#2a4f85)}.visit .vf{background:linear-gradient(#c9596a,#993a4a)}.visit .vx{background:linear-gradient(#7a6a58,#54483a);min-width:48px;font-size:13px}
   .vflash{position:fixed;inset:0;display:none;align-items:center;justify-content:center;pointer-events:none;z-index:50}
   .vflash.show{display:flex;animation:vf .75s ease-out forwards}
+  .vflash.hold{display:flex;animation:none;background:rgba(147,51,42,.35)}
+  .vflash.hold .box{border-color:#ffb0a0;background:#93332a}
   .vflash .box{background:rgba(20,12,4,.88);color:#fff;border-radius:22px;padding:26px 36px;text-align:center;min-width:240px;border:3px solid #ffe9b8}
   .vflash .big{font-size:40px;font-weight:bold;letter-spacing:4px;line-height:1.1}
   .vflash .sub{font-size:16px;margin-top:8px;color:#e8d5ac;font-variant-numeric:tabular-nums}
@@ -180,7 +182,7 @@
     </div>
     <div style="font-size:12px;color:#8a7a5c;display:flex;justify-content:space-between"><span id="oSum">本日 0件 0食</span><span id="oSt"></span></div>
     <div class="olist" id="oList"></div>
-    <div style="display:flex;gap:6px"><button class="cancel" style="flex:1" onclick="oTestPrint()">テスト印刷</button><button class="cancel" style="flex:1" onclick="oPoll(true)">更新</button></div>
+    <div style="display:flex;gap:6px"><button class="cancel" style="flex:1" onclick="oSoundTest()">通知音テスト</button><button class="cancel" style="flex:1" onclick="oTestPrint()">テスト印刷</button><button class="cancel" style="flex:1" onclick="oPoll(true)">更新</button></div>
     <button class="cancel" onclick="document.getElementById('ordOv').classList.remove('show')">閉じる</button>
   </div>
 </div>
@@ -895,9 +897,15 @@ const oMin = hm => { const [h,m] = String(hm).split(":").map(Number); return h*6
 function oEsc(s){ return String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 function oTel(p){ return p && p.length===11 ? p.slice(0,3)+"-"+p.slice(3,7)+"-"+p.slice(7) : (p||""); }
 function oBeep(n){
+  // 店内BGMに負けないよう、2音のチャイムを大きめ・長めに。n=繰り返し回数
   try{ if(!O.audio) O.audio = new (window.AudioContext||window.webkitAudioContext)(); if(O.audio.state==="suspended") O.audio.resume();
-    for(let i=0;i<n;i++){ const o=O.audio.createOscillator(), g=O.audio.createGain(); o.connect(g); g.connect(O.audio.destination); o.frequency.value=880; g.gain.value=0.3; o.start(O.audio.currentTime+i*0.35); o.stop(O.audio.currentTime+i*0.35+0.25); } }catch(e){}
+    const t0 = O.audio.currentTime;
+    for(let i=0;i<n;i++){ [[1046,0],[1318,0.18],[1568,0.36]].forEach(([f,dt])=>{ const o=O.audio.createOscillator(), g=O.audio.createGain(); o.type="square"; o.connect(g); g.connect(O.audio.destination); o.frequency.value=f; g.gain.setValueAtTime(0.0001, t0+i*0.9+dt); g.gain.exponentialRampToValueAtTime(0.9, t0+i*0.9+dt+0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0+i*0.9+dt+0.3); o.start(t0+i*0.9+dt); o.stop(t0+i*0.9+dt+0.32); }); }
+  }catch(e){}
+  if(navigator.vibrate) navigator.vibrate([300,150,300,150,600]);
 }
+function oFlash(text){ const f = $("vFlash"); if(!f) return; $("vfBig").textContent = "予約が入りました"; $("vfSub").textContent = text||""; f.className = "vflash hold"; clearTimeout(O.flashT); O.flashT = setTimeout(()=>{ f.className = "vflash"; }, 4000); }
+function oSoundTest(){ oBeep(3); oFlash("通知音のテスト"); }
 document.addEventListener("pointerdown", ()=>{ if(!O.audio){ try{ O.audio = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } }, {once:true});
 
 async function oPoll(manual){
@@ -909,7 +917,8 @@ async function oPoll(manual){
     const fresh = O.orders.filter(o=>o.status==="new" && !O.seen.has(o.id));
     oRender();
     if(fresh.length){
-      oBeep(3);
+      oBeep(3); oFlash(fresh.map(o=>`${o.slot}受取 ${o.name}様 ${o.meals}食`).join(" ／ "));
+      setTimeout(()=>{ if(O.orders.some(o=>o.status==="new")) oBeep(2); }, 15000); // 15秒後に未対応が残っていればもう一度
       for(const o of fresh){ if(O.printer.ch && !o.printed){ try{ await oPrint(o); await oUpdate(o.id, {printed:true}); o.printed = true; }catch(e){ $("oSt").textContent = "印刷失敗: "+e.message; } } }
       fresh.forEach(o=>O.seen.add(o.id)); localStorage.setItem("seenOrders", JSON.stringify([...O.seen].slice(-300)));
       oRender();
