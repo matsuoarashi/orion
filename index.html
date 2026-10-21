@@ -106,6 +106,33 @@
   .grid3v button{border:none;border-radius:12px;padding:14px 0;font-size:17px;font-weight:bold;color:#fff;box-shadow:0 3px 0 rgba(0,0,0,.3)}
   .grid3v .vm{background:linear-gradient(#3f6fb0,#2a4f85)}.grid3v .vf{background:linear-gradient(#c9596a,#993a4a)}.grid3v .vx{background:linear-gradient(#7a6a58,#54483a);font-size:14px}
   @keyframes vf{0%{opacity:0;transform:scale(.9)}12%{opacity:1;transform:scale(1)}75%{opacity:1}100%{opacity:0}}
+  /* ===== テイクアウト予約（注文）===== */
+  .obadge{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--enji);color:#fff;font-size:11px;margin-left:3px;vertical-align:middle}
+  .obadge.hide{display:none}
+  footer button.oalert{background:var(--enji);color:#fff;border-color:var(--enji);animation:oblink 1s infinite}
+  @keyframes oblink{50%{opacity:.55}}
+  .opanel{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .opanel .ctl{border-radius:10px;padding:8px 6px;border:2px solid var(--wood-d);background:var(--cream-d);text-align:center;font-size:12px}
+  .opanel .ctl b{display:block;font-size:14px}
+  .opanel .ctl.ok{background:#dfeee3;border-color:var(--midori)} .opanel .ctl.ok b{color:var(--midori)}
+  .opanel .ctl.ng{background:#f6e3df;border-color:var(--enji)} .opanel .ctl.ng b{color:var(--enji)}
+  .olist{max-height:52vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
+  .ocard{background:#fff;border-radius:12px;border:2px solid var(--wood-d);padding:8px 10px;display:grid;grid-template-columns:96px 1fr;gap:8px;font-size:14px}
+  .ocard.new{border-color:var(--enji);box-shadow:0 0 0 2px #f3c7c0}
+  .ocard.ready{border-color:#b8862b}
+  .ocard.done,.ocard.cancel{opacity:.5}
+  .ocard .t{border-right:2px dashed #c9b891}
+  .ocard .slot{font-size:28px;font-weight:bold;line-height:1.05}
+  .ocard .left{font-size:12px;font-weight:bold} .ocard .left.soon{color:#b8862b} .ocard .left.late{color:var(--enji)}
+  .ocard .at{font-size:10px;color:#8a7a5c;margin-top:4px;line-height:1.4}
+  .ocard .who{font-weight:bold;font-size:16px} .ocard .who small{font-weight:normal;font-size:11px;color:#8a7a5c;margin-left:4px}
+  .ocard .it{line-height:1.5} .ocard .it b{margin-left:4px}
+  .ocard .nt{font-size:12px;color:#8d2f26;background:#fff3f0;border-radius:6px;padding:2px 6px;margin-top:2px}
+  .ocard .acts{grid-column:1/-1;display:flex;gap:5px}
+  .ocard .acts button{flex:1;padding:9px 2px;border-radius:8px;border:2px solid var(--wood-d);background:var(--cream-d);font-size:13px;font-weight:bold;color:var(--ink)}
+  .ocard .acts button.go{background:var(--midori);color:#fff;border-color:var(--midori)}
+  .ocard .acts button.sub{flex:0 0 46px}
+  .oempty{text-align:center;color:#8a7a5c;font-size:13px;padding:18px 0;line-height:1.8}
 </style>
 </head>
 <body>
@@ -139,9 +166,25 @@
       <button onclick="openShime()">締め</button>
       <button onclick="openSummary()">日計</button>
       <button onclick="openVisits()">来店</button>
+      <button id="ordBtn" onclick="openOrders()">注文<span id="ordBadge" class="obadge hide">0</span></button>
     </span>
   </footer>
 </div>
+
+<div class="overlay" id="ordOv">
+  <div class="sheet">
+    <h2>テイクアウト予約</h2>
+    <div class="opanel">
+      <div class="ctl ng" id="oPrint" onclick="oConnectPrinter()">プリンター<b>未接続</b></div>
+      <div class="ctl" id="oOpen" onclick="oToggleOpen()">お客様の予約<b>—</b></div>
+    </div>
+    <div style="font-size:12px;color:#8a7a5c;display:flex;justify-content:space-between"><span id="oSum">本日 0件 0食</span><span id="oSt"></span></div>
+    <div class="olist" id="oList"></div>
+    <div style="display:flex;gap:6px"><button class="cancel" style="flex:1" onclick="oTestPrint()">テスト印刷</button><button class="cancel" style="flex:1" onclick="oPoll(true)">更新</button></div>
+    <button class="cancel" onclick="document.getElementById('ordOv').classList.remove('show')">閉じる</button>
+  </div>
+</div>
+<canvas id="oCv" style="display:none"></canvas>
 
 <div class="vflash" id="vFlash"><div class="box"><div class="big" id="vfBig"></div><div class="sub" id="vfSub"></div></div></div>
 
@@ -447,6 +490,7 @@ async function finishSale(){
 
   items = []; tender = 0; payMethod = "cash";
   hidePay(); refresh(); refreshDaily();
+  oAfterSale();
 }
 
 // ===== 出退勤（この端末に記録。日計と一緒にLINEへ貼る） =====
@@ -837,6 +881,132 @@ document.addEventListener("keydown", (e) => {
 });
 
 refresh(); refreshDaily(); refreshVisits(); flushQueue();
+
+// ===== テイクアウト予約（注文サイト order.html からの予約を受ける） =====
+// 分析GASの ?mode=orders を30秒ごとに確認。新着で音＋フッターの「注文」が赤く点滅。
+// プリンター(Bluetooth ESC/POS 58mm)が接続されていれば自動印刷。「会計へ」でレジに品目を載せ、会計完了で受取済みにする。
+const O_KEY_DEFAULT = "3489d8ff"; // 分析シート「注文設定」の店用キー
+let O = { orders:[], seen:new Set(JSON.parse(localStorage.getItem("seenOrders")||"[]")), open:null, audio:null, timer:null, pendingId:null, printer:{device:null, ch:null, withResp:false} };
+const oKey = () => localStorage.getItem("orderKey") || O_KEY_DEFAULT;
+const oPad = n => String(n).padStart(2,"0");
+const oNow = () => { const d = new Date(); return oPad(d.getHours())+":"+oPad(d.getMinutes()); };
+const oToday = () => { const d = new Date(); return d.getFullYear()+"/"+oPad(d.getMonth()+1)+"/"+oPad(d.getDate()); };
+const oMin = hm => { const [h,m] = String(hm).split(":").map(Number); return h*60+m; };
+function oEsc(s){ return String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function oTel(p){ return p && p.length===11 ? p.slice(0,3)+"-"+p.slice(3,7)+"-"+p.slice(7) : (p||""); }
+function oBeep(n){
+  try{ if(!O.audio) O.audio = new (window.AudioContext||window.webkitAudioContext)(); if(O.audio.state==="suspended") O.audio.resume();
+    for(let i=0;i<n;i++){ const o=O.audio.createOscillator(), g=O.audio.createGain(); o.connect(g); g.connect(O.audio.destination); o.frequency.value=880; g.gain.value=0.3; o.start(O.audio.currentTime+i*0.35); o.stop(O.audio.currentTime+i*0.35+0.25); } }catch(e){}
+}
+document.addEventListener("pointerdown", ()=>{ if(!O.audio){ try{ O.audio = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } }, {once:true});
+
+async function oPoll(manual){
+  if(document.hidden && !manual) return;
+  try{
+    const r = await fetch(`${SHEET_URL}?mode=orders&date=${encodeURIComponent(oToday())}&key=${encodeURIComponent(oKey())}&t=${Date.now()}`, {cache:"no-store"});
+    const j = await r.json(); if(j.error){ $("oSt").textContent = "エラー: "+j.error; return; }
+    O.orders = j.orders; O.open = j.open;
+    const fresh = O.orders.filter(o=>o.status==="new" && !O.seen.has(o.id));
+    oRender();
+    if(fresh.length){
+      oBeep(3);
+      for(const o of fresh){ if(O.printer.ch && !o.printed){ try{ await oPrint(o); await oUpdate(o.id, {printed:true}); o.printed = true; }catch(e){ $("oSt").textContent = "印刷失敗: "+e.message; } } }
+      fresh.forEach(o=>O.seen.add(o.id)); localStorage.setItem("seenOrders", JSON.stringify([...O.seen].slice(-300)));
+      oRender();
+    }
+    $("oSt").textContent = "確認 " + oNow();
+  }catch(e){ $("oSt").textContent = "通信エラー"; }
+}
+function oLeft(slot){ const d = oMin(slot) - oMin(oNow()); if(d>60) return {t:`あと${Math.floor(d/60)}時間${d%60}分`,c:""}; if(d>10) return {t:`あと${d}分`,c:""}; if(d>=0) return {t:`あと${d}分`,c:"soon"}; return {t:`${-d}分過ぎ`,c:"late"}; }
+function oRender(){
+  const live = O.orders.filter(o=>o.status==="new"||o.status==="ready").sort((a,b)=>a.slot<b.slot?-1:a.slot>b.slot?1:0);
+  const rest = O.orders.filter(o=>o.status==="done"||o.status==="cancel").sort((a,b)=>a.slot<b.slot?1:-1);
+  const nNew = O.orders.filter(o=>o.status==="new").length;
+  const badge = $("ordBadge"); badge.textContent = live.length; badge.classList.toggle("hide", !live.length);
+  $("ordBtn").classList.toggle("oalert", nNew > 0);
+  const valid = O.orders.filter(o=>o.status!=="cancel");
+  $("oSum").textContent = `本日 ${valid.length}件 ${valid.reduce((a,o)=>a+o.meals,0)}食・未対応 ${nNew}`;
+  const el = $("oOpen"); el.classList.toggle("ok", O.open===true); el.classList.toggle("ng", O.open===false); el.innerHTML = "お客様の予約<b>" + (O.open===null?"—":O.open?"受付中":"停止中") + "</b>";
+  const card = o => { const lf = oLeft(o.slot); const live = o.status==="new"||o.status==="ready";
+    return `<div class="ocard ${o.status}">
+      <div class="t"><div style="font-size:10px;color:var(--midori)">受取</div><div class="slot">${o.slot}</div>${live?`<div class="left ${lf.c}">${lf.t}</div>`:""}<div class="at">受付 ${o.at}<br>#${o.id}</div></div>
+      <div><div class="who">${oEsc(o.name)} 様 <small>${oTel(o.phone)}</small>${o.status==="ready"?" <small>調理中</small>":""}${o.status==="done"?" <small>渡し済</small>":""}${o.status==="cancel"?" <small>取消</small>":""}${o.printed?" <small>印刷済</small>":""}</div>
+        <div class="it">${Object.entries(o.items).map(([k,v])=>`${oEsc(k.replace(/^TG/,""))}<b>×${v}</b>`).join("<br>")}</div>
+        <div style="font-size:12px;color:#8a7a5c">合計 ${o.total.toLocaleString()}円・店頭払い</div>
+        ${o.note?`<div class="nt">※ ${oEsc(o.note)}</div>`:""}</div>
+      ${live?`<div class="acts">
+        <button class="sub" onclick="oDoPrint('${o.id}')">🖨</button>
+        ${o.status==="new"?`<button onclick="oSetStatus('${o.id}','ready')">調理中に</button>`:""}
+        <button class="go" onclick="oToRegister('${o.id}')">会計へ</button>
+        <button class="sub" onclick="if(confirm('取り消しますか？')) oSetStatus('${o.id}','cancel')">取消</button>
+      </div>`:""}
+    </div>`; };
+  $("oList").innerHTML = (live.map(card).join("") || `<div class="oempty">これから渡す予約はありません<br>お客様が予約すると音が鳴り、ここに受取時刻順で並びます</div>`) + (rest.length ? `<div style="font-size:11px;color:#8a7a5c;margin-top:6px">渡し済み・取消</div>` + rest.map(card).join("") : "");
+}
+function openOrders(){ $("ordOv").classList.add("show"); oRender(); oPoll(true); }
+async function oUpdate(id, fields){ const r = await fetch(SHEET_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(Object.assign({type:"order_update", id, key:oKey()}, fields))}); return r.json(); }
+async function oSetStatus(id, status){ const o = O.orders.find(x=>x.id===id); if(o) o.status = status; oRender(); await oUpdate(id, {status}); }
+async function oToggleOpen(){ if(O.open===null) return; if(!confirm(O.open ? "お客様からの予約受付を停止しますか？（注文サイトが「受付終了」になります）" : "予約受付を再開しますか？")) return; await fetch(SHEET_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({type:"order_toggle", key:oKey(), open:!O.open})}); oPoll(true); }
+// 予約の品目をレジに載せる → 会計完了で受取済みに
+function oToRegister(id){
+  const o = O.orders.find(x=>x.id===id); if(!o) return;
+  if(items.length && !confirm("レジに入力中の品目があります。置き換えますか？")) return;
+  items = [];
+  Object.entries(o.items).forEach(([n,q])=>{ const m = ALL_ITEMS.find(x=>x.n===n); if(!m) return; for(let i=0;i<q;i++) items.push(m); });
+  mode = "持ち帰り"; $("mTo").classList.add("on"); $("mEat").classList.remove("on"); renderGrid(); refresh();
+  O.pendingId = id; $("ordOv").classList.remove("show");
+}
+function oAfterSale(){ if(!O.pendingId) return; const id = O.pendingId; O.pendingId = null; oSetStatus(id, "done"); }
+
+// ===== Bluetooth レシートプリンター（ESC/POS 58mm=384dot、伝票は画像で送る） =====
+const O_SVC = [0x18f0, "e7810a71-73ae-499d-8c15-faa9aef0c3f2", "49535343-fe7d-4ae5-8fa9-9fafd205e455", 0xff00, 0xffe0, 0xfee7];
+async function oConnectPrinter(){
+  if(!navigator.bluetooth){ alert("このブラウザはBluetooth印刷に対応していません（AndroidのChromeで開いてください）"); return; }
+  try{
+    const device = await navigator.bluetooth.requestDevice({ acceptAllDevices:true, optionalServices:O_SVC });
+    const server = await device.gatt.connect(); const services = await server.getPrimaryServices(); let found = null;
+    for(const s of services){ const chs = await s.getCharacteristics(); for(const c of chs){ if(c.properties.writeWithoutResponse || c.properties.write){ found = c; O.printer.withResp = !c.properties.writeWithoutResponse; break; } } if(found) break; }
+    if(!found) throw new Error("書き込み可能な接続先が見つかりません");
+    O.printer.device = device; O.printer.ch = found;
+    device.addEventListener("gattserverdisconnected", ()=>{ O.printer.ch = null; const e=$("oPrint"); e.classList.remove("ok"); e.classList.add("ng"); e.innerHTML = "プリンター<b>切断</b>"; });
+    const e=$("oPrint"); e.classList.add("ok"); e.classList.remove("ng"); e.innerHTML = "プリンター<b>" + (device.name||"接続中") + "</b>";
+    await oSend(new Uint8Array([0x1b,0x40]));
+  }catch(e){ if(!/cancel/i.test(e.message)) alert("接続できませんでした: " + e.message); }
+}
+async function oSend(bytes){ const CH=180; for(let i=0;i<bytes.length;i+=CH){ const part = bytes.slice(i,i+CH); if(O.printer.withResp) await O.printer.ch.writeValue(part); else await O.printer.ch.writeValueWithoutResponse(part); await new Promise(r=>setTimeout(r,12)); } }
+function oTicket(o){
+  const W = 384, PX = 20, CW = W - PX*2, R = W - PX, cv = $("oCv"), ctx = cv.getContext("2d");
+  const its = Object.entries(o.items); const noteLines = o.note ? Math.ceil(o.note.length/13)+1 : 0;
+  const H = 440 + its.length*48 + noteLines*32; cv.width = W; cv.height = H;
+  ctx.fillStyle="#fff"; ctx.fillRect(0,0,W,H); ctx.fillStyle="#000"; ctx.textBaseline="top";
+  const line = (y,th)=>{ ctx.fillRect(PX, y, CW, th||3); }; let y = 24;
+  ctx.font="bold 24px sans-serif"; ctx.fillText("テイクアウト予約", PX, y); ctx.font="22px sans-serif"; ctx.textAlign="right"; ctx.fillText("#"+o.id, R, y+2); ctx.textAlign="left"; y += 40; line(y); y += 18;
+  ctx.font="bold 26px sans-serif"; ctx.fillText("受取", PX, y+30); ctx.font="bold 80px sans-serif"; ctx.fillText(o.slot, PX+70, y-2); y += 96;
+  const diff = oMin(o.slot) - oMin(o.at);
+  ctx.font="bold 26px sans-serif"; ctx.fillText("受付 "+o.at, PX, y); ctx.font="22px sans-serif"; ctx.fillText("（受取まで "+diff+"分）", PX+150, y+3); y += 44; line(y); y += 18;
+  ctx.font="bold 36px sans-serif"; ctx.fillText(o.name+" 様", PX, y); y += 46;
+  if(o.phone){ ctx.font="22px sans-serif"; ctx.fillText(oTel(o.phone), PX, y); y += 30; }
+  y += 6; line(y); y += 18; ctx.font="bold 30px sans-serif";
+  its.forEach(([k,v])=>{ ctx.fillText(k.replace(/^TG/,""), PX, y); ctx.textAlign="right"; ctx.fillText("×"+v, R, y); ctx.textAlign="left"; y += 48; });
+  y += 2; line(y); y += 18;
+  ctx.font="bold 28px sans-serif"; ctx.fillText("合計 "+o.total.toLocaleString()+"円", PX, y); ctx.font="22px sans-serif"; ctx.textAlign="right"; ctx.fillText("店頭払い（未収）", R, y+4); ctx.textAlign="left"; y += 44;
+  if(o.note){ ctx.font="bold 24px sans-serif"; let ln=""; for(const ch of "※ "+o.note){ if(ctx.measureText(ln+ch).width > CW){ ctx.fillText(ln, PX, y); y += 32; ln = ch; } else ln += ch; } ctx.fillText(ln, PX, y); y += 44; }
+  y += 8; line(y,1); y += 12; ctx.font="18px sans-serif"; ctx.fillText("印刷 "+oNow()+"　洋食オリオン 神田淡路町店", PX, y);
+  return cv;
+}
+function oRaster(cv){
+  const ctx = cv.getContext("2d"), W = cv.width, H = cv.height, img = ctx.getImageData(0,0,W,H).data, bpr = W/8; const data = new Uint8Array(bpr*H);
+  for(let yy=0; yy<H; yy++) for(let xx=0; xx<W; xx++){ const i=(yy*W+xx)*4; if((img[i]+img[i+1]+img[i+2])/3 < 160) data[yy*bpr+(xx>>3)] |= (0x80 >> (xx&7)); }
+  const head = [0x1d,0x76,0x30,0x00, bpr&0xff,(bpr>>8)&0xff, H&0xff,(H>>8)&0xff], tail = [0x1b,0x64,0x06, 0x1d,0x56,0x42,0x00];
+  const out = new Uint8Array(2+head.length+data.length+tail.length); out.set([0x1b,0x40],0); out.set(head,2); out.set(data,2+head.length); out.set(tail,2+head.length+data.length); return out;
+}
+async function oPrint(o){ await oSend(oRaster(oTicket(o))); }
+async function oDoPrint(id){ const o = O.orders.find(x=>x.id===id); if(!o) return; if(!O.printer.ch){ alert("先に「プリンター」をタップして接続してください"); return; } try{ await oPrint(o); await oUpdate(id,{printed:true}); o.printed = true; oRender(); }catch(e){ alert("印刷失敗: "+e.message); } }
+async function oTestPrint(){ const smp = { id:"0000-000", at:oNow(), slot:oNow(), name:"テスト", phone:"", items:{"TGオリオン":1,"TGナシナシ ハーフ":1}, total:1700, meals:2, note:"テスト印刷です" }; if(!O.printer.ch){ alert("先に「プリンター」をタップして接続してください"); return; } try{ await oPrint(smp); }catch(e){ alert("印刷失敗: "+e.message); } }
+// 起動時と30秒ごと（画面が見えている間）。アプリ復帰時も確認
+oPoll(true); setInterval(()=>oPoll(false), 30000);
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) oPoll(true); });
+
 </script>
 </body>
 </html>
