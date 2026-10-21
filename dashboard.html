@@ -17,8 +17,6 @@
   header .t b{font-size:22px;letter-spacing:6px}
   .store{background:var(--cream);color:var(--ink);border:2px solid var(--wood-d);
        border-radius:10px;padding:6px 12px;font-weight:bold;font-size:14px;letter-spacing:2px}
-  .demoBanner{display:none;background:#f4e08a;border:2px solid #b89a2a;border-radius:10px;
-       padding:8px 12px;font-size:12px;font-weight:bold;text-align:center}
   .tabs{display:flex;gap:8px}
   .tabs button{flex:1;padding:10px;border-radius:10px;border:2px solid var(--wood-d);
        background:var(--cream-d);font-size:14px;font-weight:bold;color:var(--ink)}
@@ -88,7 +86,6 @@
     <div class="t"><small>洋食オリオン</small><b>ダッシュボード</b></div>
     <span class="store">神田淡路町店</span>
   </header>
-  <div class="demoBanner" id="demoBanner">⚠ デモデータ表示中(「↻ 実データ」で戻ります)</div>
   <div class="err" id="err"></div>
 
   <div class="tabs">
@@ -174,8 +171,7 @@
 
   <footer>
     <span id="ts"></span><br>
-    <button onclick="load()">↻ 実データ</button>
-    <button onclick="loadDemo()">デモデータ</button>
+    <button onclick="load()">↻ 更新</button>
   </footer>
 </div>
 
@@ -379,14 +375,14 @@ function renderPnl(){
       ["− 人件費", -cur.labor, `${cur.hours}h・人時売上 ${cur.salesPerHour.toLocaleString()}円`],
       ["− 変動経費", -cur.exp, ""],
       ["− 固定費(月額満額)", -cur.fixed, ""],
-    ].concat(cur.laborPre ? [["− 開業前の人件費(準備・研修)", -cur.laborPre, "営業日あたりの計算には含めない"]] : []).map(([k,v,n])=>`<div class="pl"><span>${k} <small style="color:#6b5a40">${n}</small></span><b>${(v<0?"−":"")+Math.abs(Math.round(v)).toLocaleString()}円</b></div>`).join("")
+    ].concat(cur.laborPre ? [["− 研修費(開業前)", -cur.laborPre, "開業前の人件費をまとめて計上・日割り計算には含めない"]] : []).map(([k,v,n])=>`<div class="pl"><span>${k} <small style="color:#6b5a40">${n}</small></span><b>${(v<0?"−":"")+Math.abs(Math.round(v)).toLocaleString()}円</b></div>`).join("")
       + `<div class="pl total"><span>営業利益</span>${signed(cur.profit)}</div>`;
     $("pnlNote").textContent = cur.status + "。原価は商品原価マスター×個数の概算、固定費は固定費シートの月額。";
   }
   $("pnlFc").innerHTML = fc ? [
       ["営業利益", signed(fc.profit), "利益率 "+pct(fc.margin)],
       ["売上", Math.round(fc.sales).toLocaleString()+"円", `想定営業 ${fc.days}日`],
-      ["人件費", Math.round(fc.labor).toLocaleString()+"円", fc.laborPre?`＋開業前 ${Math.round(fc.laborPre).toLocaleString()}円`:""],
+      ["人件費", Math.round(fc.labor).toLocaleString()+"円", fc.laborPre?`＋研修費 ${Math.round(fc.laborPre).toLocaleString()}円`:""],
       ["原価", Math.round(fc.cost).toLocaleString()+"円", "原価率 "+pct(fc.costRate)]
     ].map(([k,v,n])=>`<div class="c"><small>${k}</small><b>${v}</b><i>${n}</i></div>`).join("") : "<div class='sub'>-</div>";
   // 日別
@@ -410,7 +406,6 @@ function renderPnl(){
 async function load(){
   try{
     $("err").style.display = "none";
-    $("demoBanner").style.display = "none";
     const res = await fetch(SHEET_URL + "?t=" + Date.now(), {cache:"no-store"});
     DATA = await res.json();
     viewDate = null;
@@ -420,60 +415,6 @@ async function load(){
     $("err").style.display = "block";
     $("err").textContent = "データを取得できませんでした。通信状態と、Apps Scriptの再デプロイ(新バージョン)を確認してください。";
   }
-}
-
-// ===== デモデータ =====
-function loadDemo(){
-  const p = x => String(x).padStart(2,"0");
-  const today = new Date();
-  const daily = [];
-  for(let i=29;i>=0;i--){
-    const dd = new Date(today); dd.setDate(dd.getDate()-i);
-    const date = dd.getFullYear()+"/"+p(dd.getMonth()+1)+"/"+p(dd.getDate());
-    const dow = dd.getDay();
-    if(dow===0){ daily.push({date,count:0,meals:0,drinks:0,sales:0,eatin:0,togo:0,
-      salesEatin:0,salesTogo:0,mealsEatin:0,mealsTogo:0,items:{},hours:{},camera:null}); continue; } // 日曜定休
-    const base = [0,52,55,58,60,68,73][dow]; // 曜日ごとの基準食数
-    const meals = base + Math.floor(Math.random()*9) - 4;
-    const togoMeals = Math.round(meals*0.22);
-    const eatinMeals = meals - togoMeals;
-    const orion = Math.round(meals*0.52), nashi = meals - orion;
-    const nacoppe = 6 + Math.floor(Math.random()*5);
-    const count = Math.round(meals*0.96);
-    const eatin = count - Math.round(count*0.22), togo = count - eatin;
-    const drinks = Math.round(count*0.31);
-    const salesEatin = eatinMeals*880 + Math.round(drinks*0.9)*260;
-    const salesTogo = togoMeals*940 + nacoppe*310;
-    const camera = {
-      "通行": 620 + Math.floor(Math.random()*220) + (dow>=5?150:0),
-      "入店": count + 2,
-      "行列参加": Math.round(meals*0.55),
-      "離脱": 1 + Math.floor(Math.random()*3),
-      "最大行列": 5 + Math.floor(Math.random()*6),
-      "平均待ち秒": 200 + Math.floor(Math.random()*220),
-    };
-    daily.push({date, count, meals, drinks,
-      sales: salesEatin+salesTogo, eatin, togo,
-      salesEatin, salesTogo, mealsEatin: eatinMeals, mealsTogo: togoMeals,
-      items: {"名物オリオン":orion-3, "ナシナシ":nashi-2, "TGオリオン":3, "TGナシナシ":2,
-              "ナコッペ":nacoppe, "ナコッペチーズ":Math.round(nacoppe*0.6),
-              "瓶コーラ":Math.round(drinks*0.45), "ジンジャー":Math.round(drinks*0.2),
-              "コーヒー牛乳":Math.round(drinks*0.25), "小瓶ビール":Math.round(drinks*0.1),
-              "コッペパン":8, "折箱":4},
-      hours: {"11": Math.round(count*0.22), "12": Math.round(count*0.46),
-              "13": Math.round(count*0.24), "14": Math.round(count*0.08)},
-      camera});
-  }
-  DATA = {
-    updated: "デモ",
-    todayKey: daily[daily.length-1].date,
-    daily
-  };
-  viewDate = null;
-  renderAll();
-  $("err").style.display = "none";
-  $("demoBanner").style.display = "block";
-  $("ts").textContent = "デモデータ(数値はすべて架空です)";
 }
 
 load();
