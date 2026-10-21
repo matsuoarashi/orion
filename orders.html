@@ -174,34 +174,36 @@ async function sendBytes(bytes){
   const CH = 180; for(let i=0;i<bytes.length;i+=CH){ const part = bytes.slice(i, i+CH); if(printer.withResp) await printer.ch.writeValue(part); else await printer.ch.writeValueWithoutResponse(part); await new Promise(r=>setTimeout(r, 12)); }
 }
 function ticketCanvas(o){
-  const W = 384, cv = $("cv"), ctx = cv.getContext("2d");
+  // 58mm = 384dot。左右に20dot、上下にたっぷり余白をとる（端の数mmは印字できない機種が多い）
+  const W = 384, PX = 20, CW = W - PX*2, R = W - PX, cv = $("cv"), ctx = cv.getContext("2d");
   const items = Object.entries(o.items);
-  const noteLines = o.note ? Math.ceil(o.note.length/14) + 1 : 0;
-  const H = 330 + items.length*44 + noteLines*30; cv.width = W; cv.height = H;
+  const noteLines = o.note ? Math.ceil(o.note.length/13) + 1 : 0;
+  const H = 440 + items.length*48 + noteLines*32; cv.width = W; cv.height = H;
   ctx.fillStyle = "#fff"; ctx.fillRect(0,0,W,H); ctx.fillStyle = "#000"; ctx.textBaseline = "top";
-  const line = y => { ctx.fillRect(0, y, W, 3); };
-  let y = 6;
-  ctx.font = "bold 24px sans-serif"; ctx.fillText("テイクアウト予約", 0, y);
-  ctx.font = "22px sans-serif"; ctx.textAlign = "right"; ctx.fillText("#"+o.id, W, y+2); ctx.textAlign = "left"; y += 34;
-  line(y); y += 10;
+  const line = (y, th) => { ctx.fillRect(PX, y, CW, th||3); };
+  let y = 24;
+  ctx.font = "bold 24px sans-serif"; ctx.fillText("テイクアウト予約", PX, y);
+  ctx.font = "22px sans-serif"; ctx.textAlign = "right"; ctx.fillText("#"+o.id, R, y+2); ctx.textAlign = "left"; y += 40;
+  line(y); y += 18;
   // 受取（最重要・特大）
-  ctx.font = "bold 26px sans-serif"; ctx.fillText("受取", 0, y+28);
-  ctx.font = "bold 84px sans-serif"; ctx.fillText(o.slot, 64, y-4); y += 92;
+  ctx.font = "bold 26px sans-serif"; ctx.fillText("受取", PX, y+30);
+  ctx.font = "bold 80px sans-serif"; ctx.fillText(o.slot, PX+70, y-2); y += 96;
   // 受付時刻と経過
   const diff = minOf(o.slot) - minOf(o.at);
-  ctx.font = "bold 26px sans-serif"; ctx.fillText("受付 " + o.at, 0, y);
-  ctx.font = "22px sans-serif"; ctx.fillText("（受取まで " + diff + "分）", 150, y+3); y += 36;
-  line(y); y += 10;
-  ctx.font = "bold 36px sans-serif"; ctx.fillText(o.name + " 様", 0, y); y += 44;
-  if(o.phone){ ctx.font = "22px sans-serif"; ctx.fillText(fmtTel(o.phone), 0, y); y += 28; }
-  line(y); y += 10;
+  ctx.font = "bold 26px sans-serif"; ctx.fillText("受付 " + o.at, PX, y);
+  ctx.font = "22px sans-serif"; ctx.fillText("（受取まで " + diff + "分）", PX+150, y+3); y += 44;
+  line(y); y += 18;
+  ctx.font = "bold 36px sans-serif"; ctx.fillText(o.name + " 様", PX, y); y += 46;
+  if(o.phone){ ctx.font = "22px sans-serif"; ctx.fillText(fmtTel(o.phone), PX, y); y += 30; }
+  y += 6; line(y); y += 18;
   ctx.font = "bold 30px sans-serif";
-  items.forEach(([k,v])=>{ ctx.fillText(k.replace(/^TG/,""), 0, y); ctx.textAlign = "right"; ctx.fillText("×" + v, W, y); ctx.textAlign = "left"; y += 44; });
-  line(y); y += 10;
-  ctx.font = "bold 28px sans-serif"; ctx.fillText("合計 " + o.total.toLocaleString() + "円", 0, y);
-  ctx.font = "22px sans-serif"; ctx.textAlign = "right"; ctx.fillText("店頭払い（未収）", W, y+4); ctx.textAlign = "left"; y += 38;
-  if(o.note){ ctx.font = "bold 24px sans-serif"; y = wrap(ctx, "※ " + o.note, 0, y, W, 30) + 8; }
-  ctx.font = "18px sans-serif"; ctx.fillText("印刷 " + nowHM() + "　洋食オリオン", 0, y);
+  items.forEach(([k,v])=>{ ctx.fillText(k.replace(/^TG/,""), PX, y); ctx.textAlign = "right"; ctx.fillText("×" + v, R, y); ctx.textAlign = "left"; y += 48; });
+  y += 2; line(y); y += 18;
+  ctx.font = "bold 28px sans-serif"; ctx.fillText("合計 " + o.total.toLocaleString() + "円", PX, y);
+  ctx.font = "22px sans-serif"; ctx.textAlign = "right"; ctx.fillText("店頭払い（未収）", R, y+4); ctx.textAlign = "left"; y += 44;
+  if(o.note){ ctx.font = "bold 24px sans-serif"; y = wrap(ctx, "※ " + o.note, PX, y, CW, 32) + 12; }
+  y += 8; line(y, 1); y += 12;
+  ctx.font = "18px sans-serif"; ctx.fillText("印刷 " + nowHM() + "　洋食オリオン 神田淡路町店", PX, y);
   return cv;
 }
 function wrap(ctx, text, x, y, maxW, lh){ let line = ""; for(const ch of text){ if(ctx.measureText(line+ch).width > maxW){ ctx.fillText(line, x, y); y += lh; line = ch; } else line += ch; } ctx.fillText(line, x, y); return y + lh; }
@@ -210,7 +212,7 @@ function rasterBytes(cv){
   const data = new Uint8Array(bpr*H);
   for(let yy=0; yy<H; yy++) for(let xx=0; xx<W; xx++){ const i=(yy*W+xx)*4; const dark = (img[i]+img[i+1]+img[i+2])/3 < 160; if(dark) data[yy*bpr + (xx>>3)] |= (0x80 >> (xx&7)); }
   const head = [0x1d,0x76,0x30,0x00, bpr&0xff, (bpr>>8)&0xff, H&0xff, (H>>8)&0xff];
-  const tail = [0x1b,0x64,0x04, 0x1d,0x56,0x42,0x00];
+  const tail = [0x1b,0x64,0x06, 0x1d,0x56,0x42,0x00]; // 6行送り + カット
   const out = new Uint8Array(2 + head.length + data.length + tail.length);
   out.set([0x1b,0x40],0); out.set(head,2); out.set(data,2+head.length); out.set(tail, 2+head.length+data.length);
   return out;
