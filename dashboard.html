@@ -132,6 +132,11 @@
         <table id="paceTable" style="margin-top:8px"></table>
         <div class="sub" id="paceNote"></div></div>
 
+      <div class="card wide"><h2>15分ごとの食数（ばらけ具合）</h2>
+        <div id="slotChart"></div>
+        <div class="pnlGrid" id="slotGrid" style="margin-top:8px"></div>
+        <div class="sub" id="slotNote"></div></div>
+
       <div class="card wide"><h2>商品ミックス</h2>
         <div class="camGrid" id="mixGrid"></div>
         <div class="sub" id="mixNote"></div></div>
@@ -266,6 +271,7 @@ function renderDay(){
   }).join("");
 
   renderPace(d);
+  renderSlots(d);
   renderMix(d);
   renderTogoTrend();
 
@@ -312,10 +318,18 @@ function renderPace(d){
       ["着地見込み", proj!==null ? "約"+proj+"食" : "—", proj!==null ? `目標${GOAL_MEALS}食まで ${proj>=GOAL_MEALS?"届く見込み":"あと"+(GOAL_MEALS-proj)+"食"}` : (H<11?"11時以降に表示":"営業時間外")],
       ["過去の平均", Math.round(avgTotal)+"食/日", `営業${cums.length}日の平均`],
       ["今日の位置", pos?`${pos.n}日中 ${pos.rank}位`:"—", "同時刻の食数で比較"]
-    ] : [
-      ["この日の食数", d.meals+"食", `${d.count}会計`],
-      ["過去の平均", Math.round(avgTotal)+"食/日", `それ以前の営業${cums.length}日`]
-    ]).map(([k,v,n])=>`<div class="c"><small>${k}</small><b>${v}</b><i>${n}</i></div>`).join("");
+    ] : (()=>{
+      const all = DATA.daily.filter(x=>x.count>0 && x.date<=DATA.todayKey && x.date!==DATA.todayKey);
+      const rank = all.filter(x=>x.meals>d.meals).length + 1;
+      const best = all.slice().sort((a,b)=>b.meals-a.meals)[0];
+      const avgAll = all.length ? all.reduce((a,x)=>a+x.meals,0)/all.length : 0;
+      return [
+        ["この日の食数", d.meals+"食", `${d.count}会計・持ち帰り${d.mealsTogo||0}食`],
+        ["全営業日の平均", Math.round(avgAll)+"食/日", `営業${all.length}日（当日除く）`],
+        ["この日の順位", `${all.length}日中 ${rank}位`, "食数で比較"],
+        ["最高の日", best?`${best.meals}食`:"-", best?`${best.date.slice(5)}(${youbi(best.date)})`:""]
+      ];
+    })()).map(([k,v,n])=>`<div class="c"><small>${k}</small><b>${v}</b><i>${n}</i></div>`).join("");
   // 時刻別の累計テーブル（この日 vs 平均）
   const hs = [11,12,13,14];
   const avgCum = {}; hs.forEach(h=>{ avgCum[h] = cums.reduce((a,c)=>a+c.cum[h],0)/cums.length; });
@@ -325,6 +339,37 @@ function renderPace(d){
     + `<tr><td>平均</td>` + hs.map(h=>`<td>${Math.round(avgCum[h])}</td>`).join("") + "</tr>"
     + `<tr><td>最高</td>` + hs.map(h=>`<td>${best[h]}</td>`).join("") + "</tr>";
   $("paceNote").textContent = "数字は食数の累計。着地見込み = 現在の食数 ÷ 過去の営業日の同時刻までの平均構成比";
+}
+// ===== 15分ごとの食数（この日 vs 過去平均） =====
+function slotKeys(){ const ks=[]; for(let h=10;h<=14;h++) for(let m=0;m<60;m+=15) ks.push(String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")); ks.push("15:00"); return ks; }
+function renderSlots(d){
+  const ks = slotKeys(); const mine = d.slots || null;
+  if(!mine){ $("slotChart").innerHTML=""; $("slotGrid").innerHTML=""; $("slotNote").textContent="15分刻みのデータは分析GAS v19以降で記録されます"; return; }
+  const past = DATA.daily.filter(x=>x.count>0 && x.date!==viewDate && x.slots);
+  const avg = {}; ks.forEach(k=>{ avg[k] = past.length ? past.reduce((a,x)=>a+Number((x.slots||{})[k]||0),0)/past.length : 0; });
+  const vals = ks.map(k=>Number(mine[k]||0)); const max = Math.max(4, ...vals, ...ks.map(k=>avg[k]));
+  // SVG: 棒=この日, 折れ線=過去平均
+  const W=600, H=150, padL=22, padB=22, bw=(W-padL)/ks.length;
+  const y = v => H-padB - (H-padB-8)*v/max;
+  const bars = ks.map((k,i)=>{ const v=vals[i]; const x=padL+i*bw+1; return `<rect x="${x.toFixed(1)}" y="${y(v).toFixed(1)}" width="${(bw-2).toFixed(1)}" height="${(H-padB-y(v)).toFixed(1)}" rx="2" fill="${v>=9?'#93332a':'#2c4f39'}" opacity="0.9"/>` + (v?`<text x="${(x+(bw-2)/2).toFixed(1)}" y="${(y(v)-3).toFixed(1)}" font-size="9" text-anchor="middle" fill="#3a2a18">${v}</text>`:""); }).join("");
+  const line = past.length ? `<polyline fill="none" stroke="#b8862b" stroke-width="2" stroke-dasharray="3 2" points="${ks.map((k,i)=>`${(padL+i*bw+bw/2).toFixed(1)},${y(avg[k]).toFixed(1)}`).join(" ")}"/>` : "";
+  const xl = ks.map((k,i)=> k.endsWith(":00") ? `<text x="${(padL+i*bw+1).toFixed(1)}" y="${H-6}" font-size="9" fill="#6b5a40">${k.slice(0,2)}時</text>` : "").join("");
+  const gl = [0,Math.round(max/2),max].map(v=>`<text x="2" y="${(y(v)+3).toFixed(1)}" font-size="8" fill="#6b5a40">${v}</text><line x1="${padL}" x2="${W}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="#d9ccb0" stroke-width="0.5"/>`).join("");
+  $("slotChart").innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${gl}${bars}${line}${xl}</svg>`;
+  // 指標
+  const total = vals.reduce((a,b)=>a+b,0);
+  const peakI = vals.indexOf(Math.max(...vals)); const peak = vals[peakI]||0;
+  const top3 = vals.slice().sort((a,b)=>b-a).slice(0,3).reduce((a,b)=>a+b,0);
+  const busy = vals.filter(v=>v>=9).length;            // 席数(9)以上が15分に集中した枠＝待ちが出やすい
+  const idle = ks.filter((k,i)=>k>="11:30"&&k<"13:30"&&vals[i]===0).length;
+  const noon = ks.reduce((a,k,i)=>a+((k>="12:00"&&k<"13:00")?vals[i]:0),0);
+  $("slotGrid").innerHTML = [
+    ["ピーク15分", peak?`${ks[peakI]}〜 ${peak}食`:"-", "最も集中した枠"],
+    ["上位3枠の集中度", total?pct(top3/total):"-", "45分に何割入ったか（高いほど山型）"],
+    ["待ちが出やすい枠", `${busy}枠`, "15分に9食以上（席数相当）"],
+    ["12時台の比率", total?pct(noon/total):"-", `11:30〜13:30で空白の枠 ${idle}`]
+  ].map(([k,v,n])=>`<div class="c"><small>${k}</small><b>${v}</b><i>${n}</i></div>`).join("");
+  $("slotNote").textContent = `緑の棒＝この日の食数（赤は9食以上）、点線＝過去${past.length}営業日の平均。上位3枠の集中度が低いほど客が時間に散らばっている＝回転に余裕がある。`;
 }
 // ===== 商品ミックス =====
 function renderMix(d){
