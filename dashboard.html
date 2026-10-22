@@ -611,21 +611,26 @@ function renderInit(p, hist, fc){
     + (it.preOpenExpenses?`<tr><td>開業日前の仕入・経費（経費シートより・自動）</td><td>初期仕入</td><td>${it.preOpenExpenses.toLocaleString()}</td><td>自動</td></tr>`:"");
 }
 
-async function load(){
+let _loading = false;
+async function load(keep){
+  if(_loading) return; _loading = true;
   try{
     $("err").style.display = "none";
     const res = await fetch(SHEET_URL + "?t=" + Date.now(), {cache:"no-store"});
     DATA = await res.json();
-    viewDate = null;
+    if(!keep) viewDate = null;          // 自動更新のときは見ている日を保つ
     renderAll();
-    $("ts").textContent = "最終更新 " + DATA.updated;
+    $("ts").textContent = "最終更新 " + DATA.updated + (keep ? "（自動）" : "");
   }catch(e){
-    $("err").style.display = "block";
-    $("err").textContent = "データを取得できませんでした。通信状態と、Apps Scriptの再デプロイ(新バージョン)を確認してください。";
-  }
+    if(!keep){ $("err").style.display = "block";
+      $("err").textContent = "データを取得できませんでした。通信状態と、Apps Scriptの再デプロイ(新バージョン)を確認してください。"; }
+  }finally{ _loading = false; }
 }
 
 load();
+// 開いている間は1分ごとに自動更新（画面が見えている時だけ）。アプリに戻った時も即更新
+setInterval(()=>{ if(!document.hidden) load(true); }, 60000);
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) load(true); });
 </script>
 </body>
 </html>
