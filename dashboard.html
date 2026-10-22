@@ -112,30 +112,15 @@
         <div class="goal"><i id="goalBar" style="width:0%"></i></div></div>
       <div class="card"><h2>売上</h2><div class="big" id="dSales">-</div>
         <div class="sub" id="dCount"></div></div>
-      <div class="card"><h2>客単価(売上÷食数)</h2><div class="big" id="dAvg">-</div>
-        <div class="sub">計画 945円</div></div>
-      <div class="card"><h2>副菜追加率(個÷食数)</h2><div class="big" id="dFuku">-</div>
-        <div class="sub" id="dFukuNote">客単価を動かすレバー</div></div>
-
-      <div class="card wide" id="dPnlCard"><h2>この日の粗利（概算）</h2>
-        <div class="pnlGrid" id="dPnl"></div>
-        <div class="sub">売上 − 原価（商品原価マスター×個数） − 人件費（勤怠から）。固定費は含まない</div></div>
-
-      <div class="card wide"><h2>店内 / 持ち帰り</h2>
-        <table id="modeTable"></table></div>
-
-      <div class="card wide"><h2>直近14日の食数(緑=表示中の日)</h2>
-        <div class="bar" id="chart"></div><div style="height:16px"></div></div>
+      <div class="card"><h2 id="dInsideTitle">いま店内にいる人（推定）</h2><div class="big" id="dInside">-</div>
+        <div class="sub" id="dInsideNote"></div></div>
+      <div class="card"><h2>滞在時間（中央値）</h2><div class="big" id="dStay">-</div>
+        <div class="sub" id="dStayNote"></div></div>
 
       <div class="card wide"><h2 id="paceTitle">今日のペース</h2>
         <div class="pnlGrid" id="paceGrid"></div>
         <table id="paceTable" style="margin-top:8px"></table>
         <div class="sub" id="paceNote"></div></div>
-
-      <div class="card wide"><h2>15分ごとの食数（ばらけ具合）</h2>
-        <div id="slotChart"></div>
-        <div class="pnlGrid" id="slotGrid" style="margin-top:8px"></div>
-        <div class="sub" id="slotNote"></div></div>
 
       <div class="card wide"><h2>来店と滞在時間（入口カウンター）</h2>
         <div class="pnlGrid" id="visGrid"></div>
@@ -144,15 +129,24 @@
         <table id="visTable" style="margin-top:8px"></table>
         <div class="sub" id="visNote"></div></div>
 
+      <div class="card wide"><h2>15分ごとの食数（ばらけ具合）</h2>
+        <div id="slotChart"></div>
+        <div class="pnlGrid" id="slotGrid" style="margin-top:8px"></div>
+        <div class="sub" id="slotNote"></div></div>
+
       <div class="card wide"><h2>商品ミックス</h2>
         <div class="camGrid" id="mixGrid"></div>
         <div class="sub" id="mixNote"></div></div>
 
+      <div class="card wide"><h2>直近14日の食数(緑=表示中の日)</h2>
+        <div class="bar" id="chart"></div><div style="height:16px"></div></div>
+
       <div class="card wide"><h2>持ち帰りの推移（直近7営業日）</h2>
         <table id="togoTable"></table></div>
 
-      <div class="card"><h2>時間帯別 食数</h2><div class="sub" id="dHours" style="font-size:13px"></div></div>
-      <div class="card"><h2>商品別 売れ数(上位)</h2><div class="sub" id="dItemsMini" style="font-size:13px"></div></div>
+      <div class="card wide" id="dPnlCard"><h2>この日の粗利（概算）</h2>
+        <div class="pnlGrid" id="dPnl"></div>
+        <div class="sub">売上 − 原価（商品原価マスター×個数） − 人件費（勤怠から）。固定費は含まない</div></div>
 
       <div class="card wide"><h2>商品別 売れ数(この日・全品)</h2><table id="dItems"></table></div>
     </div>
@@ -244,28 +238,25 @@ function renderDay(){
   $("dateLabel").textContent = `${viewDate}(${youbi(viewDate)})${viewDate===DATA.todayKey?" 本日":""}`;
   $("dMeals").innerHTML = d.meals + '<small> 食</small>';
   $("dSales").textContent = yen(d.sales);
-  $("dAvg").textContent = d.meals ? yen(Math.round(d.sales/d.meals)) : "-";
-  const fk = (d.items||{})["副菜追加"] || 0;
-  $("dFuku").textContent = d.meals ? Math.round(100*fk/d.meals) + "%" : "-";
-  $("dFukuNote").textContent = `${fk}個・ドリンク率 ${d.meals?Math.round(100*d.drinks/d.meals)+"%":"-"}`;
-  $("dCount").textContent = `${d.count}会計 / 持ち帰り ${d.mealsTogo||0}食`;
+  $("dCount").textContent = `${d.count}会計 / 持ち帰り ${d.mealsTogo||0}食 / 客単価 ${d.meals?yen(Math.round(d.sales/d.meals)):"-"}`;
+  // いま店内にいる人 ＝ 入店（男女ボタン） − 店内の会計食数（1食＝1人）。過去日は来店人数
+  const v = d.visits || null; const isTodayView = viewDate === DATA.todayKey;
+  if(isTodayView){
+    $("dInsideTitle").textContent = "いま店内にいる人（推定）";
+    const inside = v ? Math.max(0, v.total - (d.mealsEatin||0)) : null;
+    $("dInside").innerHTML = inside===null ? "-" : inside + '<small> 人</small>';
+    $("dInsideNote").textContent = v ? `入店 ${v.total}（男${v.m}・女${v.f}）− 店内会計 ${d.mealsEatin||0}食・席9` : "入口ボタンの記録なし";
+  } else {
+    $("dInsideTitle").textContent = "来店（入口カウンター）";
+    $("dInside").innerHTML = v ? v.total + '<small> 人</small>' : "-";
+    $("dInsideNote").textContent = v ? `男${v.m}・女${v.f}（女性 ${pct(v.f/v.total)}）・店内会計 ${d.mealsEatin||0}食` : "入口ボタンの記録なし";
+  }
+  $("dStay").innerHTML = (v && v.stayMed!=null) ? v.stayMed + '<small> 分</small>' : "-";
+  $("dStayNote").textContent = (v && v.stayMed!=null) ? `平均 ${v.stayAvg}分・最長 ${v.stayMax}分（${v.stayN}組）` : "店内の会計がたまると出ます";
   $("dGoal").textContent = `目標 ${GOAL_MEALS}食まであと ${Math.max(0, GOAL_MEALS - d.meals)}食`;
   $("dPnlCard").classList.toggle("hide", viewDate===DATA.todayKey);   // 当日は勤怠が未確定なので営業終了後（翌日）に表示
   renderDayPnl(d);
   $("goalBar").style.width = Math.min(100, 100*d.meals/GOAL_MEALS) + "%";
-
-  // 店内/持ち帰りテーブル
-  const se = d.salesEatin, st = d.salesTogo;
-  const hasModeData = (se + st > 0) || d.count === 0;
-  $("modeTable").innerHTML =
-    "<tr><th></th><th>会計数</th><th>食数</th><th>売上</th><th>客単価</th><th>売上構成比</th></tr>" +
-    `<tr><td>店内</td><td>${d.eatin}</td><td>${d.mealsEatin??"-"}</td><td>${yen(se)}</td>`+
-    `<td>${d.mealsEatin?yen(Math.round(se/d.mealsEatin)):"-"}</td>`+
-    `<td>${d.sales?Math.round(100*se/d.sales)+"%":"-"}</td></tr>`+
-    `<tr><td>持ち帰り</td><td>${d.togo}</td><td>${d.mealsTogo??"-"}</td><td>${yen(st)}</td>`+
-    `<td>${d.mealsTogo?yen(Math.round(st/d.mealsTogo)):"-"}</td>`+
-    `<td>${d.sales?Math.round(100*st/d.sales)+"%":"-"}</td></tr>` +
-    (!hasModeData ? '<tr><td colspan="6" style="text-align:left;color:#8a6a1a">※売上の店内/TG内訳はApps Script v4への更新後から記録されます</td></tr>' : "");
 
   // 14日チャート
   const days = [];
@@ -283,11 +274,7 @@ function renderDay(){
   renderMix(d);
   renderTogoTrend();
 
-  const hm = d.hoursMeals || null;
-  $("dHours").innerHTML = Object.keys(hm||d.hours).sort().map(h=>`${h}時台 <b>${hm?hm[h]:d.hours[h]}</b>${hm?"食":"件"} <small>${hm?(d.hours[h]||0)+"件":""}</small>`).join("<br>") || "-";
-
   const items = Object.entries(d.items||{}).sort((a,b)=>b[1]-a[1]);
-  $("dItemsMini").innerHTML = items.slice(0,4).map(([n,q])=>`${n} <b>${q}</b>`).join("<br>") || "-";
   $("dItems").innerHTML = "<tr><th>商品</th><th>個数</th></tr>" +
     (items.map(([n,q])=>`<tr><td>${n}</td><td>${q}</td></tr>`).join("") || "<tr><td>記録なし</td><td></td></tr>");
 }
