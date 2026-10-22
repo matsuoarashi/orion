@@ -246,6 +246,7 @@ async function loadShift(){ if(!$("pShift").dataset.loaded) $("pShift").innerHTM
       <div class="scroll">${grid}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
         <button class="btn" onclick="confirmAll()" ${drafts?"":"disabled"}>下書きを一括確定（${drafts}件）</button>
+        <button class="btn sec" onclick="bulkAssign()">一括配置</button>
         <button class="btn sec" onclick="copyPrev()">前月をコピー</button>
         <button class="btn sec" onclick="lineText()">LINE用テキスト</button>
       </div></div>
@@ -272,6 +273,34 @@ async function saveCell(date, staff_id, shift_id){
   closeOv(); toast(shift_id?"変更しました（確定済みなら次回同期で反映）":"下書きに追加しました"); loadShift();
 }
 async function delCell(shift_id){ if(!confirm("このシフトを取り消しますか？")) return; const r = await api("admin.shifts_save", {rows:[{shift_id, delete:true}]}); if(!r.ok){ toast(r.error); return; } closeOv(); const s = await api("admin.sync_retry"); toast("取り消しました"); loadShift(); }
+// 一括配置：スタッフ1人×時間×複数日をまとめて下書きに
+function bulkAssign(staff_id){
+  const staff = SD.s.staff.filter(x=>x.status==="active"); if(!staff.length) return;
+  const sid = staff_id || staff[0].staff_id; const presets = SD.s.presets||[];
+  const days = SD.s.openDays.filter(d=>{ const nd=(SD.s.need||{})[d.date]||{}; return nd.open===null||nd.open===undefined ? d.open : nd.open; });
+  const wishBy = {}; (SD.w.wishes||[]).forEach(x=>{ (wishBy[x.date]=wishBy[x.date]||{})[x.staff_id]=x; });
+  const cells = days.map(d=>{ const wi=(wishBy[d.date]||{})[sid]; const sh=SD.s.shifts.find(s=>s.date===d.date&&s.staff_id===sid); const dow=youbi(d.date);
+    const bad = wi && (wi.kind==="ng"||wi.kind==="off"); const tag = sh?`<span class="mini" style="color:var(--g)">配置済 ${sh.start}</span>`:bad?`<span class="mini" style="color:var(--red)">${wi.kind==="off"?"休希望":"不可"}</span>`:wi&&wi.kind==="time"?`<span class="mini">△${wi.start}-${wi.end}</span>`:wi?`<span class="mini">○可</span>`:`<span class="mini">希望なし</span>`;
+    return `<label class="bk ${bad?"bad":""} ${sh?"has":""}" data-dow="${dow}" data-bad="${bad?1:0}" data-has="${sh?1:0}" style="margin:0;display:flex;align-items:center;gap:6px;padding:7px 8px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;color:var(--ink)"><input type="checkbox" value="${d.date}" style="width:auto;margin:0" ${(!bad&&!sh)?"checked":""}><b class="${dow===0?"sun":dow===6?"sat":""}">${d.date.slice(8)}(${YO[dow]})</b>${tag}</label>`; }).join("");
+  modal(`<h3>一括配置（${ymLabel(SM)}）</h3>
+    <label>スタッフ</label><select id="bS" onchange="closeOv();bulkAssign(this.value)">${staff.map(x=>`<option value="${x.staff_id}" ${x.staff_id===sid?"selected":""}>${esc(x.name)}</option>`).join("")}</select>
+    <label>時間</label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">${presets.map(p=>{const [a,b]=p.split("-"); return `<button class="btn sec" onclick="$('cS').value='${a}';$('cE').value='${b}'">${p}</button>`;}).join("")}</div>
+    <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center"><input type="time" id="cS" value="${presets[0]?presets[0].split("-")[0]:"10:15"}"><span>〜</span><input type="time" id="cE" value="${presets[0]?presets[0].split("-")[1]:"15:15"}"></div>
+    <label>曜日でまとめて選ぶ</label>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${[1,2,3,4,5,6,0].map(d=>`<button class="btn sec sm" onclick="bulkDow(${d})">${YO[d]}</button>`).join("")}<button class="btn sec sm" onclick="bulkDow(-1)">全部</button><button class="btn sec sm" onclick="bulkDow(-2)">解除</button></div>
+    <div class="mini" style="margin:6px 0">不可・休希望の日と配置済みの日は最初から外しています（チェックを入れれば配置・上書きできます）</div>
+    <div id="bkDays" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:40vh;overflow:auto">${cells}</div>
+    <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" style="flex:1" onclick="saveBulk('${sid}')">一括で配置</button><button class="btn sec" onclick="closeOv()">閉じる</button></div>`);
+}
+function bulkDow(d){ document.querySelectorAll('#bkDays label').forEach(l=>{ const c=l.querySelector('input'); if(d===-2){ c.checked=false; return; } if(l.dataset.bad==="1"||l.dataset.has==="1") return; if(d===-1||Number(l.dataset.dow)===d) c.checked=true; }); }
+async function saveBulk(staff_id){
+  const start=$("cS").value, end=$("cE").value; if(!start||!end||start>=end){ toast("時間を確認してください"); return; }
+  const dates = [...document.querySelectorAll('#bkDays input:checked')].map(c=>c.value); if(!dates.length){ toast("日付を選んでください"); return; }
+  const rows = dates.map(date=>{ const cur = SD.s.shifts.find(s=>s.date===date && s.staff_id===staff_id); return {shift_id: cur?cur.shift_id:undefined, staff_id, date, start, end}; });
+  const r = await api("admin.shifts_save", {rows}); if(!r.ok){ toast(r.error); return; }
+  closeOv(); toast(`${rows.length}日分を下書きに配置しました`); loadShift();
+}
 function editDay(date){
   const nd = (SD.s.need||{})[date]||{}; const base = SD.s.openDays.find(d=>d.date===date);
   modal(`<h3>${date.slice(5)}(${YO[youbi(date)]}) の設定</h3>
