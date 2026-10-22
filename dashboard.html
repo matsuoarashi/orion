@@ -137,6 +137,13 @@
         <div class="pnlGrid" id="slotGrid" style="margin-top:8px"></div>
         <div class="sub" id="slotNote"></div></div>
 
+      <div class="card wide"><h2>来店と滞在時間（入口カウンター）</h2>
+        <div class="pnlGrid" id="visGrid"></div>
+        <div id="visChart" style="margin-top:8px"></div>
+        <div id="visDist" style="margin-top:8px"></div>
+        <table id="visTable" style="margin-top:8px"></table>
+        <div class="sub" id="visNote"></div></div>
+
       <div class="card wide"><h2>商品ミックス</h2>
         <div class="camGrid" id="mixGrid"></div>
         <div class="sub" id="mixNote"></div></div>
@@ -272,6 +279,7 @@ function renderDay(){
 
   renderPace(d);
   renderSlots(d);
+  renderVisits(d);
   renderMix(d);
   renderTogoTrend();
 
@@ -370,6 +378,40 @@ function renderSlots(d){
     ["12時台の比率", total?pct(noon/total):"-", `11:30〜13:30で空白の枠 ${idle}`]
   ].map(([k,v,n])=>`<div class="c"><small>${k}</small><b>${v}</b><i>${n}</i></div>`).join("");
   $("slotNote").textContent = `緑の棒＝この日の食数（赤は9食以上）、点線＝過去${past.length}営業日の平均。上位3枠の集中度が低いほど客が時間に散らばっている＝回転に余裕がある。`;
+}
+// ===== 来店と滞在（入口の男女ボタン） =====
+function renderVisits(d){
+  const v = d.visits || null; const ks = slotKeys();
+  if(!v || !v.total){ $("visGrid").innerHTML=""; $("visChart").innerHTML=""; $("visDist").innerHTML=""; $("visTable").innerHTML=""; $("visNote").textContent="この日は入口カウンター（レジの男・女ボタン）の記録がありません。"; return; }
+  const fr = v.total ? v.f/v.total : 0;
+  const stay = v.stayAvg==null ? "-" : `${v.stayAvg}分`;
+  // 入店 vs 会計 の15分推移と、店内にいる人数（GASで入店〜会計の区間の重なりを1分刻みで数えた15分枠ごとの最大）
+  const ent = ks.map(k=>Number((v.slots||{})[k]||0)); const out = ks.map(k=>Number((d.slots||{})[k]||0));
+  const inside = ks.map(k=>Number((v.occ||{})[k]||0)); const maxIn = v.maxIn||0, maxAt = v.maxAt||"";
+  const over = ks.filter((k,i)=>inside[i]>9).length;
+  $("visGrid").innerHTML = [
+    ["来店", `${v.total}人`, `男 ${v.m}・女 ${v.f}（女性 ${pct(fr)}）`],
+    ["平均滞在", stay, v.stayMed==null?"":`中央値 ${v.stayMed}分・75%の人は${v.stayP75}分以内`],
+    ["最長滞在", v.stayMax==null?"-":`${v.stayMax}分`, `突き合わせ ${v.stayN}組`],
+    ["店内の最大人数(推定)", `${maxIn}人`, maxAt?`${maxAt}ごろ・席数9を超えた枠 ${over}`:""],
+  ].map(([k,x,n])=>`<div class="c"><small>${k}</small><b>${x}</b><i>${n}</i></div>`).join("");
+  const W=600, H=150, padL=22, padB=22, bw=(W-padL)/ks.length; const max=Math.max(4,...ent,...out,...inside);
+  const y = x => H-padB - (H-padB-8)*x/max;
+  const bars = ks.map((k,i)=>{ const a=ent[i], b=out[i]; const x=padL+i*bw+1; const w=(bw-2)/2;
+    return `<rect x="${x.toFixed(1)}" y="${y(a).toFixed(1)}" width="${w.toFixed(1)}" height="${(H-padB-y(a)).toFixed(1)}" fill="#3f6fb0" opacity=".85"/><rect x="${(x+w).toFixed(1)}" y="${y(b).toFixed(1)}" width="${w.toFixed(1)}" height="${(H-padB-y(b)).toFixed(1)}" fill="#2c4f39" opacity=".85"/>`; }).join("");
+  const line = `<polyline fill="none" stroke="#93332a" stroke-width="2" points="${ks.map((k,i)=>`${(padL+i*bw+bw/2).toFixed(1)},${y(inside[i]).toFixed(1)}`).join(" ")}"/>`;
+  const seat = `<line x1="${padL}" x2="${W}" y1="${y(9).toFixed(1)}" y2="${y(9).toFixed(1)}" stroke="#93332a" stroke-width="0.8" stroke-dasharray="4 3"/><text x="${W-4}" y="${(y(9)-3).toFixed(1)}" font-size="8" text-anchor="end" fill="#93332a">席数9</text>`;
+  const xl = ks.map((k,i)=> k.endsWith(":00") ? `<text x="${(padL+i*bw+1).toFixed(1)}" y="${H-6}" font-size="9" fill="#6b5a40">${k.slice(0,2)}時</text>` : "").join("");
+  const gl = [0,Math.round(max/2),max].map(x=>`<text x="2" y="${(y(x)+3).toFixed(1)}" font-size="8" fill="#6b5a40">${x}</text><line x1="${padL}" x2="${W}" y1="${y(x).toFixed(1)}" y2="${y(x).toFixed(1)}" stroke="#d9ccb0" stroke-width="0.5"/>`).join("");
+  $("visChart").innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${gl}${seat}${bars}${line}${xl}</svg><div class="sub">青＝入店（人）、緑＝会計（食数）、赤線＝店内にいる人数の推定（各15分枠での最大）。赤線が席数9を超える時間は待ちが出ている目安。</div>`;
+  // 滞在の分布
+  const dist = v.stayDist||{}; const dk = ["~10","11-20","21-30","31-45","46~"]; const dl = {"~10":"10分以内","11-20":"11〜20分","21-30":"21〜30分","31-45":"31〜45分","46~":"46分以上"};
+  const dn = dk.reduce((a,k)=>a+Number(dist[k]||0),0);
+  $("visDist").innerHTML = dn ? `<table>${dk.map(k=>{ const n=Number(dist[k]||0); return `<tr><td style="width:80px">${dl[k]}</td><td><div style="background:#2c4f39;height:12px;border-radius:3px;width:${Math.round(n/dn*100)}%;min-width:${n?2:0}px"></div></td><td class="r" style="width:70px">${n}組 ${pct(n/dn)}</td></tr>`; }).join("")}</table>` : "";
+  // 日別の推移
+  const rows = DATA.daily.filter(x=>x.visits&&x.visits.total).slice(-10);
+  $("visTable").innerHTML = rows.length>1 ? `<tr><th>日</th><th class="r">来店</th><th class="r">女性</th><th class="r">平均滞在</th><th class="r">中央値</th><th class="r">食数</th></tr>` + rows.map(x=>`<tr class="${x.date===viewDate?'cur':''}"><td>${x.date.slice(5)}</td><td class="r">${x.visits.total}</td><td class="r">${pct(x.visits.f/x.visits.total)}</td><td class="r">${x.visits.stayAvg==null?"-":x.visits.stayAvg+"分"}</td><td class="r">${x.visits.stayMed==null?"-":x.visits.stayMed+"分"}</td><td class="r">${x.mealsEatin||0}</td></tr>`).join("") : "";
+  $("visNote").textContent = `滞在時間は「入店ボタンの時刻」と「店内の会計時刻」を先着順で突き合わせた推定（入店から3分未満の会計は別の客とみなし、150分超は除外）。来店人数と店内食数の差 ${v.total-(d.mealsEatin||0)} が大きい日は押し忘れ・同伴の目安。`;
 }
 // ===== 商品ミックス =====
 function renderMix(d){
