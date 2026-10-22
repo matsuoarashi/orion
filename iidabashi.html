@@ -36,27 +36,30 @@ header{position:sticky;top:0;z-index:20;background:var(--wine);color:#fff;paddin
 .datewarn{display:none;background:var(--amber);color:#fff;font-size:12px;padding:6px 12px;text-align:center;}
 .datewarn.show{display:block;}
 
-main{flex:1;padding:12px 12px 90px;}
+main{flex:1;padding:8px 10px 84px;}
 .screen{display:none;}
 .screen.active{display:block;}
 
-.card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px;box-shadow:0 1px 0 rgba(0,0,0,.02);}
-.card h2{font-size:14px;color:var(--wine-d);letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:10px;margin-bottom:10px;box-shadow:0 1px 0 rgba(0,0,0,.02);}
+.card h2{font-size:13px;color:var(--wine-d);letter-spacing:.5px;margin-bottom:8px;display:flex;align-items:center;gap:8px;}
 .muted{color:var(--sub);font-size:12px;}
 
 /* count rows */
-.crow{display:flex;align-items:stretch;gap:8px;margin-bottom:10px;}
-.cmain{flex:1;border-radius:14px;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 18px;min-height:76px;font-weight:800;box-shadow:0 3px 0 rgba(0,0,0,.18);user-select:none;}
+.crow{display:flex;align-items:stretch;gap:8px;margin-bottom:6px;}
+.cmain{flex:1;border-radius:13px;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 14px;min-height:54px;font-weight:800;box-shadow:0 3px 0 rgba(0,0,0,.18);user-select:none;}
 .cmain:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.18);}
-.cmain .lbl{font-size:21px;}
-.cmain .cnt{font-size:34px;font-variant-numeric:tabular-nums;}
+.cmain.big{min-height:66px;}
+.cmain .lbl{font-size:18px;}
+.cmain.big .lbl{font-size:20px;}
+.cmain .cnt{font-size:28px;font-variant-numeric:tabular-nums;}
+.cmain.big .cnt{font-size:34px;}
 .cmain.enter{background:var(--green);}
 .cmain.exit{background:var(--blue);}
 .cmain.togo{background:#9a6a1f;}
 .cmain.pass{background:#6b6257;}
 .cmain.giveup{background:#8a5a5a;}
-.adds{display:flex;flex-direction:column;gap:6px;width:62px;}
-.addb{flex:1;background:#efe7d6;border:1px solid var(--line);border-radius:10px;font-weight:800;font-size:17px;color:var(--ink);display:flex;align-items:center;justify-content:center;}
+.adds{display:flex;flex-direction:column;gap:5px;width:52px;}
+.addb{flex:1;background:#efe7d6;border:1px solid var(--line);border-radius:10px;font-weight:800;font-size:16px;color:var(--ink);display:flex;align-items:center;justify-content:center;}
 .addb:active{background:#e2d6bd;}
 
 /* inline stat / stepper */
@@ -69,7 +72,15 @@ main{flex:1;padding:12px 12px 90px;}
 .stepb:active{background:#e2d6bd;}
 .stepb.minus{color:var(--blue-d);}
 .stepb.plus{color:var(--green-d);}
-.bigv{min-width:52px;text-align:center;font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;}
+.bigv{min-width:46px;text-align:center;font-size:28px;font-weight:800;font-variant-numeric:tabular-nums;}
+.stepb.sm{width:46px;height:46px;font-size:24px;border-radius:12px;}
+.qstrip{display:flex;gap:8px;margin-top:6px;}
+.qbox,.ibox{flex:1;border:1px solid var(--line);border-radius:12px;background:#faf6ec;padding:6px 8px;display:flex;flex-direction:column;gap:4px;}
+.qlab{font-size:11px;color:var(--sub);font-weight:700;}
+.qinner{display:flex;align-items:center;justify-content:center;gap:8px;}
+.irow{display:flex;align-items:center;justify-content:center;gap:12px;flex:1;}
+.minirow{display:flex;gap:8px;margin-top:8px;}
+.minirow .undo{flex:1.4;}
 
 .btnrow{display:flex;gap:8px;flex-wrap:wrap;}
 .btn{flex:1;min-height:48px;border-radius:12px;font-weight:700;font-size:15px;padding:10px;background:#efe7d6;border:1px solid var(--line);color:var(--ink);display:flex;align-items:center;justify-content:center;gap:6px;}
@@ -160,13 +171,12 @@ nav .tab.active .ic{transform:scale(1.05);}
     <!-- ================= アパ ================= -->
     <section class="screen active" id="scr-apa">
       <div class="card">
-        <h2>★ アパ社長カレー（飯田橋駅南）</h2>
         <div class="crow">
-          <div class="cmain enter" data-ev="enter" data-n="1"><span class="lbl">入店 ＋1</span><span class="cnt" id="c-enter">0</span></div>
+          <div class="cmain enter big" data-ev="enter" data-n="1"><span class="lbl">入店 ＋1</span><span class="cnt" id="c-enter">0</span></div>
           <div class="adds"><button class="addb" data-ev="enter" data-n="2">+2</button><button class="addb" data-ev="enter" data-n="3">+3</button></div>
         </div>
         <div class="crow">
-          <div class="cmain exit" data-ev="exit" data-n="1"><span class="lbl">退店 ＋1</span><span class="cnt" id="c-exit">0</span></div>
+          <div class="cmain exit big" data-ev="exit" data-n="1"><span class="lbl">退店 ＋1</span><span class="cnt" id="c-exit">0</span></div>
           <div class="adds"><button class="addb" data-ev="exit" data-n="2">+2</button><button class="addb" data-ev="exit" data-n="3">+3</button></div>
         </div>
         <div class="crow">
@@ -181,29 +191,26 @@ nav .tab.active .ic{transform:scale(1.05);}
           <div class="cmain giveup" data-ev="giveup" data-n="1"><span class="lbl">入店断念 ＋1</span><span class="cnt" id="c-giveup">0</span></div>
           <div class="adds"><button class="addb" data-ev="giveup" data-n="2">+2</button><button class="addb" data-ev="giveup" data-n="3">+3</button></div>
         </div>
-        <button class="btn undo" id="undoBtn" style="margin-top:4px">↩ 直前の操作を取消</button>
-      </div>
 
-      <div class="card">
-        <h2>行列・店内</h2>
-        <div class="statline">
-          <div><div class="statk">行列人数</div><div class="muted" id="snapInfo">次の5分スナップショットで記録</div></div>
-          <div class="stepper">
-            <button class="stepb minus" data-q="apa" data-d="-1">−</button>
-            <div class="bigv" id="apaQueue">0</div>
-            <button class="stepb plus" data-q="apa" data-d="1">＋</button>
+        <div class="qstrip">
+          <div class="qbox">
+            <div class="qlab">行列 <span id="snapInfo"></span></div>
+            <div class="qinner">
+              <button class="stepb sm minus" data-q="apa" data-d="-1">−</button>
+              <div class="bigv" id="apaQueue">0</div>
+              <button class="stepb sm plus" data-q="apa" data-d="1">＋</button>
+            </div>
+          </div>
+          <div class="ibox">
+            <div class="qlab">店内（推定）</div>
+            <div class="irow"><div class="statv" id="apaInside">0</div><button class="toggle" id="unknownToggle">不明</button></div>
           </div>
         </div>
-        <div class="statline">
-          <div><div class="statk">店内人数（推定）</div><div class="muted">初期 ＋ 入店 − 退店</div></div>
-          <div style="display:flex;align-items:center;gap:10px">
-            <div class="statv" id="apaInside">0</div>
-            <button class="toggle" id="unknownToggle">不明</button>
-          </div>
-        </div>
-        <div class="btnrow" style="margin-top:8px">
-          <button class="btn sm" id="setInitBtn">初期店内人数を設定</button>
-          <button class="btn sm" id="snapNowBtn">行列を今すぐ記録</button>
+
+        <div class="minirow">
+          <button class="btn undo" id="undoBtn">↩ 取消</button>
+          <button class="btn sm" id="snapNowBtn">行列記録</button>
+          <button class="btn sm" id="setInitBtn">初期設定</button>
         </div>
       </div>
     </section>
@@ -423,8 +430,9 @@ function renderApa(){
 }
 function renderSnapInfo(){
   const el=document.getElementById("snapInfo");
+  if(!el) return;
   const last=[...S.snaps].reverse().find(s=>s.scope==="apa");
-  el.textContent = (last? "直近記録 "+hms(last.t)+"（"+last.count+"人）／ ":"") + "5分ごと自動記録";
+  el.textContent = last ? ("（直近 "+hms(last.t).slice(0,5)+"・"+last.count+"）") : "（5分毎 自動）";
 }
 function renderComps(){
   const box=document.getElementById("compList"); box.innerHTML="";
