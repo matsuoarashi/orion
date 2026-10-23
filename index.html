@@ -135,6 +135,7 @@
   .ocard .acts button.go{background:var(--midori);color:#fff;border-color:var(--midori)}
   .ocard .acts button.sub{flex:0 0 46px}
   .oempty{text-align:center;color:#8a7a5c;font-size:13px;padding:18px 0;line-height:1.8}
+  .pst{font-size:11px;color:#9fd7a8;margin-right:6px;white-space:nowrap}.pst.ng{color:#ffb0a4}
 </style>
 </head>
 <body>
@@ -168,6 +169,7 @@
       <button onclick="openShime()">締め</button>
       <button onclick="openSummary()">日計</button>
       <button onclick="openVisits()">来店</button>
+      <span id="vPrinter" class="pst" onclick="openOrders()">🖨 未接続</span>
       <button id="ordBtn" onclick="openOrders()">注文<span id="ordBadge" class="obadge hide">0</span></button>
     </span>
   </footer>
@@ -969,19 +971,44 @@ function oAfterSale(){ if(!O.pendingId) return; const id = O.pendingId; O.pendin
 
 // ===== Bluetooth レシートプリンター（ESC/POS 58mm=384dot、伝票は画像で送る） =====
 const O_SVC = [0x18f0, "e7810a71-73ae-499d-8c15-faa9aef0c3f2", "49535343-fe7d-4ae5-8fa9-9fafd205e455", 0xff00, 0xffe0, 0xfee7];
+async function oSetupPrinter(device){
+  const server = await device.gatt.connect(); const services = await server.getPrimaryServices(); let found = null;
+  for(const s of services){ const chs = await s.getCharacteristics(); for(const c of chs){ if(c.properties.writeWithoutResponse || c.properties.write){ found = c; O.printer.withResp = !c.properties.writeWithoutResponse; break; } } if(found) break; }
+  if(!found) throw new Error("書き込み可能な接続先が見つかりません");
+  O.printer.device = device; O.printer.ch = found;
+  try{ localStorage.setItem("printerId", device.id); localStorage.setItem("printerName", device.name||""); }catch(e){}
+  device.addEventListener("gattserverdisconnected", ()=>{ O.printer.ch = null; oPrinterUI(); setTimeout(oAutoConnect, 3000); });
+  oPrinterUI();
+  await oSend(new Uint8Array([0x1b,0x40]));
+  // 接続できたら未印刷の予約をまとめて印刷
+  for(const o of O.orders){ if(!o.printed && o.status!=="done" && o.status!=="cancel"){ try{ await oPrint(o); await oUpdate(o.id,{printed:true}); o.printed = true; }catch(e){} } }
+  oRender();
+}
+function oPrinterUI(){
+  const on = !!O.printer.ch; const name = (O.printer.device&&O.printer.device.name) || localStorage.getItem("printerName") || "";
+  const e=$("oPrint"); if(e){ e.classList.toggle("ok", on); e.classList.toggle("ng", !on); e.innerHTML = on ? "プリンター<b>"+(name||"接続中")+"</b>" : "プリンター<b>未接続</b>（タップで接続）"; }
+  const f=$("vPrinter"); if(f){ f.classList.toggle("ng", !on); f.textContent = on ? "🖨 接続" : "🖨 未接続"; }
+}
 async function oConnectPrinter(){
   if(!navigator.bluetooth){ alert("このブラウザはBluetooth印刷に対応していません（AndroidのChromeで開いてください）"); return; }
   try{
     const device = await navigator.bluetooth.requestDevice({ acceptAllDevices:true, optionalServices:O_SVC });
-    const server = await device.gatt.connect(); const services = await server.getPrimaryServices(); let found = null;
-    for(const s of services){ const chs = await s.getCharacteristics(); for(const c of chs){ if(c.properties.writeWithoutResponse || c.properties.write){ found = c; O.printer.withResp = !c.properties.writeWithoutResponse; break; } } if(found) break; }
-    if(!found) throw new Error("書き込み可能な接続先が見つかりません");
-    O.printer.device = device; O.printer.ch = found;
-    device.addEventListener("gattserverdisconnected", ()=>{ O.printer.ch = null; const e=$("oPrint"); e.classList.remove("ok"); e.classList.add("ng"); e.innerHTML = "プリンター<b>切断</b>"; });
-    const e=$("oPrint"); e.classList.add("ok"); e.classList.remove("ng"); e.innerHTML = "プリンター<b>" + (device.name||"接続中") + "</b>";
-    await oSend(new Uint8Array([0x1b,0x40]));
+    await oSetupPrinter(device);
   }catch(e){ if(!/cancel/i.test(e.message)) alert("接続できませんでした: " + e.message); }
 }
+// 前回つないだプリンターに、画面を開いた時・戻った時・切れた時に自動で再接続（Chromeが対応している場合）
+let _oAuto = false;
+async function oAutoConnect(){
+  if(O.printer.ch || _oAuto || !navigator.bluetooth || !navigator.bluetooth.getDevices) return; _oAuto = true;
+  try{
+    const id = localStorage.getItem("printerId"); if(!id) return;
+    const devs = await navigator.bluetooth.getDevices(); const d = devs.find(x=>x.id===id); if(!d) return;
+    await oSetupPrinter(d);
+  }catch(e){ /* 電源OFFなど。次の機会に再試行 */ }
+  finally{ _oAuto = false; }
+}
+oAutoConnect(); document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) oAutoConnect(); });
+setInterval(()=>{ if(!document.hidden && !O.printer.ch) oAutoConnect(); }, 60000);
 async function oSend(bytes){ const CH=180; for(let i=0;i<bytes.length;i+=CH){ const part = bytes.slice(i,i+CH); if(O.printer.withResp) await O.printer.ch.writeValue(part); else await O.printer.ch.writeValueWithoutResponse(part); await new Promise(r=>setTimeout(r,12)); } }
 function oTicket(o){
   const W = 384, PX = 20, CW = W - PX*2, R = W - PX, cv = $("oCv"), ctx = cv.getContext("2d");
@@ -1011,7 +1038,7 @@ function oRaster(cv){
 }
 async function oPrint(o){ await oSend(oRaster(oTicket(o))); }
 async function oDoPrint(id){ const o = O.orders.find(x=>x.id===id); if(!o) return; if(!O.printer.ch){ alert("先に「プリンター」をタップして接続してください"); return; } try{ await oPrint(o); await oUpdate(id,{printed:true}); o.printed = true; oRender(); }catch(e){ alert("印刷失敗: "+e.message); } }
-async function oTestPrint(){ const smp = { id:"0000-000", at:oNow(), slot:oNow(), name:"テスト", phone:"", items:{"TGオリオン":1,"TGナシナシ ハーフ":1}, total:1700, meals:2, note:"テスト印刷です" }; if(!O.printer.ch){ alert("先に「プリンター」をタップして接続してください"); return; } try{ await oPrint(smp); }catch(e){ alert("印刷失敗: "+e.message); } }
+async function oTestPrint(){ const smp = { id:"0000-000", at:oNow(), slot:oNow(), name:"テスト", phone:"", items:{"TGオリオン":1,"TGナシナシ ハーフ":1}, total:1700, meals:2, note:"テスト印刷です" }; if(!O.printer.ch){ alert("先に「プリンター」をタップして接続してください"); return; } try{ await oSend(new TextEncoder().encode("\x1b@ORION PRINT TEST (text)\n")); await oPrint(smp); }catch(e){ alert("印刷失敗: "+e.message); } }
 // 起動時と30秒ごと（画面が見えている間）。アプリ復帰時も確認
 oPoll(true); setInterval(()=>oPoll(false), 30000);
 document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) oPoll(true); });
