@@ -863,6 +863,7 @@ document.addEventListener("keydown", (e)=>{
   const tag = (document.activeElement && document.activeElement.tagName) || "";
   if(tag==="INPUT" || tag==="TEXTAREA" || tag==="SELECT") return;
   const code = e.code || e.key;
+  if(/^(Control|Shift|Alt|Meta)(Left|Right)?$/.test(code)) return; // 修飾キー単体は無視（Ctrl+C型のマクロキーにも対応）
   if(_vkLearn){ e.preventDefault(); _vkLearn(code); return; }
   if(!code) return;
   if(code===VK.m){ e.preventDefault(); visitAdd("m"); vkFlash("男 +1"); }
