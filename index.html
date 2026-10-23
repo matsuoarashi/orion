@@ -233,6 +233,8 @@
     <h2>本 日 の 来 店</h2>
     <div id="visitBody"></div>
     <div class="grid3v"><button class="vm" onclick="visitAdd('m');openVisits(true)">男 ＋1</button><button class="vf" onclick="visitAdd('f');openVisits(true)">女 ＋1</button><button class="vx" onclick="visitUndo();openVisits(true)">直前を取消</button></div>
+    <div id="vkMsg" style="font-size:12px;color:#c9b891;margin:6px 0 2px;text-align:center">物理キー：<span id="vkNow"></span></div>
+    <button class="cancel" style="margin-bottom:6px" onclick="vkSetup()">キーボードのキー設定（男・女・取消）</button>
     <button class="cancel" onclick="document.getElementById('visitOv').classList.remove('show')">閉じる</button>
   </div>
 </div>
@@ -764,6 +766,7 @@ function estimateStayLocal(visits, sales){
   return { avg, med, n: stays.length };
 }
 function openVisits(keepOpen){
+  try{ const n=document.getElementById("vkNow"); if(n) n.textContent = "男="+vkLabel(VK.m)+"　女="+vkLabel(VK.f)+"　取消="+vkLabel(VK.x); }catch(e){}
   const v = loadVisits(); const c = visitCounts(v); const sales = loadSaleTimes();
   const eatin = sales.filter(s=>s.mode!=="持ち帰り"); const meals = eatin.reduce((a,s)=>a+Math.max(1,s.meals||1),0);
   const stay = estimateStayLocal(v, sales);
@@ -844,6 +847,29 @@ function visitFlash(kind, big, sub){
   clearTimeout(_vFlashT); _vFlashT = setTimeout(()=>{ el.className = "vflash"; }, 800);
   try{ if(navigator.vibrate) navigator.vibrate(kind==="x" ? [30,40,30] : 30); }catch(e){}
 }
+// ===== 入店カウンター用 物理キー（3キーのキーボード：男・女・取消） =====
+// 「来店」→「キー設定」で、各キーを1回押して覚えさせる。入力欄にフォーカスがある時は無視。
+let VK = (()=>{ try{ return JSON.parse(localStorage.getItem("visitKeys")||"null"); }catch(e){ return null; } })() || {m:"", f:"", x:""};
+let _vkLearn = null;
+function vkLabel(k){ return k ? k.replace("Key","").replace("Digit","").replace("Numpad","テンキー") : "未設定"; }
+function vkSetup(){
+  const order = [["m","男"],["f","女"],["x","取消"]]; let i = 0;
+  const step = ()=>{ if(i>=order.length){ _vkLearn=null; try{ localStorage.setItem("visitKeys", JSON.stringify(VK)); }catch(e){} alert("設定しました：男="+vkLabel(VK.m)+" 女="+vkLabel(VK.f)+" 取消="+vkLabel(VK.x)); openVisits(true); return; }
+    _vkLearn = (code)=>{ VK[order[i][0]] = code; i++; step(); };
+    const b = document.getElementById("vkMsg"); if(b) b.textContent = "「"+order[i][1]+"」に使うキーを押してください（"+(i+1)+"/3）"; };
+  step();
+}
+document.addEventListener("keydown", (e)=>{
+  const tag = (document.activeElement && document.activeElement.tagName) || "";
+  if(tag==="INPUT" || tag==="TEXTAREA" || tag==="SELECT") return;
+  const code = e.code || e.key;
+  if(_vkLearn){ e.preventDefault(); _vkLearn(code); return; }
+  if(!code) return;
+  if(code===VK.m){ e.preventDefault(); visitAdd("m"); vkFlash("男 +1"); }
+  else if(code===VK.f){ e.preventDefault(); visitAdd("f"); vkFlash("女 +1"); }
+  else if(code===VK.x){ e.preventDefault(); visitUndo(); vkFlash("取消"); }
+});
+function vkFlash(t){ const b = document.getElementById("visitBar"); if(!b) return; b.style.boxShadow = "0 0 0 3px #ffe9b8 inset"; setTimeout(()=>{ b.style.boxShadow = ""; }, 250); }
 function visitAdd(g){
   const now = new Date();
   const v = loadVisits();
