@@ -167,7 +167,12 @@
   .key{min-height:0;height:100%;padding:4px 2px;font-size:clamp(13px,4vw,17px);line-height:1.2;border-radius:10px}
   .key .nm{min-height:0}
   .key small{font-size:clamp(11px,3.2vw,13px)}
-  .key.fn-total{font-size:16px}
+  .key{font-size:clamp(15px,4.6vw,20px)}
+  .key.half{background:linear-gradient(#efe4cc,#d6c6a2)}
+  .key.sub{background:linear-gradient(#e6e9e2,#cfd5c9);font-size:clamp(14px,4vw,17px)}
+  .key .tg{display:block;font-size:10px;letter-spacing:1px;color:var(--midori);font-weight:normal;margin-bottom:1px}
+  .key.fn-minus,.key.fn-clear{font-size:clamp(14px,4vw,17px)}
+  .key.fn-total{font-size:clamp(17px,5.2vw,22px);letter-spacing:4px}
   /* テイクアウト */
   .to{background:var(--cream);border-radius:12px;border:2px solid var(--wood-d);padding:5px 8px 4px;display:flex;flex-direction:column;gap:0}
   .to .next{display:flex;gap:8px;align-items:center;padding:2px 2px}
@@ -367,16 +372,16 @@ const SHEET_URL = "https://script.google.com/macros/s/AKfycbzFNl4UM3fkoANru-agWm
 // n=集計用の商品名 / l=ボタン表示(| の位置で改行)
 const ITEMS = [
   {n:"オリオン",          l:"オリオン",          p:1100},
-  {n:"オリオン ハーフ",   l:"オリオン|ハーフ",   p:900},
+  {n:"オリオン ハーフ",   l:"オリオンH",         p:900},
   {n:"ナシナシ",          l:"ナシナシ",          p:800},
-  {n:"ナシナシ ハーフ",   l:"ナシナシ|ハーフ",   p:600},
+  {n:"ナシナシ ハーフ",   l:"ナシナシH",         p:600},
   {n:"コカ・コーラ",      l:"コーラ",            p:300},
-  {n:"コカ・コーラ ゼロ", l:"コーラ|ゼロ",       p:300},
-  {n:"ジンジャーエール",  l:"ジンジャー|エール", p:300},
-  {n:"キリンラガー 小瓶", l:"ラガー|小瓶",       p:500},
+  {n:"コカ・コーラ ゼロ", l:"コーラ0",           p:300},
+  {n:"ジンジャーエール",  l:"ジンジャー",        p:300},
+  {n:"キリンラガー 小瓶", l:"ラガー",            p:500},
   {n:"折箱",              l:"折箱",              p:0},
-  {n:"副菜追加",          l:"副菜|追加",         p:100, topping:true},
-  {n:"副菜値引き",        l:"副菜|値引き",       p:-100, disc:true},
+  {n:"副菜追加",          l:"副菜＋",            p:100, topping:true},
+  {n:"副菜値引き",        l:"副菜−",            p:-100, disc:true},
 ];
 // 副菜追加(+100円)・副菜値引き(−100円)は店内・持ち帰り両方に出す。until:"YYYY-MM-DD" を付けると期限で自動的に消える
 const TODAY_STR = (()=>{ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); })();
@@ -385,7 +390,7 @@ for(let i=ITEMS.length-1;i>=0;i--){ if(ITEMS[i].until && TODAY_STR > ITEMS[i].un
 const TG_NAMES = ["オリオン","オリオン ハーフ","ナシナシ","ナシナシ ハーフ"];
 const TG_ITEMS = ITEMS
   .filter(m => TG_NAMES.includes(m.n))
-  .map(m => ({n:"TG" + m.n, l:"TG" + m.l, p:m.p}))
+  .map(m => ({n:"TG" + m.n, l:"TG|" + m.l, p:m.p}))
   .concat(ITEMS.filter(m => m.disc || m.topping));
 const MENUS = { "店内": ITEMS, "持ち帰り": TG_ITEMS };
 const ALL_ITEMS = [...MENUS["店内"], ...MENUS["持ち帰り"].filter(m=>!MENUS["店内"].some(e=>e.n===m.n))];
@@ -434,15 +439,16 @@ function renderGrid(){
     const b = document.createElement("button");
     b.className = "key";
     const lines = (m.l || m.n).split("|");
-    b.innerHTML = `<span class="nm">${lines.join("<br>")}</span><small>${m.p ? m.p.toLocaleString()+"円" : "無料"}</small>`;
-    if(m.disc) b.style.background = "#e8dcc2";
+    b.innerHTML = `<span class="nm">${lines.map((x,i)=>(i===0&&x==="TG")?`<span class="tg">持ち帰り</span>`:x).join("<br>")}</span><small>${m.p>0 ? m.p.toLocaleString() : m.p<0 ? "−"+(-m.p).toLocaleString() : "0"}</small>`;
+    if(m.disc || m.topping) b.classList.add("sub");
+    if(/ハーフ/.test(m.n)) b.classList.add("half");
     b.onclick = ()=>{ items.push(m); refresh(); };
     $("grid").appendChild(b);
   });
   // 機能キー(−/C/＝)。空セルを作らず、＝会計は行の残りいっぱいに広げる
-  [["−<small>1つ取消</small>","fn-minus",()=>{items.pop();refresh();}],
-   ["C<small>クリア</small>","fn-clear",()=>{items=[];refresh();}],
-   ["＝<small>会計</small>","fn-total",showPay]
+  [["1つ戻す","fn-minus",()=>{items.pop();refresh();}],
+   ["全消し","fn-clear",()=>{items=[];refresh();}],
+   ["会 計","fn-total",showPay]
   ].forEach(([html,cls,fn])=>{
     const b = document.createElement("button");
     b.className = "key " + cls; b.innerHTML = html; b.onclick = fn;
