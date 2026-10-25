@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#1f3a2a">
-<title>ORION STAFF 管理</title>
+<title>管理 | 洋食オリオン</title>
 <style>
 :root{ --g:#2c4f39; --g-d:#1f3a2a; --g-l:#e4eee7; --cream:#faf6ee; --cream-d:#ece4d2; --ink:#2b2a26; --mute:#7a7265; --red:#a33c2e; --amber:#b7791f; --line:#d9d1bd; --blue:#2a5aa8; }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -87,6 +86,13 @@ body.loading main{opacity:.6;transition:opacity .2s}
 #ld .sp{width:22px;height:22px;border:3px solid var(--line);border-top-color:var(--g);border-radius:50%;animation:spin .8s linear infinite;flex:none}
 @keyframes spin{to{transform:rotate(360deg)}}
 </style>
+<meta name="theme-color" content="#1f3a2a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="管理">
+<link rel="apple-touch-icon" sizes="180x180" href="../icon-admin-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="../icon-admin-192.png">
+<link rel="manifest" href="manifest-admin.json">
 </head>
 <body>
 <div class="app">
@@ -326,6 +332,18 @@ async function lineText(){
 }
 // 給与確認：本人に送る勤務記録の確認文
 let PAYC = {};
+// 年収上限（扶養内など）の累計表示。設定 annual_caps に {"staff_id":1300000} の形で登録した人だけ出す
+function capCard(r){
+  const caps = r.caps||{}, ann = r.annual||{}; const ids = Object.keys(caps); if(!ids.length) return "";
+  const year = PM.slice(0,4);
+  const rows = ids.map(id=>{ const pr = (r.rows||[]).find(x=>x.staff_id===id) || {}; const cap = Number(caps[id])||0; const cum = ann[id]||0; const rest = cap - cum;
+    const perDay = (pr.wage||1500)*5 + Math.min(1000, pr.transport && pr.days ? Math.round(pr.transport/pr.days) : 0);   // 5時間勤務1日あたりの目安
+    const days = rest>0 ? Math.floor(rest/perDay) : 0; const pct = cap ? Math.min(100, Math.round(cum/cap*100)) : 0;
+    return `<div style="margin:8px 0 4px"><div class="row"><span><b>${esc(pr.name||id)}</b> <span class="mini">${year}年 累計（交通費込み・1月〜${Number(PM.slice(5,7))}月）</span></span><b>${cum.toLocaleString()}円</b></div>
+      <div style="height:8px;background:var(--line);border-radius:4px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${pct>=90?"var(--red)":pct>=75?"var(--amber)":"var(--g)"}"></div></div>
+      <div class="row mini"><span>上限 ${cap.toLocaleString()}円</span><span>あと <b style="color:${rest<0?"var(--red)":"var(--ink)"}">${rest.toLocaleString()}円</b>（5時間勤務で約${days}日分）</span></div></div>`; }).join("");
+  return `<div class="card" style="margin:12px 0 0;padding:10px 12px;border-color:var(--amber)"><h2 style="font-size:14px">年収の上限（扶養内）</h2>${rows}<div class="mini">上限は「設定」タブの annual_caps で変更できます。累計は締め前の月も実労働ベースで含みます。</div></div>`;
+}
 const jpMin = m => Math.floor(m/60)+"時間"+pad2(m%60)+"分";
 // 個人別の勤務明細（給与画面の集計結果をそのまま表示・文章化する。給与の再計算はしない）
 async function payDetail(staff_id){
@@ -432,6 +450,7 @@ async function loadPay(){ if(!$("pPay").dataset.loaded) $("pPay").innerHTML = lo
       <div class="scroll"><table><tr><th>スタッフ</th><th class="r">日数</th><th class="r">労働</th><th class="r">時給</th><th class="r">基本給</th><th class="r">割増</th><th class="r">交通費</th><th class="r">支給額</th><th></th></tr>
       ${rows.map(x=>`<tr><td><a href="#" onclick="payDetail('${x.staff_id}');return false" style="color:var(--ink);font-weight:bold">${esc(x.name)}</a></td><td class="r">${x.days}</td><td class="r">${fmtMin(x.minutes)}</td><td class="r">${x.wage.toLocaleString()}</td><td class="r">${x.base.toLocaleString()}</td><td class="r">${x.overtime.toLocaleString()}</td><td class="r">${x.transport.toLocaleString()}</td><td class="r"><b>${x.total.toLocaleString()}</b></td><td style="white-space:nowrap"><button class="btn sec" style="padding:8px 12px;font-size:13px;white-space:nowrap" onclick="payDetail('${x.staff_id}')">勤務明細</button>${(r.confirmed||{})[x.staff_id]?`<div class="mini" style="color:var(--g);font-weight:bold;margin-top:3px">✓ 確認済 ${esc((r.confirmed||{})[x.staff_id])}</div>`:""}</td></tr>`).join("")}
       <tr><td><b>合計</b></td><td colspan="6"></td><td class="r"><b>${tot.toLocaleString()}</b></td><td></td></tr></table></div>
+      ${capCard(r)}
       <div class="mini" style="margin-top:8px">支給額 = 実労働分×時給÷60（月合計で円未満四捨五入）＋ 8時間/日超の25%割増 ＋ 交通費（出勤日×日額、上限1,000円）。所得税等の控除は含みません。</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
         <button class="btn sec" onclick="csv('admin.payroll_csv')">給与CSV</button>
