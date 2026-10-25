@@ -325,15 +325,49 @@ async function lineText(){
   textModal("LINE用テキスト（シフト確定）", text, "文面は編集できます。グループLINEにそのまま貼れます。");
 }
 // 給与確認：本人に送る勤務記録の確認文
-async function payConfirmText(staff_id, name){
-  const r = await api("admin.att_month",{month:PM}); if(!r.ok){ toast(r.error); return; }
-  const list = r.list.filter(a=>a.staff_id===staff_id && a.status==="done");
-  const pr = (PAYR||[]).find(x=>x.staff_id===staff_id) || {};
-  const lines = list.map(a=>`${a.date.slice(5)}(${YO[youbi(a.date)]}) ${a.in}〜${a.out}${a.breakMin?`（休憩${a.breakMin}分）`:""}`);
-  const d = new Date(); d.setDate(d.getDate()+3); const due = `${d.getMonth()+1}/${d.getDate()}(${YO[d.getDay()]})`;
-  const text = `【${name}さん ${ymLabel(PM)}の勤務確認】\nお疲れさまです。${ymLabel(PM).slice(5)}の勤務記録です。内容を確認してください。\n\n${lines.join("\n")||"（記録なし）"}\n\n合計：${pr.days||list.length}日 / ${(m=>Math.floor(m/60)+"時間"+pad2(m%60)+"分")(pr.minutes||list.reduce((s,a)=>s+a.workMin,0))}\n支給見込：${(pr.total||0).toLocaleString()}円（時給${(pr.wage||0).toLocaleString()}円${pr.overtime?`、割増${pr.overtime.toLocaleString()}円`:""}${pr.transport?`、交通費${pr.transport.toLocaleString()}円`:""}）\n\n違っている日があれば ${due} までに返信してください。返信がなければこの内容で振込します。`;
-  textModal(`LINE用テキスト（${name}さん 勤務確認）`, text, "本人に個別LINEで送ってください。日付や締切の文言は編集できます。");
+let PAYC = {};
+const jpMin = m => Math.floor(m/60)+"時間"+pad2(m%60)+"分";
+// 個人別の勤務明細（給与画面の集計結果をそのまま表示・文章化する。給与の再計算はしない）
+async function payDetail(staff_id){
+  const pr = (PAYR||[]).find(x=>x.staff_id===staff_id); if(!pr){ toast("集計がありません"); return; }
+  const r = await api("admin.att_month",{month:PM}); if(!r.ok){ toast(r.error); return; }   // 毎回取り直す（勤怠修正を即反映）
+  const list = r.list.filter(a=>a.staff_id===staff_id && a.status==="done").sort((a,b)=>a.date<b.date?-1:1);
+  const working = r.list.filter(a=>a.staff_id===staff_id && a.status==="working").length;
+  const cap = 1000;
+  const rowsHtml = list.map(a=>`<tr><td>${a.date.slice(5)}<small style="color:var(--mute)">(${YO[youbi(a.date)]})</small></td><td class="r">${a.in}</td><td class="r">${a.out}</td><td class="r">${fmtMin(a.workMin)}${a.breakMin?`<small style="color:var(--mute)"> 休${a.breakMin}</small>`:""}</td><td class="r">${Math.min(cap,a.transport||0).toLocaleString()}</td></tr>`).join("");
+  const conf = PAYC[staff_id];
+  modal(`<h3>${esc(pr.name)}｜${ymLabel(PM)} <small style="color:var(--mute);font-weight:normal;margin-left:6px">勤務明細</small></h3>
+    ${working?`<div class="mini" style="color:var(--red);margin-bottom:6px">退勤打刻のない日が${working}件あります（集計に含まれていません）</div>`:""}
+    <div class="scroll"><table><tr><th>日付</th><th class="r">出勤</th><th class="r">退勤</th><th class="r">実働</th><th class="r">交通費</th></tr>${rowsHtml||`<tr><td colspan="5" class="mini">記録がありません</td></tr>`}</table></div>
+    <div class="card" style="margin:10px 0 0;padding:10px 12px">
+      <div class="row"><span>出勤日数</span><b>${pr.days}日</b></div>
+      <div class="row"><span>総勤務時間</span><b>${jpMin(pr.minutes)}</b></div>
+      <div class="row"><span>時給</span><b>${pr.wage.toLocaleString()}円</b></div>
+      <div class="row"><span>基本給</span><b>${pr.base.toLocaleString()}円</b></div>
+      <div class="row"><span>時間外・割増</span><b>${pr.overtime.toLocaleString()}円</b></div>
+      <div class="row"><span>交通費</span><b>${pr.transport.toLocaleString()}円</b></div>
+      <div class="row" style="font-size:17px"><span><b>総支給額</b></span><b>${pr.total.toLocaleString()}円</b></div>
+    </div>
+    <div class="mini" style="margin-top:6px">${conf?`✓ 本人確認済（${esc(conf)}）`:"未確認"}　数字が違う場合は「勤怠」タブで修正 → この画面を開き直すと反映されます</div>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button class="btn" style="flex:1 1 100%" onclick="payLineCopy('${staff_id}')">LINE用にコピー</button>
+      <button class="btn sec" style="flex:1" onclick="payListCopy('${staff_id}')">勤務明細だけコピー</button>
+      <button class="btn sec" style="flex:1" onclick="payConfirm('${staff_id}', ${conf?"false":"true"})">${conf?"確認済を取り消す":"本人確認済にする"}</button>
+      <button class="btn sec" style="flex:1 1 100%" onclick="closeOv()">閉じる</button>
+    </div>`);
+  PAYD = {staff_id, pr, list};
 }
+let PAYD = null;
+function payLines(){ return PAYD.list.map(a=>`${a.date.slice(5)}　${a.in}〜${a.out}　${jpMin(a.workMin)}${a.breakMin?`（休憩${a.breakMin}分）`:""}`); }
+function payLineText(){
+  const pr = PAYD.pr; const m = ymLabel(PM).match(/(\d+)月/); const mon = m ? m[1]+"月" : ymLabel(PM);
+  return `${pr.name}さん\n\nお疲れ様です。\n${mon}分の勤務実績と給与について、確認用に共有します。\n\n【勤務実績】\n\n${payLines().join("\n")||"（記録なし）"}\n\n出勤日数：${pr.days}日\n総勤務時間：${jpMin(pr.minutes)}\n\n【給与】\n\n時給：${pr.wage.toLocaleString()}円\n基本給：${pr.base.toLocaleString()}円\n時間外・割増：${pr.overtime.toLocaleString()}円\n交通費：${pr.transport.toLocaleString()}円\n\n支給合計：${pr.total.toLocaleString()}円\n\n勤務日時や金額に相違がないか、ご確認をお願いします。\n問題なければ、こちらの内容で給与処理を進めます。\n\nよろしくお願いいたします。`;
+}
+function copyPlain(text, okMsg){ const done=()=>toast(okMsg); const fb=()=>{ const ta=document.createElement("textarea"); ta.value=text; ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.focus(); ta.select(); try{ document.execCommand("copy"); done(); }catch(e){ toast("コピーできませんでした"); } ta.remove(); };
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(done).catch(fb); } else fb(); }
+function payLineCopy(){ if(!PAYD) return; copyPlain(payLineText(), "LINE用テキストをコピーしました"); }
+function payListCopy(){ if(!PAYD) return; const pr=PAYD.pr; copyPlain(`【${pr.name}さん ${ymLabel(PM)} 勤務明細】\n${payLines().join("\n")}\n\n出勤日数：${pr.days}日\n総勤務時間：${jpMin(pr.minutes)}`, "勤務明細をコピーしました"); }
+async function payConfirm(staff_id, on){ const r = await api("admin.pay_confirm",{month:PM, staff_id, on}); if(!r.ok){ toast(r.error); return; } toast(on?"本人確認済にしました":"確認済を取り消しました"); closeOv(); await loadPay(); }
 function proxyWish(staff_id, name){
   const days = SD.s.openDays.filter(d=>d.open);
   modal(`<h3>${esc(name)} の希望を代理入力（${ymLabel(SM)}）</h3><div class="mini">出勤できない日・希望休だけチェック（それ以外は出勤可として登録）</div>
@@ -390,13 +424,13 @@ let PM = thisMonth(); let PAYR=null;
 async function loadPay(){ if(!$("pPay").dataset.loaded) $("pPay").innerHTML = loadingHtml(); $("pPay").dataset.loaded="1";
   $("pPay").innerHTML = `<div class="mini">読み込み中…</div>`;
   const r = await api("admin.payroll_month",{month:PM}); if(!r.ok){ showMsg(r.error); return; }
-  const rows = r.rows.filter(x=>x.days>0); PAYR = rows;
+  const rows = r.rows.filter(x=>x.days>0); PAYR = rows; PAYC = r.confirmed||{};
   const tot = rows.reduce((s,x)=>s+x.total,0);
   $("pPay").innerHTML = `
     <div class="monthnav"><button onclick="PM=ymAdd(PM,-1);loadPay()">◀</button><b>${ymLabel(PM)}</b><button onclick="PM=ymAdd(PM,1);loadPay()">▶</button></div>
     <div class="card"><h2>給与集計 ${r.closed?`<span class="pill">締め済 ${r.closedAt}</span>`:`<small>未締め（実労働ベースの見込み）</small>`}</h2>
       <div class="scroll"><table><tr><th>スタッフ</th><th class="r">日数</th><th class="r">労働</th><th class="r">時給</th><th class="r">基本給</th><th class="r">割増</th><th class="r">交通費</th><th class="r">支給額</th><th></th></tr>
-      ${rows.map(x=>`<tr><td>${esc(x.name)}</td><td class="r">${x.days}</td><td class="r">${fmtMin(x.minutes)}</td><td class="r">${x.wage.toLocaleString()}</td><td class="r">${x.base.toLocaleString()}</td><td class="r">${x.overtime.toLocaleString()}</td><td class="r">${x.transport.toLocaleString()}</td><td class="r"><b>${x.total.toLocaleString()}</b></td><td><button class="btn sec" style="padding:6px 10px;font-size:12px;white-space:nowrap" onclick="payConfirmText('${x.staff_id}','${esc(x.name)}')">LINE確認文</button></td></tr>`).join("")}
+      ${rows.map(x=>`<tr><td><a href="#" onclick="payDetail('${x.staff_id}');return false" style="color:var(--ink);font-weight:bold">${esc(x.name)}</a></td><td class="r">${x.days}</td><td class="r">${fmtMin(x.minutes)}</td><td class="r">${x.wage.toLocaleString()}</td><td class="r">${x.base.toLocaleString()}</td><td class="r">${x.overtime.toLocaleString()}</td><td class="r">${x.transport.toLocaleString()}</td><td class="r"><b>${x.total.toLocaleString()}</b></td><td style="white-space:nowrap"><button class="btn sec" style="padding:8px 12px;font-size:13px;white-space:nowrap" onclick="payDetail('${x.staff_id}')">勤務明細</button>${(r.confirmed||{})[x.staff_id]?`<div class="mini" style="color:var(--g);font-weight:bold;margin-top:3px">✓ 確認済 ${esc((r.confirmed||{})[x.staff_id])}</div>`:""}</td></tr>`).join("")}
       <tr><td><b>合計</b></td><td colspan="6"></td><td class="r"><b>${tot.toLocaleString()}</b></td><td></td></tr></table></div>
       <div class="mini" style="margin-top:8px">支給額 = 実労働分×時給÷60（月合計で円未満四捨五入）＋ 8時間/日超の25%割増 ＋ 交通費（出勤日×日額、上限1,000円）。所得税等の控除は含みません。</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
