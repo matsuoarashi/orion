@@ -135,7 +135,7 @@ ADMIN.mood_month = function(p, me){
 // ───────────────────────── 衛生記録（HACCP: 健康チェック・庫内温度・担当別チェック） ─────────────────────────
 SHEETS.hyg = ["衛生", ["hyg_id","日付","staff_id","名前","区分","担当","項目","温度","記録日時","対応"]];
 SHEETS.hygrev = ["衛生振り返り", ["年月","結果","内容","確認者","日時"]];
-READ_ACTIONS["admin.hyg_month"] = 1;
+READ_ACTIONS["admin.hyg_month"] = 1; READ_ACTIONS["admin.hyg_folder"] = 1;
 // 衛生チェック項目（アプリ・記録表・計画書で共通。短縮名は記録表の列見出し）
 var HYG_ITEMS = {
   health: [["体調に異常なし（発熱・下痢・嘔吐なし）","体調"],["手指に傷・化膿なし","手指"]],
@@ -205,6 +205,7 @@ ADMIN.hyg_review_save = function(p, me){
   var cur = rows("hygrev").filter(function(r){ return revYm_(r["年月"])===ym; })[0];
   writeRow("hygrev", {"年月":"'"+ym, "結果":result, "内容":note, "確認者":me.staff["名前"], "日時":nowStr()}, cur ? cur._row : null);
   audit(me.staff.staff_id, "hyg_review", ym, result);
+  try { hygArchive_(ym, me); } catch(e){}
   return ok();
 };
 
@@ -221,3 +222,111 @@ ADMIN.purge_day = function(p, me){
   if (!p.dry){ audit(me.staff["名前"], "purge_day", sid+" "+d, JSON.stringify(res)); try { if (ADMIN.labor_rebuild) ADMIN.labor_rebuild({}, me); } catch(e){} }
   return ok({deleted: res, dry: !!p.dry});
 };
+
+// ───────────────────────── 衛生記録の保存（Googleドライブ） ─────────────────────────
+// フォルダ構成: 洋食オリオン_衛生管理（HACCP）/ 01_衛生管理計画 / 02_月次記録/YYYY / 03_納品書（受入確認） / 04_営業許可・届出
+var HYG_DIRS = ["01_衛生管理計画","02_月次記録","03_納品書（受入確認）","04_営業許可・届出"];
+function hygRoot_(){
+  var id = settings().hyg_folder_id, f = null;
+  if (id){ try { f = DriveApp.getFolderById(id); if (f.isTrashed()) f = null; } catch(e){ f = null; } }
+  if (!f){
+    f = DriveApp.createFolder("洋食オリオン_衛生管理（HACCP）");
+    f.setDescription("HACCPの考え方を取り入れた衛生管理の計画書・月次記録・納品書・許可書の保管場所。記録は1年以上保存する。ORION STAFFが自動で作成・更新します。");
+    var cur = rows("settings").filter(function(r){ return r.key==="hyg_folder_id"; })[0];
+    if (cur) setCell("settings", cur._row, "value", f.getId()); else writeRow("settings", {key:"hyg_folder_id", value:f.getId(), "説明":"衛生管理（HACCP）の保管フォルダID（自動作成）"});
+  }
+  HYG_DIRS.forEach(function(n){ if (!f.getFoldersByName(n).hasNext()) f.createFolder(n); });
+  return f;
+}
+function hygSub_(root, name){ var it = root.getFoldersByName(name); return it.hasNext() ? it.next() : root.createFolder(name); }
+function hygReplaceFile_(folder, name, blob){
+  var it = folder.getFilesByName(name); while (it.hasNext()) it.next().setTrashed(true);
+  return folder.createFile(blob.setName(name));
+}
+function hgE_(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+var HG_CSS = "body{font-family:sans-serif;color:#111;font-size:10px} h1{font-size:16px;margin:0 0 2px} h2{font-size:12px;margin:10px 0 4px;border-left:4px solid #2c4f39;padding-left:6px} .sub{font-size:9px;color:#555;margin-bottom:6px} table{width:100%;border-collapse:collapse} th,td{border:1px solid #444;padding:3px;vertical-align:top;font-size:9px} th{background:#eef2ee} .rec th,.rec td{text-align:center;padding:1px;font-size:7.5px} .rec td.n{text-align:left} .off td{background:#f2f2f2;color:#888} .ng{color:#b00;font-weight:bold}";
+function hygPlanHtml_(h){
+  var s = h.store, Y = h.ym.slice(0,4), M = Number(h.ym.slice(5,7));
+  var rowsA = [
+    ["①原材料の受入の確認","納品時","外観・におい・包装の状態、表示（期限・保存方法）、冷蔵・冷凍品の温度を確認する","返品・交換する。使用しない","納品書に確認者が署名し、03_納品書に保管"],
+    ["②冷蔵・冷凍庫の温度の確認","毎日（出勤時）","庫内温度計で確認する。冷蔵10℃以下、冷凍−15℃以下（冷蔵庫1台・冷凍庫1台・冷蔵冷凍庫1台）","原因（扉・詰め過ぎ・故障）を確認して対処し、再確認する。食材の状態を確認し、必要なら廃棄。対応を記録する","勤怠アプリ（出勤チェック）"],
+    ["③交差汚染・二次汚染の防止","毎日","冷蔵庫内で生の肉・卵と調理済み品（ソース・茹で麺）を分け、容器・ラップで保管する。床に直接置かない","汚染の恐れのある食品は廃棄する。保管場所を見直す","勤怠アプリ（退勤・厨房）"],
+    ["④器具等の洗浄・消毒・殺菌","毎日（使用後）","まな板・包丁・ボウル・トング等を洗剤で洗い、アルコール・熱湯等で消毒する。食器は洗浄・乾燥して収納する","汚れが残っていれば再度洗浄・消毒する","勤怠アプリ（退勤）"],
+    ["⑤トイレの洗浄・消毒","毎日（営業後）","便座・ドアノブ・水洗レバー・手すりを洗剤で清掃し、消毒する","再度清掃・消毒する","勤怠アプリ（退勤・客席）"],
+    ["⑥従業員の健康管理等","毎日（出勤時）","下痢・嘔吐・発熱等の症状、手指の傷の有無を確認する。服・髪・髭・爪・靴・エプロンの身だしなみを確認する","症状がある者は調理作業に従事させない。手指に傷がある場合は手袋を着用する","勤怠アプリ（出勤チェック）"],
+    ["⑦手洗いの実施","作業前・トイレの後・生の食材を扱った後・盛付けの前","石けんで洗浄し、ペーパーで拭いて消毒する。手洗い場の石けん・ペーパーを切らさない","気づいた時点で直ちに洗い直す","勤怠アプリ（退勤）"]];
+  var rowsB = [
+    ["第1グループ（非加熱のもの）","瓶ドリンク・瓶ビール（開栓して提供）","冷蔵庫で保管し、提供直前に開栓する","破損・異物があれば提供しない"],
+    ["第2グループ（加熱してすぐ提供）","目玉焼き、ハンバーグ、ミートコロッケ、ウィンナー","中心まで十分に加熱する（焼き色、肉汁が透明、卵白が固まっていることを目で確認）","加熱を延長する"],
+    ["第3グループ（加熱後冷却し再加熱）","ナポリタンソース（仕込み）、茹で麺（仕込み）、オリオン／ナシナシ","仕込み後は小分け・浅い容器で速やかに冷まし、冷蔵保存する。提供時はソースを沸騰するまで、麺を中まで温まるまで再加熱する","冷却が遅れたもの・保存期間を過ぎたものは廃棄する。再加熱が不十分なら加熱を延長する"]];
+  var meta = [["店舗名",s.name],["所在地",s.address],["営業者",s.operator],["営業許可番号（有効期限）",s.permit+(s.permit_until?"（"+s.permit_until+"まで）":"")],["食品衛生責任者",s.manager],["所轄保健所",s.office],["作成日",Y+"年"+M+"月"]];
+  var html = "<html><head><meta charset='utf-8'><style>"+HG_CSS+"</style></head><body>";
+  html += "<h1>衛生管理計画（HACCPの考え方を取り入れた衛生管理）</h1><div class='sub'>小規模な一般飲食店事業者向けの手引書の様式を参考に作成</div>";
+  html += "<table>"+meta.map(function(m){ return "<tr><th style='width:24%;text-align:left'>"+m[0]+"</th><td>"+hgE_(m[1])+"</td></tr>"; }).join("")+"</table>";
+  html += "<h2>1. 一般衛生管理のポイント</h2><table><tr><th>項目</th><th>いつ</th><th>どのように</th><th>問題があったとき</th><th>記録</th></tr>"+rowsA.map(function(r){ return "<tr>"+r.map(function(c){ return "<td>"+c+"</td>"; }).join("")+"</tr>"; }).join("")+"</table>";
+  html += "<h2>2. 重要管理のポイント</h2><table><tr><th>分類</th><th>メニュー</th><th>チェック方法</th><th>問題があったとき</th></tr>"+rowsB.map(function(r){ return "<tr>"+r.map(function(c){ return "<td>"+c+"</td>"; }).join("")+"</tr>"; }).join("")+"</table>";
+  html += "<h2>3. 記録と保存</h2><table><tr><td>・上記の確認は、出勤時・退勤時に勤怠アプリで毎日記録する（記録者・日時は自動で残る）。<br>・月に1回、記録表を確認し、問題の有無と改善点を記録する。<br>・計画書・月次記録表・納品書・許可書は Googleドライブ「洋食オリオン_衛生管理（HACCP）」に保管し、1年以上保存する。月次記録表は毎月1日に前月分が自動で保存される。<br>・メニューや設備を変えた時は本計画を見直す。</td></tr></table>";
+  return html + "</body></html>";
+}
+function hygRecordHtml_(h){
+  var Y = Number(h.ym.slice(0,4)), M = Number(h.ym.slice(5,7)), last = new Date(Y, M, 0).getDate();
+  var closed = String(h.closed_dow||"").split(",").map(Number), hol = String(h.holidays||"").split(",").map(function(x){ return x.trim(); });
+  var by = {}; h.days.forEach(function(d){ by[d.date] = d; });
+  var K = h.items.kitchen, HL = h.items.hall, YO = ["日","月","火","水","木","金","土"];
+  var TLm = {fridge:10, freezer:-15, combo_r:10, combo_f:-15};
+  var body = "";
+  for (var d=1; d<=last; d++){
+    var ds = Y+"/"+("0"+M).slice(-2)+"/"+("0"+d).slice(-2), dw = new Date(Y, M-1, d).getDay(), r = by[ds];
+    if ((closed.indexOf(dw)>=0 || hol.indexOf(ds)>=0) && !r){ body += "<tr class='off'><td>"+d+"</td><td>"+YO[dw]+"</td><td colspan='"+(6+K.length+HL.length)+"'>定休日</td><td></td></tr>"; continue; }
+    var t = (r && r.temps) || {};
+    var tc = function(k){ var v = t[k]; if (v===undefined) return "<td></td>"; return "<td class='"+(v>TLm[k]?"ng":"")+"'>"+v+"</td>"; };
+    var hl = r && r.health.length ? (r.health.filter(function(x){ return x.ok; }).length+"/"+r.health.length) : "";
+    var mk = function(arr, list, has){ return list.map(function(x){ return "<td>"+(has==null?"":(arr.indexOf(x[1])>=0?"○":"<span class='ng'>×</span>"))+"</td>"; }).join(""); };
+    var names = []; if (r){ r.health.forEach(function(x){ if (names.indexOf(x.name)<0) names.push(x.name); }); [r.kitchenBy, r.hallBy].forEach(function(n){ if (n && names.indexOf(n)<0) names.push(n); }); }
+    body += "<tr><td>"+d+"</td><td>"+YO[dw]+"</td><td>"+hl+"</td>"+tc("fridge")+tc("freezer")+tc("combo_r")+tc("combo_f")+mk(r?r.kitchenItems:[],K,r?r.kitchen:null)+mk(r?r.hallItems:[],HL,r?r.hall:null)+"<td class='n'>"+(r?hgE_(r.actions.join(" / ")):"")+"</td><td class='n'>"+hgE_(names.join("・"))+"</td></tr>";
+  }
+  var rv = h.review;
+  var html = "<html><head><meta charset='utf-8'><style>"+HG_CSS+"</style></head><body>";
+  html += "<h1>衛生管理記録表　"+Y+"年"+M+"月</h1><div class='sub'>"+hgE_(h.store.name)+"　／　○＝実施　×＝未実施　空欄＝記録なし　／　温度の赤字＝基準外（冷蔵10℃超・冷凍−15℃超）</div>";
+  html += "<table class='rec'><tr><th rowspan='2'>日</th><th rowspan='2'>曜</th><th rowspan='2'>健康<br>OK/人</th><th colspan='4'>庫内温度（℃）</th><th colspan='"+K.length+"'>厨房</th><th colspan='"+HL.length+"'>客席</th><th rowspan='2'>特記事項（基準外の対応）</th><th rowspan='2'>記録者</th></tr>";
+  html += "<tr><th>冷蔵</th><th>冷凍</th><th>冷冷蔵</th><th>冷冷凍</th>"+K.map(function(x){ return "<th>"+x[1]+"</th>"; }).join("")+HL.map(function(x){ return "<th>"+x[1]+"</th>"; }).join("")+"</tr>"+body+"</table>";
+  html += "<table style='margin-top:6px'><tr><th style='width:14%'>月の振り返り</th><td style='width:12%'>"+(rv?hgE_(rv.result):"未記録")+"</td><th style='width:8%'>内容</th><td>"+(rv?hgE_(rv.note):"")+"</td><th style='width:8%'>確認者</th><td style='width:16%'>"+(rv?hgE_(rv.by)+" "+String(rv.at).slice(0,10):"")+"</td></tr></table>";
+  html += "<div class='sub' style='margin-top:4px'>項目：" + K.map(function(x){ return x[1]+"＝"+x[0]; }).join("、")+"／"+HL.map(function(x){ return x[1]+"＝"+x[0]; }).join("、") + "</div>";
+  return html + "</body></html>";
+}
+function hygArchive_(ym, me){
+  var h = ADMIN.hyg_month({ym: ym}, me); if (!h.ok) return h;
+  var root = hygRoot_(), Y = ym.slice(0,4), tag = ym.replace("/","-");
+  var recDir = hygSub_(hygSub_(root, "02_月次記録"), Y), planDir = hygSub_(root, "01_衛生管理計画");
+  var recPdf = Utilities.newBlob(hygRecordHtml_(h), "text/html", "r.html").getAs("application/pdf");
+  var planPdf = Utilities.newBlob(hygPlanHtml_(h), "text/html", "p.html").getAs("application/pdf");
+  var f1 = hygReplaceFile_(recDir, "衛生管理記録表_"+tag+".pdf", recPdf);
+  hygReplaceFile_(planDir, "衛生管理計画_最新.pdf", planPdf.copyBlob());
+  hygReplaceFile_(planDir, "衛生管理計画_"+tag+".pdf", planPdf);
+  // 元データ（CSV）も一緒に残す
+  var K = h.items.kitchen, HL = h.items.hall;
+  var lines = [["日付","健康チェック","冷蔵庫℃","冷凍庫℃","冷蔵冷凍庫(冷蔵)℃","冷蔵冷凍庫(冷凍)℃"].concat(K.map(function(x){ return "厨房:"+x[1]; }), HL.map(function(x){ return "客席:"+x[1]; }), ["基準外の対応","記録者"]).join(",")];
+  h.days.slice().reverse().forEach(function(d){ var t = d.temps||{}; lines.push([d.date, d.health.map(function(x){ return x.name+(x.ok?"OK":"要確認"); }).join(" "), t.fridge==null?"":t.fridge, t.freezer==null?"":t.freezer, t.combo_r==null?"":t.combo_r, t.combo_f==null?"":t.combo_f].concat(K.map(function(x){ return d.kitchen==null?"":(d.kitchenItems.indexOf(x[1])>=0?"○":"×"); }), HL.map(function(x){ return d.hall==null?"":(d.hallItems.indexOf(x[1])>=0?"○":"×"); }), ['"'+d.actions.join(" / ").replace(/"/g,'""')+'"', [d.kitchenBy, d.hallBy].filter(Boolean).join("・")]).join(",")); });
+  hygReplaceFile_(recDir, "衛生管理記録_"+tag+"_データ.csv", Utilities.newBlob("﻿"+lines.join("\n"), "text/csv"));
+  var cur = rows("settings").filter(function(r){ return r.key==="hyg_archived"; })[0], val = ym+" "+nowStr();
+  if (cur) setCell("settings", cur._row, "value", val); else writeRow("settings", {key:"hyg_archived", value:val, "説明":"衛生記録を最後にドライブへ保存した月と日時（自動）"});
+  return ok({folder: root.getUrl(), record: f1.getUrl(), ym: ym});
+}
+ADMIN.hyg_archive = function(p, me){
+  var ym = String(p.ym||""); if (!/^\d{4}\/\d{2}$/.test(ym)) return err("年月が不正です");
+  var r = hygArchive_(ym, me); if (r.ok) audit(me.staff["名前"], "hyg_archive", ym, ""); return r;
+};
+ADMIN.hyg_folder = function(p, me){
+  var root = hygRoot_(); hygHygTrigger_();
+  return ok({folder: root.getUrl(), subs: HYG_DIRS.map(function(n){ return {name:n, url: hygSub_(root, n).getUrl()}; }), archived: settings().hyg_archived||""});
+};
+// 毎月1日 6時に前月分を自動保存（トリガーは hyg_folder を開いた時に1つだけ作る）
+function hygHygTrigger_(){
+  var has = ScriptApp.getProjectTriggers().some(function(t){ return t.getHandlerFunction()==="hygMonthlyJob"; });
+  if (!has) ScriptApp.newTrigger("hygMonthlyJob").timeBased().onMonthDay(1).atHour(6).inTimezone(TZ).create();
+}
+function hygMonthlyJob(){
+  var d = new Date(); d.setDate(0); var ym = Utilities.formatDate(d, TZ, "yyyy/MM");
+  var me = {staff: {staff_id:"system", "名前":"自動保存"}};
+  hygArchive_(ym, me); audit("自動保存", "hyg_archive", ym, "monthly");
+}
