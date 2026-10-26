@@ -329,6 +329,19 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
 <div id="ov"></div>
 
 <script>
+// iOSのホーム画面アプリでは、画面の高さがステータスバー分だけ短く報告されることがある。実際の画面の高さに合わせる
+(function(){
+  const ios = /iP(hone|od|ad)/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+  const standalone = navigator.standalone === true || (window.matchMedia && matchMedia("(display-mode: standalone)").matches);
+  function fit(){
+    const app = document.querySelector(".app"); if (!app) return;
+    let h = window.innerHeight;
+    if (ios && standalone){ const portrait = window.innerWidth < window.innerHeight; const full = portrait ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height); if (full > h && full - h < 120) h = full; }  // 差が小さい時だけ補正（キーボード表示中は補正しない）
+    app.style.height = h + "px"; app.style.bottom = "auto";
+  }
+  window.addEventListener("resize", fit); window.addEventListener("orientationchange", ()=>setTimeout(fit, 300)); document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) setTimeout(fit, 100); });
+  document.addEventListener("DOMContentLoaded", fit); setTimeout(fit, 0); setTimeout(fit, 500);
+})();
 const API_URL = "https://script.google.com/macros/s/AKfycbwgGW6rXzAW2rHVicdoCMdHOT_E3egrXPsaEJerX-_brZr0mYF6Qo_tRorX8PgLc7c/exec";
 const $ = id => document.getElementById(id);
 let TOKEN = localStorage.getItem("os-token") || "";
