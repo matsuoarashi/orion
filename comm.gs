@@ -127,7 +127,8 @@ ADMIN.mood_month = function(p, me){
   // 退勤したのに未回答の人（当月）
   var answered = {}; list.forEach(function(r){ answered[r.date+"|"+r.staff_id] = 1; });
   var names = {}; rows("staff").forEach(function(s){ names[s.staff_id] = s["名前"]; });
-  var missing = rows("att").filter(function(a){ var d = fmtDate(a["日付"]); return d.slice(0,7)===ym && fmtHM(a["退勤"]) && !answered[d+"|"+a.staff_id]; }).map(function(a){ return {date:fmtDate(a["日付"]), name:names[a.staff_id]||a.staff_id}; });
+  var since = rows("mood").map(function(r){ return fmtDate(r["日付"]); }).sort()[0] || "9999/99/99"; var pil = pilotIds_();
+  var missing = rows("att").filter(function(a){ var d = fmtDate(a["日付"]); return d.slice(0,7)===ym && d>=since && pil.indexOf(a.staff_id)>=0 && fmtHM(a["退勤"]) && !answered[d+"|"+a.staff_id]; }).map(function(a){ return {date:fmtDate(a["日付"]), name:names[a.staff_id]||a.staff_id}; });
   return ok({ym:ym, list:list, missing:missing});
 };
 
