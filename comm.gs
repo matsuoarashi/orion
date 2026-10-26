@@ -106,24 +106,24 @@ ADMIN.notice_archive = function(p, me){
 };
 
 // ───────────────────────── 今日の空気レポート（退勤時・3項目） ─────────────────────────
-SHEETS.mood = ["空気", ["mood_id","日付","staff_id","名前","お客様","スタッフ","自分","ひとこと","記録日時","ふりかえり問","ありがとう先","連携の引っかかり","次の一手","運営へ"]];
+SHEETS.mood = ["空気", ["mood_id","日付","staff_id","名前","お客様","スタッフ","自分","ひとこと","記録日時","ふりかえり問","ありがとう先","連携の引っかかり","次の一手","運営へ","お客様の内訳","在庫・運営","在庫・運営の内訳"]];
 READ_ACTIONS["admin.mood_month"] = 1;
 function moodToday_(id){ var t = today(); return rows("mood").some(function(r){ return r.staff_id===id && fmtDate(r["日付"])===t; }); }
 STAFF.mood_save = function(p, me){
   ensureHeader_("mood");
-  var v1 = Number(p.customer), v2 = Number(p.staff), nx = String(p.next||"");
-  if (!(v1>=1&&v1<=3) || !(v2>=1&&v2<=3) || !nx) return err("3つとも選んでください");
+  var v1 = Number(p.customer), v2 = Number(p.staff), v3 = Number(p.ops), nx = String(p.next||"");
+  if (!(v1>=1&&v1<=3) || !(v2>=1&&v2<=3) || !(v3>=1&&v3<=3) || !nx) return err("4つとも選んでください");
   var t = today(), id = me.staff.staff_id;
   var cur = rows("mood").filter(function(r){ return r.staff_id===id && fmtDate(r["日付"])===t; })[0];
-  var o = {mood_id: cur ? cur.mood_id : uid("md_"), "日付":t, staff_id:id, "名前":me.staff["名前"], "お客様":v1, "スタッフ":v2, "自分":"", "ひとこと":"", "記録日時":nowStr(), "ふりかえり問":"", "ありがとう先":"", "連携の引っかかり":String(p.why||"").slice(0,120), "次の一手":nx.slice(0,20), "運営へ":String(p.toOps||"").slice(0,200)};
+  var o = {mood_id: cur ? cur.mood_id : uid("md_"), "日付":t, staff_id:id, "名前":me.staff["名前"], "お客様":v1, "スタッフ":v2, "自分":"", "ひとこと":"", "記録日時":nowStr(), "ふりかえり問":"", "ありがとう先":"", "連携の引っかかり":String(p.why||"").slice(0,120), "次の一手":nx.slice(0,20), "運営へ":String(p.toOps||"").slice(0,200), "お客様の内訳":String(p.whyCustomer||"").slice(0,80), "在庫・運営":v3, "在庫・運営の内訳":String(p.whyOps||"").slice(0,80)};
   writeRow("mood", o, cur ? cur._row : null);
-  audit(id, "mood_save", o.mood_id, v1+"/"+v2+"/"+nx);
+  audit(id, "mood_save", o.mood_id, v1+"/"+v2+"/"+v3+"/"+nx);
   return ok();
 };
 ADMIN.mood_month = function(p, me){
   var ym = p.ym || Utilities.formatDate(new Date(), TZ, "yyyy/MM");
   var list = rows("mood").filter(function(r){ return fmtDate(r["日付"]).slice(0,7)===ym; }).map(function(r){
-    return {date:fmtDate(r["日付"]), staff_id:r.staff_id, name:r["名前"], customer:Number(r["お客様"]), staff:Number(r["スタッフ"]), self:Number(r["自分"]), note:r["運営へ"]||r["ひとこと"]||"", at:String(r["記録日時"]||"").slice(0,16), why:r["連携の引っかかり"]||"", next:r["次の一手"]||""};
+    return {date:fmtDate(r["日付"]), staff_id:r.staff_id, name:r["名前"], customer:Number(r["お客様"]), staff:Number(r["スタッフ"]), self:Number(r["自分"]), note:r["運営へ"]||r["ひとこと"]||"", at:String(r["記録日時"]||"").slice(0,16), why:r["連携の引っかかり"]||"", next:r["次の一手"]||"", whyC:r["お客様の内訳"]||"", ops:Number(r["在庫・運営"])||0, whyO:r["在庫・運営の内訳"]||""};
   }).sort(function(a,b){ return a.date<b.date?1:(a.date>b.date?-1:(a.name<b.name?-1:1)); });
   // 退勤したのに未回答の人（当月）
   var answered = {}; list.forEach(function(r){ answered[r.date+"|"+r.staff_id] = 1; });
