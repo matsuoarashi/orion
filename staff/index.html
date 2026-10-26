@@ -448,7 +448,7 @@ async function loadHome(){
 let COMM = null;
 let DIAG_SENT = false;
 function sendDiag(){
-  if (DIAG_SENT || !isPilot()) return; DIAG_SENT = true;
+  if (DIAG_SENT || !ME || ME.staff_id !== "s_48230c3becee") return; DIAG_SENT = true;
   setTimeout(()=>{ try{
     const t = document.createElement("div"); t.style.cssText="position:fixed;top:0;left:0;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0;visibility:hidden"; document.body.appendChild(t); const cs = getComputedStyle(t); const sat = cs.paddingTop, sab = cs.paddingBottom; t.remove();
     const nav = document.querySelector("nav").getBoundingClientRect(), app = document.querySelector(".app").getBoundingClientRect(), vv = window.visualViewport;
