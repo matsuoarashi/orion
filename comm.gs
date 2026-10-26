@@ -11,6 +11,11 @@ var NOTICE_SEED = [
 "■ やらないこと\n・あとから思い出してまとめて押さない（時間がずれて使えないデータになります）\n・会計の時に押さない（来店時に押す）\n\n" +
 "■ 間違えたら\n・「取消」で1件戻せます。押しすぎた分はその場で取消してください\n\n" +
 "ホールが忙しい時はキッチンから見える方が押してもOKです。「来た時に・その場で・1人1回」でお願いします。"},
+  {notice_id:"n_seed_guide6", title:"接客ガイドを更新しました（6｜スタッフ同士の会話）", important:"0", body:
+"接客・身だしなみガイドの「6｜スタッフ同士の会話」を書き足しました。ホームの「ガイドを読む」から、6章だけでいいので一度目を通してください。\n\n" +
+"オリオンは9席のオープンキッチンなので、厨房とホールのやりとりはお客様に全部聞こえています。お客様への丁寧さと、スタッフへの丁寧さは同じもの、というのが店の考え方です。\n\n" +
+"・指示や依頼は「○○お願いします」の形で\n・気づいたことは責めずに短く。注意が必要なことは営業後に\n・「ありがとうございます」「助かります」は何度言ってもOK\n・冗談やいじりは、言われた側が笑えているかで判断する\n\n" +
+"全員が気持ちよく働ける店が、お客様にも感じのいい店になります。よろしくお願いします。"},
   {notice_id:"n_seed_printer", title:"持ち帰り用レシートプリンターの設定方法", important:"0", body:
 "テイクアウトの予約が入ると、店のスマホ（レジ）からBluetoothプリンターに伝票を自動で印刷します。プリンターが「未接続」だと印刷されないので、開店前に必ず確認してください。\n\n" +
 "■ 開店前の確認（毎日）\n1. プリンターの電源を入れる（電源ランプが点くまで待つ）\n2. レジアプリを開く。画面右下の「🖨」が「接続」なら準備OK\n3. 「🖨 未接続」のままなら、下の手順でつなぐ\n\n" +
@@ -35,7 +40,7 @@ function noteNorm_(r){
 }
 // スタッフ: お知らせ＋引き継ぎをまとめて取得
 STAFF.comm = function(p, me){
-  if (rows("notice").length === 0) noticeSeed_();
+  noticeSeed_();
   var id = me.staff.staff_id;
   var notices = rows("notice").filter(function(r){ return r["状態"]==="active"; }).map(function(r){ return noticeNorm_(r, id); }).sort(function(a,b){ return a.at<b.at?1:-1; });
   var notes = rows("note").map(noteNorm_).sort(function(a,b){ return a.at<b.at?1:-1; });
@@ -69,7 +74,7 @@ STAFF.note_done = function(p, me){
 };
 // 管理: お知らせの作成・編集・取り下げ、既読状況
 ADMIN.notices = function(p, me){
-  if (rows("notice").length === 0) noticeSeed_();
+  noticeSeed_();
   var names = {}; rows("staff").forEach(function(s){ names[s.staff_id] = s["名前"]; });
   var active = rows("staff").filter(function(s){ return s["状態"]==="active"; }).map(function(s){ return {staff_id:s.staff_id, name:s["名前"]}; });
   var list = rows("notice").map(function(r){ var n = noticeNorm_(r, null); n.readNames = n.readIds.map(function(x){ return names[x]||x; }); n.unreadNames = active.filter(function(s){ return n.readIds.indexOf(s.staff_id)<0; }).map(function(s){ return s.name; }); return n; }).sort(function(a,b){ return a.at<b.at?1:-1; });
