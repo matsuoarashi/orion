@@ -640,7 +640,7 @@ function hygCollect(){
   const items = [...box.querySelectorAll(".hi.on")].map(x=>x.dataset.k);
   const temps = {}; box.querySelectorAll("[id^=tp_]").forEach(i=>{ if(i.value.trim()!=="") temps[i.id.slice(3)] = Number(i.value); });
   const actEl = $("hygAct"), action = (actEl && !actEl.classList.contains("hide")) ? $("hygActIn").value.trim() : "";
-  return {kind: isIn?"in":"out", area: hygArea(), items, temps, action};
+  return {kind: isIn?"in":"out", area: hygArea(), items, temps, fix: action};
 }
 function ptSet(v){ $("pt").value=v; ptSync(); }
 function ptSync(){ const v=$("pt").value; if(v) $("ptd").textContent=v; }
