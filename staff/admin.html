@@ -223,20 +223,22 @@ function wxAvg(arr){ if(!arr.length) return "-"; const a = arr.reduce((x,y)=>x+y
 function moodCard(m){
   if(!m || !m.ok) return `<div class="card"><h2>店の空気</h2><div class="mini">${m&&m.error||"読み込めませんでした"}</div></div>`;
   const list = m.list||[];
-  const WHY = ["伝え方","タイミング","情報","段取り・物","お客様対応"];
-  const wk = {}; list.forEach(r=>{ const [y,mo,d]=r.date.split("/").map(Number); const dt=new Date(y,mo-1,d); const mon=new Date(dt); mon.setDate(dt.getDate()-((dt.getDay()+6)%7)); const key=`${mon.getMonth()+1}/${mon.getDate()}`; const w=(wk[key]=wk[key]||{c:[],s:[],n:0,why:{},next:{}}); w.c.push(r.customer); w.s.push(r.staff); w.n++; String(r.why||"").split("・").filter(Boolean).forEach(x=>w.why[x]=(w.why[x]||0)+1); if(r.next) w.next[r.next]=(w.next[r.next]||0)+1; });
-  const fmtCnt = o => Object.entries(o).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${esc(k)} ${v}`).join("、") || "-";
-  const wrows = Object.keys(wk).map(k=>{ const w=wk[k]; const low = w.s.filter(v=>v===1).length; return `<tr ${low>=2?'style="background:var(--red-l)"':""}><td>${k}〜</td><td>${w.n}</td><td>${wxAvg(w.c)}</td><td>${wxAvg(w.s)}</td><td class="mini">${WHY.map(x=>w.why[x]?`${x} ${w.why[x]}`:"").filter(Boolean).join("、")||"-"}</td><td class="mini">${fmtCnt(w.next)}</td></tr>`; }).join("");
+  const add = (o, str) => String(str||"").split("・").filter(Boolean).forEach(x=>o[x]=(o[x]||0)+1);
+  const wk = {}; list.forEach(r=>{ const [y,mo,d]=r.date.split("/").map(Number); const dt=new Date(y,mo-1,d); const mon=new Date(dt); mon.setDate(dt.getDate()-((dt.getDay()+6)%7)); const key=`${mon.getMonth()+1}/${mon.getDate()}`; const w=(wk[key]=wk[key]||{c:[],s:[],o:[],n:0,wc:{},ws:{},wo:{},next:{}}); w.n++; w.c.push(r.customer); w.s.push(r.staff); if(r.ops) w.o.push(r.ops); add(w.wc,r.whyC); add(w.ws,r.why); add(w.wo,r.whyO); if(r.next && r.next!=="特になし") w.next[r.next]=(w.next[r.next]||0)+1; });
+  const cnt = o => Object.entries(o).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${esc(k)} ${v}`).join("、") || "-";
+  const mk = arr => { if(!arr.length) return "-"; const a = arr.reduce((x,y)=>x+y,0)/arr.length; return (a>=2.5?"◎":a>=1.75?"○":"△")+`<span class="mini"> ${a.toFixed(1)}</span>`; };
+  const wrows = Object.keys(wk).map(k=>{ const w=wk[k]; const low = w.s.filter(v=>v===1).length; return `<tr ${low>=2?'style="background:var(--red-l)"':""}><td style="white-space:nowrap">${k}〜</td><td>${w.n}</td><td>${mk(w.c)}<div class="mini">${cnt(w.wc)}</div></td><td>${mk(w.s)}<div class="mini">${cnt(w.ws)}</div></td><td>${mk(w.o)}<div class="mini">${cnt(w.wo)}</div></td><td class="mini">${cnt(w.next)}</td></tr>`; }).join("");
   const notes = list.filter(r=>r.note).map(r=>`<div class="row" style="align-items:flex-start"><span class="mini" style="white-space:nowrap">${r.date.slice(5)} ${esc(r.name)}</span><span style="flex:1;font-size:13px">${esc(r.note)}</span></div>`).join("");
-  const drows = list.map(r=>`<tr><td class="mini" style="white-space:nowrap">${r.date.slice(5)}</td><td style="white-space:nowrap">${esc(r.name)}</td><td>${WX[r.customer]||"-"}</td><td>${({3:"◎",2:"○",1:"△"})[r.staff]||"-"}</td><td class="mini">${esc(r.why)}</td><td class="mini">${esc(r.next)}</td></tr>`).join("");
+  const S = {3:"◎",2:"○",1:"△"};
+  const drows = list.map(r=>`<tr><td class="mini" style="white-space:nowrap">${r.date.slice(5)}</td><td style="white-space:nowrap">${esc(r.name)}</td><td>${S[r.customer]||"-"}</td><td>${S[r.staff]||"-"}</td><td>${S[r.ops]||"-"}</td><td class="mini">${[r.whyC,r.why,r.whyO].filter(Boolean).map(esc).join(" / ")}${r.next?`<br>次: ${esc(r.next)}`:""}</td></tr>`).join("");
   const miss = (m.missing||[]).slice(0,10).map(x=>`${x.date.slice(5)} ${esc(x.name)}`).join("、");
   return `<div class="card"><h2>店の空気 <small>${m.ym.replace("/","年")}月・回答 ${list.length}件</small></h2>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><button class="btn sec" style="padding:6px 12px" onclick="moodMove(-1)">◀</button><b>${m.ym.replace("/","年")}月</b><button class="btn sec" style="padding:6px 12px" onclick="moodMove(1)">▶</button></div>
-    <div class="mini" style="margin-bottom:6px">退勤前のふりかえり（お店は朗らかだったか・厨房とホールの連携・次の一手）。見るのは週ごとの流れです。「伝え方」「タイミング」が1on1の後に減っているかを確認してください。赤＝連携「やりにくかった」が週2件以上</div>
-    <div class="scroll"><table style="width:100%;font-size:13px"><tr><th>週</th><th>回答</th><th>お店</th><th>連携</th><th>引っかかり</th><th>次の一手</th></tr>${wrows||'<tr><td colspan="6" class="mini">まだ回答がありません</td></tr>'}</table></div>
-    ${notes?`<div style="margin-top:10px"><b style="font-size:13px">運営へのひとこと</b>${notes}</div>`:""}
+    <div class="mini" style="margin-bottom:6px">退勤前のふりかえり4問（お客様・厨房とホールの連携・在庫や運営・次の一手）。◎3〜△1の週平均と、選ばれた内訳の件数。見るのは週ごとの流れで、「伝え方」「タイミング」が1on1の後に減っているかを確認してください。赤＝連携「やりにくかった」が週2件以上</div>
+    <div class="scroll"><table style="width:100%;font-size:13px"><tr><th>週</th><th>回答</th><th>お客様</th><th>連携</th><th>在庫・運営</th><th>次の一手</th></tr>${wrows||'<tr><td colspan="6" class="mini">まだ回答がありません</td></tr>'}</table></div>
+    ${notes?`<div style="margin-top:10px"><b style="font-size:13px">一言</b>${notes}</div>`:""}
     ${miss?`<div class="mini" style="margin-top:6px;color:var(--amber)">未回答（退勤済み）: ${miss}</div>`:""}
-    <details style="margin-top:8px"><summary class="mini" style="cursor:pointer">日ごとの回答を見る（運営のみ）</summary><div class="scroll" style="margin-top:6px"><table style="width:100%;font-size:13px"><tr><th>日</th><th>名前</th><th>お店</th><th>連携</th><th>引っかかり</th><th>次の一手</th></tr>${drows}</table></div></details>
+    <details style="margin-top:8px"><summary class="mini" style="cursor:pointer">日ごとの回答を見る（運営のみ）</summary><div class="scroll" style="margin-top:6px"><table style="width:100%;font-size:13px"><tr><th>日</th><th>名前</th><th>客</th><th>連携</th><th>在庫</th><th>内訳・次</th></tr>${drows}</table></div></details>
   </div>`;
 }
 // 衛生記録（HACCP）

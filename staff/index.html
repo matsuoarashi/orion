@@ -80,7 +80,7 @@ nav button .bd{display:inline-block;min-width:16px;padding:0 4px;border-radius:9
 .mood-nudge{border-left:4px solid var(--amber)}
 .mood .rq{font-size:15px;font-weight:bold;color:var(--g);background:var(--g-l);border-radius:10px;padding:8px 10px;margin-bottom:6px;line-height:1.5}
 .mood .mo button{padding:8px 4px 6px} .mood .mo button i{font-size:22px}
-#whyChips .chip,#nextChips .chip{min-height:40px;padding:8px 8px;font-size:14px;font-weight:normal} #whyChips .chip.on,#nextChips .chip.on{font-weight:bold}
+.whyc .chip,#nextChips .chip{min-height:40px;padding:8px 8px;font-size:14px;font-weight:normal} .whyc .chip.on,#nextChips .chip.on{font-weight:bold}
 .thx{border-left:4px solid var(--g)} .thx .tb{font-size:15px;line-height:1.6}
 .hyg{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:12px}
 .hyg .hh{display:flex;justify-content:space-between;align-items:center;font-size:12px;letter-spacing:2px;color:var(--g);margin-bottom:6px}
@@ -475,31 +475,31 @@ function renderComm(k){
     </div>`).join("") : `<div class="mini">まだ書き込みはありません</div>`;
 }
 // ───── 今日のふりかえり（退勤ボタンの前） ─────
-// 人ではなく「お店」と「連携」と「次の一手」を聞く。厨房からもホールからも同じ言葉で答えられるようにする
-const Q1 = [{v:3,i:"☀️",l:"朗らかだった"},{v:2,i:"⛅",l:"ふつう"},{v:1,i:"☁️",l:"少し重かった"}];
-const Q2 = [{v:3,i:"◎",l:"スムーズ"},{v:2,i:"○",l:"少し引っかかった"},{v:1,i:"△",l:"やりにくかった"}];
-const Q2WHY = ["伝え方（言い方・トーン・声の大きさ）","タイミング（忙しい時の声かけ・返事）","情報（オーダー・指示・引き継ぎ）","段取り・物（準備・在庫）","お客様対応"];
-const Q3 = ["準備・仕込み","役割分担","声かけ・確認","備品・道具","特になし"];
+// 人ではなく「場面」を聞く：お客様／厨房とホール／在庫や運営／次の一手。厨房からもホールからも同じ言葉で答えられる
+const FQ = [
+  {k:"customer", t:"今日のお客様の雰囲気は？", o:[{v:3,i:"☀️",l:"朗らか"},{v:2,i:"⛅",l:"ふつう"},{v:1,i:"☁️",l:"ピリついていた"}], why:["混雑・待ち時間","難しいお客様","オーダーの間違い"]},
+  {k:"staff", t:"厨房とホールの連携は？", o:[{v:3,i:"◎",l:"スムーズ"},{v:2,i:"○",l:"少し引っかかった"},{v:1,i:"△",l:"やりにくかった"}], why:["伝え方（言い方・トーン）","タイミング（声かけ・返事）","情報（オーダー・指示）"]},
+  {k:"ops", t:"在庫や運営まわりで困ったことは？", o:[{v:3,i:"◎",l:"なし"},{v:2,i:"○",l:"少しあった"},{v:1,i:"△",l:"困った"}], why:["食材・在庫","備品・消耗品","シフト・人数","運営からの指示・連絡"]},
+];
+const Q4 = ["準備・仕込み","役割分担","声かけ・確認","備品・道具","特になし"];
 let MOOD = {};
 function moodBlock(){
-  MOOD = {why:[], next:""};
-  const row = (k, opts) => `<div class="mo" id="mo_${k}">${opts.map(o=>`<button onclick="moodPick('${k}',${o.v},this)"><i>${o.i}</i>${o.l}</button>`).join("")}</div>`;
+  MOOD = {why:{customer:[], staff:[], ops:[]}, next:""};
   return `<div class="hyg mood" id="moodBox">
-    <div class="hh"><span>今日のふりかえり <span class="cnt" id="moodCnt">0/3</span></span><span class="mini" style="letter-spacing:0">運営だけが見ます</span></div>
+    <div class="hh"><span>今日のふりかえり <span class="cnt" id="moodCnt">0/4</span></span><span class="mini" style="letter-spacing:0">運営だけが見ます</span></div>
     <div class="motto-l" style="margin:0 0 8px">愛嬌よく、明るく。お店もお客様も、朗らかに。</div>
-    <div class="mq"><div class="t">今日のお店、朗らかだった？</div>${row("customer", Q1)}</div>
-    <div class="mq"><div class="t">厨房とホールの連携は？</div>${row("staff", Q2)}
-      <div id="whyBox" class="hide" style="margin-top:6px"><div class="mini">どこが近い？（任意・いくつでも）</div><div class="chips" id="whyChips" style="grid-template-columns:1fr">${Q2WHY.map((w,i)=>`<button class="chip" style="text-align:left" onclick="whyPick(${i},this)">${w}</button>`).join("")}</div></div></div>
-    <div class="mq"><div class="t">次のシフトで1つ変えるなら？</div><div class="chips c3" id="nextChips">${Q3.map(n=>`<button class="chip" onclick="nextPick('${n}',this)">${n}</button>`).join("")}</div></div>
-    <label style="margin-top:6px">運営へひとこと（任意）</label><input type="text" id="moodNote" maxlength="120" placeholder="例: 14時台にパスタの皿が足りなくなった">
+    ${FQ.map(q=>`<div class="mq"><div class="t">${q.t}</div><div class="mo" id="mo_${q.k}">${q.o.map(o=>`<button onclick="moodPick('${q.k}',${o.v},this)"><i>${o.i}</i>${o.l}</button>`).join("")}</div>
+      <div id="why_${q.k}" class="hide" style="margin-top:6px"><div class="mini">どこが近い？（任意・いくつでも）</div><div class="chips whyc">${q.why.map(w=>`<button class="chip" style="text-align:left" onclick="whyPick('${q.k}',this)">${w}</button>`).join("")}</div></div></div>`).join("")}
+    <div class="mq"><div class="t">次のシフトで一つ変えるとしたら？</div><div class="chips c3" id="nextChips">${Q4.map(n=>`<button class="chip" onclick="nextPick('${n}',this)">${n}</button>`).join("")}</div>
+      <input type="text" id="moodNote" maxlength="120" placeholder="一言（任意）例: 14時台に皿が足りなくなった" style="margin-top:4px"></div>
   </div>`;
 }
-function moodPick(k, v, btn){ MOOD[k]=v; [...btn.parentNode.children].forEach(b=>b.classList.remove("on")); btn.classList.add("on"); if (k==="staff"){ $("whyBox").classList.toggle("hide", v===3); if (v===3){ MOOD.why=[]; document.querySelectorAll("#whyChips .chip").forEach(b=>b.classList.remove("on")); } } hygValidate(); }
-function whyPick(i, btn){ btn.classList.toggle("on"); MOOD.why = [...document.querySelectorAll("#whyChips .chip.on")].map(b=>b.textContent.split("（")[0]); }
+function moodPick(k, v, btn){ MOOD[k]=v; [...btn.parentNode.children].forEach(b=>b.classList.remove("on")); btn.classList.add("on"); const w=$("why_"+k); if(w){ w.classList.toggle("hide", v===3); if(v===3){ MOOD.why[k]=[]; w.querySelectorAll(".chip").forEach(b=>b.classList.remove("on")); } } hygValidate(); }
+function whyPick(k, btn){ btn.classList.toggle("on"); MOOD.why[k] = [...$("why_"+k).querySelectorAll(".chip.on")].map(b=>b.textContent.split("（")[0]); }
 function nextPick(n, btn){ document.querySelectorAll("#nextChips .chip").forEach(b=>b.classList.remove("on")); btn.classList.add("on"); MOOD.next=n; hygValidate(); }
-function moodReady(){ return !!(MOOD.customer && MOOD.staff && MOOD.next); }
+function moodReady(){ return !!(MOOD.customer && MOOD.staff && MOOD.ops && MOOD.next); }
 async function moodSaveAfterOut(){
-  const r = await api("mood_save", {customer:MOOD.customer, staff:MOOD.staff, why:(MOOD.why||[]).join("・"), next:MOOD.next, toOps:MOOD.note||""});
+  const r = await api("mood_save", {customer:MOOD.customer, staff:MOOD.staff, ops:MOOD.ops, whyCustomer:MOOD.why.customer.join("・"), why:MOOD.why.staff.join("・"), whyOps:MOOD.why.ops.join("・"), next:MOOD.next, toOps:MOOD.note||""});
   if(!r.ok){ toast("ふりかえりの保存に失敗: "+r.error); return; }
   cset("comm", Object.assign(cget("comm")||{}, {moodToday:true}));
 }
@@ -663,7 +663,7 @@ function hygValidate(){
   let anyBad = false;
   (hb||box).querySelectorAll("[id^=tp_]").forEach(i=>{ const v = i.value.trim(); const max = Number(i.dataset.max); const bad = v!=="" && Number(v) > max; if (bad) anyBad = true; i.classList.toggle("ng", bad); i.classList.toggle("set", v!=="" && !bad); if (v==="") okAll = false; });
   const act = $("hygAct"); if (act){ act.classList.toggle("hide", !anyBad); if (anyBad && $("hygActIn").value.trim().length < 4) okAll = false; }
-  const mb = $("moodBox"); if (mb){ const n = ["customer","staff","next"].filter(k=>MOOD[k]).length; const c=$("moodCnt"); if(c){ c.textContent=n+"/3"; c.classList.toggle("ok", n===3); } if (n<3) okAll = false; }
+  const mb = $("moodBox"); if (mb){ const n = ["customer","staff","ops","next"].filter(k=>MOOD[k]).length; const c=$("moodCnt"); if(c){ c.textContent=n+"/4"; c.classList.toggle("ok", n===4); } if (n<4) okAll = false; }
   go.disabled = !okAll;
   const hint = $("punchHint"); if (hint) hint.style.display = okAll ? "none" : "";
 }
