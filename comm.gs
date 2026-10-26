@@ -46,7 +46,7 @@ STAFF.comm = function(p, me){
   var notes = rows("note").map(noteNorm_).sort(function(a,b){ return a.at<b.at?1:-1; });
   var open = notes.filter(function(n){ return n.status==="open"; });
   var done = notes.filter(function(n){ return n.status!=="open"; }).slice(0,20);
-  return ok({notices:notices, unread: notices.filter(function(n){ return !n.read; }).length, notes: open.concat(done), openCount: open.length});
+  return ok({notices:notices, unread: notices.filter(function(n){ return !n.read; }).length, notes: open.concat(done), openCount: open.length, moodToday: moodToday_(id)});
 };
 STAFF.notice_read = function(p, me){
   var id = me.staff.staff_id; var all = rows("notice");
@@ -103,4 +103,30 @@ ADMIN.notice_archive = function(p, me){
     audit(me.staff.staff_id, p.restore ? "notice_restore" : "notice_archive", p.notice_id, ""); return ok();
   }}
   return err("お知らせが見つかりません");
+};
+
+// ───────────────────────── 今日の空気レポート（退勤時・3項目） ─────────────────────────
+SHEETS.mood = ["空気", ["mood_id","日付","staff_id","名前","お客様","スタッフ","自分","ひとこと","記録日時"]];
+READ_ACTIONS["admin.mood_month"] = 1;
+function moodToday_(id){ var t = today(); return rows("mood").some(function(r){ return r.staff_id===id && fmtDate(r["日付"])===t; }); }
+STAFF.mood_save = function(p, me){
+  var vals = [p.customer, p.staff, p.self].map(Number);
+  if (vals.some(function(v){ return !(v>=1 && v<=3); })) return err("3つとも選んでください");
+  var t = today(), id = me.staff.staff_id; var note = String(p.note||"").slice(0,80);
+  var all = rows("mood"); var cur = all.filter(function(r){ return r.staff_id===id && fmtDate(r["日付"])===t; })[0];
+  var o = {mood_id: cur ? cur.mood_id : uid("md_"), "日付":t, staff_id:id, "名前":me.staff["名前"], "お客様":vals[0], "スタッフ":vals[1], "自分":vals[2], "ひとこと":note, "記録日時":nowStr()};
+  writeRow("mood", o, cur ? cur._row : null);
+  audit(id, "mood_save", o.mood_id, vals.join("/"));
+  return ok();
+};
+ADMIN.mood_month = function(p, me){
+  var ym = p.ym || Utilities.formatDate(new Date(), TZ, "yyyy/MM");
+  var list = rows("mood").filter(function(r){ return fmtDate(r["日付"]).slice(0,7)===ym; }).map(function(r){
+    return {date:fmtDate(r["日付"]), staff_id:r.staff_id, name:r["名前"], customer:Number(r["お客様"]), staff:Number(r["スタッフ"]), self:Number(r["自分"]), note:r["ひとこと"]||"", at:String(r["記録日時"]||"").slice(0,16)};
+  }).sort(function(a,b){ return a.date<b.date?1:(a.date>b.date?-1:(a.name<b.name?-1:1)); });
+  // 退勤したのに未回答の人（当月）
+  var answered = {}; list.forEach(function(r){ answered[r.date+"|"+r.staff_id] = 1; });
+  var names = {}; rows("staff").forEach(function(s){ names[s.staff_id] = s["名前"]; });
+  var missing = rows("att").filter(function(a){ var d = fmtDate(a["日付"]); return d.slice(0,7)===ym && fmtHM(a["退勤"]) && !answered[d+"|"+a.staff_id]; }).map(function(a){ return {date:fmtDate(a["日付"]), name:names[a.staff_id]||a.staff_id}; });
+  return ok({ym:ym, list:list, missing:missing});
 };
