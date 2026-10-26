@@ -76,6 +76,9 @@ nav button .bd{display:inline-block;min-width:16px;padding:0 4px;border-radius:9
 .mood .mo button i{display:block;font-style:normal;font-size:26px;margin-bottom:2px}
 .mood .mo button.on{border-color:var(--g);background:var(--g-l);color:var(--g);font-weight:bold}
 .mood-nudge{border-left:4px solid var(--amber)}
+.mood .rq{font-size:15px;font-weight:bold;color:var(--g);background:var(--g-l);border-radius:10px;padding:8px 10px;margin-bottom:6px;line-height:1.5}
+.mood .mo button{padding:8px 4px 6px} .mood .mo button i{font-size:22px}
+.thx{border-left:4px solid var(--g)} .thx .tb{font-size:15px;line-height:1.6}
 .hyg{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:12px}
 .hyg .hh{display:flex;justify-content:space-between;align-items:center;font-size:12px;letter-spacing:2px;color:var(--g);margin-bottom:6px}
 .hyg .seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden} .hyg .seg button{border:0;background:#fff;padding:4px 10px;font-size:12px;color:var(--mute)} .hyg .seg button.on{background:var(--g);color:#fff}
@@ -228,7 +231,8 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
           <div class="row"><span class="l">次回の勤務</span><b id="hNext">-</b></div>
           <div class="row" id="hWishRow"><span class="l">来月の希望</span><b id="hWish"></b></div>
         </div>
-        <div class="card mood-nudge hide" id="hMoodCard"><div class="row"><span class="l">今日の空気レポート<br><span class="mini">退勤後に10秒だけ</span></span><button class="btn sm" style="width:auto;padding:10px 16px" onclick="openMood()">答える</button></div></div>
+        <div class="card mood-nudge hide" id="hMoodCard"><div class="row"><span class="l">今日のふりかえりが未送信です<br><span class="mini">10秒で終わります</span></span><button class="btn sm" style="width:auto;padding:10px 16px" onclick="openMood()">答える</button></div></div>
+        <div class="card thx hide" id="hThx"><div class="tl mini">届いた「ありがとう」</div><div class="tb" id="hThxBody"></div></div>
         <div class="card" id="hCommCard"><h2>連絡 <small id="hCommSub"></small></h2>
           <div class="hcomm"><button onclick="go('comm')"><span class="k">運営からのお知らせ</span><span class="v" id="hNotice">-</span></button><button onclick="go('comm','notes')"><span class="k">引き継ぎノート</span><span class="v" id="hNotes">-</span></button></div>
         </div>
@@ -444,6 +448,7 @@ function renderCommHome(k){
   $("hNotice").innerHTML = k.unread>0 ? `<span class="amber">未読 ${k.unread}件</span>` : (latest ? `<span style="font-weight:normal;font-size:13px">${esc(latest.title)}</span>` : "なし");
   $("hNotes").innerHTML = k.openCount>0 ? `<span class="red">${k.openCount}件 未対応</span>` : "なし";
   $("hCommSub").textContent = k.unread>0 ? "未読のお知らせがあります" : "";
+  const th = k.thanks || []; $("hThx").classList.toggle("hide", !th.length); if (th.length) $("hThxBody").innerHTML = th.map(t=>`${esc(t.from)}さんから「ありがとう」<span class="mini">（${t.date.slice(5)}）</span>`).join("<br>");
   const a = HOME && HOME.att; $("hMoodCard").classList.toggle("hide", !(k.pilot && a && a.status==="done" && k.moodToday===false));
   $("bdComm").classList.toggle("hide", !(k.unread>0 || k.openCount>0)); $("bdComm").textContent = k.unread>0 ? k.unread : "!";
 }
@@ -466,31 +471,44 @@ function renderComm(k){
       <div class="nd"><span>${n.at.slice(5)}　${esc(n.by)}${n.status==="open"?"":`　→ ${esc(n.doneBy)} 対応済`}</span>${n.status==="open" ? `<button class="dn" onclick="noteDone('${n.note_id}',false)">対応した</button>` : `<button class="dn" style="color:var(--mute)" onclick="noteDone('${n.note_id}',true)">戻す</button>`}</div>
     </div>`).join("") : `<div class="mini">まだ書き込みはありません</div>`;
 }
-// ───── 今日の空気レポート（退勤時・3項目） ─────
-const MOODQ = [
-  {k:"customer", t:"お客様の雰囲気", s:"常連さん・初めての方・難しい方…"},
-  {k:"staff", t:"スタッフ同士の雰囲気", s:"声の掛け合い・ピーク時の連携"},
-  {k:"self", t:"自分の調子", s:"体調・気分"},
-];
+// ───── 今日のふりかえり（退勤ボタンの前・全員同じ問い） ─────
+// 「人」ではなく「店の空気」と「自分の行動」を聞く。3つ目の問いは日替わりで、ガイド6章（スタッフ同士の会話）から出す
 const MOODO = [{v:3,i:"☀️",l:"良かった"},{v:2,i:"☁️",l:"ふつう"},{v:1,i:"☔",l:"重かった"}];
+const SELFO = [{v:3,i:"◎",l:"できた"},{v:2,i:"○",l:"少し"},{v:1,i:"△",l:"まだ"}];
+const REFLECT = [
+  "仲間に「ありがとう」「助かります」を伝えられた",
+  "何かを頼むとき「○○お願いします」と言えた",
+  "忙しい時間も、落ち着いた声とトーンでいられた",
+  "気づいたことを、相手を責めずに短く伝えられた",
+  "お客様の前で、ため息や強い言い方をしなかった",
+  "仲間が手いっぱいの時に、自分から手を貸せた",
+  "冗談を言う時、相手も笑えているかを気にかけた",
+];
+function todayReflect(){ const d=new Date(); const doy=Math.floor((d-new Date(d.getFullYear(),0,1))/86400000); return REFLECT[doy % REFLECT.length]; }
 let MOOD = {};
-function openMood(){
-  MOOD = {};
-  sheet(`<div class="mood">
-    <h3>今日の空気</h3>
-    <div class="ml">お疲れさまでした。10秒だけ教えてください。<br>人のことではなく、今日の空気について。運営だけが見ます</div>
-    ${MOODQ.map(q=>`<div class="mq"><div class="t">${q.t}<small>${q.s}</small></div><div class="mo" id="mo_${q.k}">${MOODO.map(o=>`<button onclick="moodPick('${q.k}',${o.v},this)"><i>${o.i}</i>${o.l}</button>`).join("")}</div></div>`).join("")}
-    <label>ひとこと（任意・良かったことがあれば）</label>
-    <input type="text" id="moodNote" maxlength="80" placeholder="例: ピークの連携がスムーズだった">
-    <button class="btn" id="moodBtn" style="margin-top:12px" disabled onclick="moodSave()">送る</button>
-    <button class="btn sec" style="margin-top:8px" onclick="closeOv()">あとで</button>
-  </div>`);
+function moodBlock(){
+  MOOD = {q: todayReflect(), thanks: ""};
+  const row = (k, opts) => `<div class="mo" id="mo_${k}">${opts.map(o=>`<button onclick="moodPick('${k}',${o.v},this)"><i>${o.i}</i>${o.l}</button>`).join("")}</div>`;
+  const cw = (COMM && COMM.coworkers) || [];
+  return `<div class="hyg mood" id="moodBox">
+    <div class="hh"><span>今日のふりかえり <span class="cnt" id="moodCnt">0/3</span></span><span class="mini" style="letter-spacing:0">運営だけが見ます</span></div>
+    <div class="mq"><div class="t">お客様の雰囲気</div>${row("customer", MOODO)}</div>
+    <div class="mq"><div class="t">お店の空気<small>声の掛け合い・ピーク時の連携</small></div>${row("staff", MOODO)}</div>
+    <div class="mq"><div class="t">今日のひとつ<small>全員同じ問い・日替わり</small></div><div class="rq">${esc(MOOD.q)}</div>${row("self", SELFO)}</div>
+    ${cw.length?`<div class="mq"><div class="t">「ありがとう」を伝えたい人<small>任意・相手のアプリに届きます</small></div><div class="chips c3" id="thxChips">${cw.map(c=>`<button class="chip" onclick="thxPick('${c.id}',this)">${esc(c.name)}さん</button>`).join("")}</div></div>`:""}
+  </div>`;
 }
-function moodPick(k, v, btn){ MOOD[k]=v; [...btn.parentNode.children].forEach(b=>b.classList.remove("on")); btn.classList.add("on"); $("moodBtn").disabled = !MOODQ.every(q=>MOOD[q.k]); }
-async function moodSave(){
-  const r = await api("mood_save", {customer:MOOD.customer, staff:MOOD.staff, self:MOOD.self, note:$("moodNote").value.trim()});
-  if(!r.ok){ toast(r.error); return; }
-  closeOv(); toast("ありがとうございます。お疲れさまでした"); $("hMoodCard").classList.add("hide"); cset("comm", Object.assign(cget("comm")||{}, {moodToday:true}));
+function moodPick(k, v, btn){ MOOD[k]=v; [...btn.parentNode.children].forEach(b=>b.classList.remove("on")); btn.classList.add("on"); hygValidate(); }
+function thxPick(id, btn){ const on = !btn.classList.contains("on"); document.querySelectorAll("#thxChips .chip").forEach(b=>b.classList.remove("on")); if(on){ btn.classList.add("on"); MOOD.thanks=id; } else MOOD.thanks=""; }
+function moodReady(){ return !!(MOOD.customer && MOOD.staff && MOOD.self); }
+async function moodSaveAfterOut(){
+  const r = await api("mood_save", {customer:MOOD.customer, staff:MOOD.staff, self:MOOD.self, q:MOOD.q, thanks:MOOD.thanks||"", note:""});
+  if(!r.ok){ toast("ふりかえりの保存に失敗: "+r.error); return; }
+  cset("comm", Object.assign(cget("comm")||{}, {moodToday:true}));
+}
+// 退勤後に未回答だった場合（通信エラー等）だけ、ホームから答えられる
+function openMood(){
+  sheet(`<h3 style="text-align:center;color:var(--g)">今日のふりかえり</h3>${moodBlock()}<button class="btn" id="punchGo" disabled onclick="moodSaveAfterOut().then(()=>{closeOv();toast('ありがとうございます。お疲れさまでした');loadHome();})">送る</button><button class="btn sec" style="margin-top:8px" onclick="closeOv()">閉じる</button>`);
 }
 function ntcToggle(id){ const el = $("ntc_"+id); if(!el) return; el.classList.toggle("open"); }
 async function noticeRead(id){ const r = await api("notice_read", {notice_id:id}); if(!r.ok){ toast(r.error); return; } toast("確認を記録しました"); loadComm(); }
@@ -587,6 +605,7 @@ function punchSheet(type){
     <h3>${isIn?"出勤":"退勤"}時刻を確認してください</h3>
     ${isIn && !isPilot()?`<div class="gcheck"><div class="gh">古いけれど、清潔。</div><div class="chips c3" id="gChips">${["服","髪","髭","爪","靴","エプロン"].map(x=>`<button class="chip" onclick="this.classList.toggle('on')">${x}</button>`).join("")}</div><div class="mini center">確認できたものをタップ（全部でなくても出勤は押せます）</div></div>`:""}
     ${hygBlock(isIn)}
+    ${(!isIn && isPilot()) ? moodBlock() : ""}
     <div class="mini">時刻をタップすると選び直せます（未来の時刻は不可）</div>
     <div class="timebox"><button onclick="ptAdd(-5)">−5分</button><div class="tdisp"><span id="ptd">${def}</span><small>タップで時刻を選ぶ</small><input type="time" id="pt" value="${def}" step="300" onchange="ptSync()"></div><button onclick="ptAdd(5)">+5分</button></div>
     <div class="chips">
@@ -598,7 +617,7 @@ function punchSheet(type){
     <input type="hidden" id="brk" value="0">`}
     <div style="height:12px"></div>
     <button class="btn ${isIn?"":"out"}" id="punchGo" ${isPilot()?"disabled":""} onclick="var b=Number(($('brk')||{}).value)||0;var t=$('pt').value;var c=[...document.querySelectorAll('#gChips .chip.on, #hygBox .hi.on[data-g=groom]')].map(x=>x.dataset.k||x.textContent);var h=hygCollect();closeOv();punch('${type}', b, t, c, h)">${isIn?"出勤":"退勤"}を記録する</button>
-    ${isPilot()?`<div class="mini center" id="punchHint" style="margin-top:6px">${isIn?"出勤チェック":"衛生チェック"}がすべて済むと押せます</div>`:""}
+    ${isPilot()?`<div class="mini center" id="punchHint" style="margin-top:6px">${isIn?"出勤チェック":"衛生チェックとふりかえり"}がすべて済むと押せます</div>`:""}
     <button class="btn sec" style="margin-top:10px" onclick="closeOv()">やめる</button>`);
   hygValidate();
 }
@@ -640,12 +659,13 @@ function tempOpts(isFridge){
 }
 function hygSetArea(a){ HYGAREA = a; const isIn = !!document.querySelector("#brkChips") === false; const box = $("hygBox"); if(!box) return; box.outerHTML = hygBlock(isIn); hygValidate(); }
 function hygValidate(){
-  const box = $("hygBox"), go = $("punchGo"); if(!box || !go) return;
-  const items = [...box.querySelectorAll(".hi")]; let okAll = items.every(x=>x.classList.contains("on"));
+  const box = $("hygBox") || $("moodBox"), go = $("punchGo"); if(!box || !go) return;
+  const hb = $("hygBox"); const items = hb ? [...hb.querySelectorAll(".hi")] : []; let okAll = items.every(x=>x.classList.contains("on"));
   const cnt = $("hygCnt"); if (cnt){ const n = items.filter(x=>x.classList.contains("on")).length; cnt.textContent = n+"/"+items.length; cnt.classList.toggle("ok", n===items.length); }
   let anyBad = false;
-  box.querySelectorAll("[id^=tp_]").forEach(i=>{ const v = i.value.trim(); const max = Number(i.dataset.max); const bad = v!=="" && Number(v) > max; if (bad) anyBad = true; i.classList.toggle("ng", bad); i.classList.toggle("set", v!=="" && !bad); if (v==="") okAll = false; });
+  (hb||box).querySelectorAll("[id^=tp_]").forEach(i=>{ const v = i.value.trim(); const max = Number(i.dataset.max); const bad = v!=="" && Number(v) > max; if (bad) anyBad = true; i.classList.toggle("ng", bad); i.classList.toggle("set", v!=="" && !bad); if (v==="") okAll = false; });
   const act = $("hygAct"); if (act){ act.classList.toggle("hide", !anyBad); if (anyBad && $("hygActIn").value.trim().length < 4) okAll = false; }
+  const mb = $("moodBox"); if (mb){ const n = ["customer","staff","self"].filter(k=>MOOD[k]).length; const c=$("moodCnt"); if(c){ c.textContent=n+"/3"; c.classList.toggle("ok", n===3); } if (n<3) okAll = false; }
   go.disabled = !okAll;
   const hint = $("punchHint"); if (hint) hint.style.display = okAll ? "none" : "";
 }
@@ -668,8 +688,8 @@ async function punch(type, breakMin, time, check, hyg){
     const r = await api("punch", {type, breakMin, time, check: check||[]});
     if(!r.ok){ showMsg($("msg"), r.error); loadHome(); return; }
     toast(type==="in" ? `出勤 ${r.time} を記録しました` : `退勤 ${r.time} を記録しました（実労働 ${fmtMin(r.workMin)}）`);
-    if (hyg) api("hyg_save", hyg).then(h=>{ if(!h.ok) toast("衛生記録の保存に失敗: "+h.error); });
-    if (type==="out" && isPilot()) setTimeout(openMood, 400);
+    if (hyg){ const h = await api("hyg_save", hyg); if(!h.ok) toast("衛生記録の保存に失敗: "+h.error); }
+    if (type==="out" && isPilot() && moodReady()) await moodSaveAfterOut();
     loadHome();
   }catch(e){ showMsg($("msg"), "通信エラーです。電波のある場所でもう一度押してください（二重には記録されません）"); btns.forEach(b=>b.disabled=false); }
   finally{ busy = false; }
