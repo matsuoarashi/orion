@@ -18,6 +18,7 @@ header .n{font-size:17px;font-weight:bold}
 header button{background:rgba(255,255,255,.15);border:0;color:#fff;border-radius:8px;padding:7px 12px;font-size:13px}
 main{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px 24px}
 nav{flex:none;background:#fff;border-top:1px solid var(--line);display:flex;padding-bottom:var(--sab)}
+html.iosgap,html.iosgap body{background:#fff} html.iosgap nav{padding-bottom:2px}
 nav button{flex:1;border:0;background:none;padding:8px 2px 6px;font-size:11px;color:var(--mute);min-height:56px}
 nav button i{display:block;font-style:normal;font-size:20px;line-height:1.2;margin-bottom:1px}
 nav button.on{color:var(--g);font-weight:bold}
@@ -329,18 +330,19 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
 <div id="ov"></div>
 
 <script>
-// iOSのホーム画面アプリでは、画面の高さがステータスバー分だけ短く報告されることがある。実際の画面の高さに合わせる
+// iOSのホーム画面アプリでは、表示領域が画面の下端まで届かないことがある（下に隙間ができる）。
+// その場合は隙間をメニューと同じ白で塗り、メニューの下の余白を詰めて、一続きに見せる
 (function(){
   const ios = /iP(hone|od|ad)/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
   const standalone = navigator.standalone === true || (window.matchMedia && matchMedia("(display-mode: standalone)").matches);
   function fit(){
-    const app = document.querySelector(".app"); if (!app) return;
-    let h = window.innerHeight;
-    if (ios && standalone){ const portrait = window.innerWidth < window.innerHeight; const full = portrait ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height); if (full > h && full - h < 120) h = full; }  // 差が小さい時だけ補正（キーボード表示中は補正しない）
-    app.style.height = h + "px"; app.style.bottom = "auto";
+    if (!(ios && standalone)) return;
+    const portrait = window.innerWidth < window.innerHeight; if (!portrait) return;
+    const full = Math.max(screen.width, screen.height), gap = full - window.innerHeight;
+    document.documentElement.classList.toggle("iosgap", gap > 20 && gap < 120);
   }
-  window.addEventListener("resize", fit); window.addEventListener("orientationchange", ()=>setTimeout(fit, 300)); document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) setTimeout(fit, 100); });
-  document.addEventListener("DOMContentLoaded", fit); setTimeout(fit, 0); setTimeout(fit, 500);
+  window.addEventListener("resize", fit); document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) setTimeout(fit, 100); });
+  fit(); setTimeout(fit, 500);
 })();
 const API_URL = "https://script.google.com/macros/s/AKfycbwgGW6rXzAW2rHVicdoCMdHOT_E3egrXPsaEJerX-_brZr0mYF6Qo_tRorX8PgLc7c/exec";
 const $ = id => document.getElementById(id);
