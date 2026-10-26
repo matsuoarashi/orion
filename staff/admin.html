@@ -149,7 +149,7 @@ const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"
 function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2400); }
 function showMsg(text, cls){ $("msg").innerHTML = text ? `<div class="msg ${cls||"err"}">${esc(text)}</div>` : ""; if(text) window.scrollTo(0,0); }
 // 読み取り以外は同時に1つだけ（二重タップ防止）。通信中は上部に黄色いバー、0.3秒超で画面を薄く
-const READS = new Set(["admin.mood_month","admin.notices","comm","admin.staff_list","admin.wishes_month","admin.shifts_month","admin.att_month","admin.payroll_month","admin.dashboard","admin.settings_get","admin.sync_status","admin.audit","admin.line_text","admin.bank_get","admin.payroll_csv","admin.bank_csv","staff_list"]);
+const READS = new Set(["admin.hyg_month","admin.mood_month","admin.notices","comm","admin.staff_list","admin.wishes_month","admin.shifts_month","admin.att_month","admin.payroll_month","admin.dashboard","admin.settings_get","admin.sync_status","admin.audit","admin.line_text","admin.bank_get","admin.payroll_csv","admin.bank_csv","staff_list"]);
 let inflight = 0, dimT = null;
 async function api(action, body){
   const isWrite = !READS.has(action);
@@ -197,7 +197,7 @@ function go(t){
 // ───── 連絡（お知らせ・引き継ぎ） ─────
 let NOTICES = [];
 async function loadComm(){ if(!$("pComm").dataset.loaded) $("pComm").innerHTML = loadingHtml(); $("pComm").dataset.loaded="1";
-  const [r, k, m] = await Promise.all([api("admin.notices"), api("comm"), api("admin.mood_month", {ym: MOODYM})]); if(!r.ok){ showMsg(r.error); return; }
+  const [r, k, m, h] = await Promise.all([api("admin.notices"), api("comm"), api("admin.mood_month", {ym: MOODYM}), api("admin.hyg_month", {ym: MOODYM})]); if(!r.ok){ showMsg(r.error); return; }
   NOTICES = r.notices; const total = r.staff.length;
   const act = r.notices.filter(n=>n.status==="active"), arc = r.notices.filter(n=>n.status!=="active");
   const row = n => `<div class="row" style="align-items:flex-start;gap:8px"><div style="flex:1;min-width:0">
@@ -207,6 +207,7 @@ async function loadComm(){ if(!$("pComm").dataset.loaded) $("pComm").innerHTML =
   const notes = (k.ok ? k.notes : []).map(n=>`<div class="row" style="align-items:flex-start"><div style="flex:1"><div style="white-space:pre-wrap;font-size:14px${n.status==="open"?"":";color:var(--mute);text-decoration:line-through"}">${esc(n.body)}</div><div class="mini">${n.at.slice(5)}　${esc(n.by)}${n.status==="open"?"":`　→ ${esc(n.doneBy)} 対応済`}</div></div></div>`).join("");
   $("pComm").innerHTML = `
     ${moodCard(m)}
+    ${hygCard(h)}
     <div class="card"><h2>運営からのお知らせ <small>掲載中 ${act.length}件</small></h2>
       <div class="mini" style="margin-bottom:8px">スタッフアプリの「連絡」タブとホームに表示されます。スタッフが「確認しました」を押すと既読になります。</div>
       <button class="btn" onclick="noticeEdit('')">＋ 新しいお知らせ</button>
@@ -235,6 +236,25 @@ function moodCard(m){
     <details style="margin-top:8px"><summary class="mini" style="cursor:pointer">日ごとの回答を見る（運営のみ）</summary><div class="scroll" style="margin-top:6px"><table style="width:100%;font-size:13px"><tr><th>日</th><th>名前</th><th>客</th><th>ス</th><th>自</th><th>ひとこと</th></tr>${drows||""}</table></div></details>
   </div>`;
 }
+// 衛生記録（HACCP）
+function hygCard(h){
+  if(!h || !h.ok) return `<div class="card"><h2>衛生記録</h2><div class="mini">${h&&h.error||"読み込めませんでした"}</div></div>`;
+  const TL = {fridge:["冷蔵",10],freezer:["冷凍",-15],combo_r:["冷蔵冷凍(冷)",10],combo_f:["冷蔵冷凍(凍)",-15]};
+  const rows = (h.days||[]).map(d=>{
+    const hl = d.health.map(x=>`${esc(x.name)}${x.ok?"":"⚠"}`).join("・") || `<span style="color:var(--red)">なし</span>`;
+    const tp = d.temps ? Object.keys(TL).map(k=>{ const v=d.temps[k]; if(v===undefined) return `<span class="mini">${TL[k][0]} -</span>`; const bad = v > TL[k][1]; return `<span style="${bad?"color:var(--red);font-weight:bold":""}">${TL[k][0]} ${v}℃</span>`; }).join(" / ") : `<span style="color:var(--red)">未記録</span>`;
+    const kc = d.kitchen==null ? `<span style="color:var(--red)">未</span>` : `${d.kitchen}/5`;
+    const hc = d.hall==null ? `<span style="color:var(--red)">未</span>` : `${d.hall}/5`;
+    return `<tr><td class="mini" style="white-space:nowrap">${d.date.slice(5)}</td><td style="font-size:12px">${hl}</td><td style="font-size:12px;white-space:nowrap">${tp}</td><td style="text-align:center">${kc}</td><td style="text-align:center">${hc}</td></tr>`;
+  }).join("");
+  return `<div class="card"><h2>衛生記録（HACCP） <small>${h.ym.replace("/","年")}月・${(h.days||[]).length}日分</small></h2>
+    <div class="mini" style="margin-bottom:6px">出勤時＝健康チェック（全員）＋庫内温度（厨房）、退勤時＝厨房5項目／客席5項目。赤＝未記録または基準外（冷蔵10℃超・冷凍−15℃超）。厨房担当は設定「kitchen_ids」で変更できます</div>
+    <div class="scroll"><table style="width:100%;font-size:13px"><tr><th>日</th><th>健康チェック</th><th>庫内温度</th><th>厨房</th><th>客席</th></tr>${rows||'<tr><td colspan="5" class="mini">まだ記録がありません</td></tr>'}</table></div>
+    <div style="margin-top:8px"><button class="btn sec" style="padding:8px 12px;font-size:13px" onclick="hygCsv(${JSON.stringify(h.ym)})">この月をCSVでコピー（保健所提出用）</button></div>
+  </div>`;
+}
+let HYGDATA = null;
+async function hygCsv(ym){ const h = await api("admin.hyg_month",{ym}); if(!h.ok){ toast(h.error); return; } const TL={fridge:"冷蔵庫",freezer:"冷凍庫",combo_r:"冷蔵冷凍庫(冷蔵室)",combo_f:"冷蔵冷凍庫(冷凍室)"}; const lines=[["日付","健康チェック","冷蔵庫℃","冷凍庫℃","冷蔵冷凍庫(冷蔵)℃","冷蔵冷凍庫(冷凍)℃","厨房チェック","客席チェック"].join(",")]; h.days.slice().reverse().forEach(d=>{ const t=d.temps||{}; lines.push([d.date, d.health.map(x=>x.name+(x.ok?"OK":"要確認")).join(" "), t.fridge??"", t.freezer??"", t.combo_r??"", t.combo_f??"", d.kitchen==null?"未":d.kitchen+"/5", d.hall==null?"未":d.hall+"/5"].join(",")); }); copyPlain(lines.join("\n"), "CSVをコピーしました"); }
 function noticeEdit(id){
   const n = NOTICES.find(x=>x.notice_id===id) || {title:"",body:"",important:false};
   modal(`<h3>${id?"お知らせを編集":"新しいお知らせ"}</h3>

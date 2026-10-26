@@ -75,6 +75,13 @@ nav button .bd{display:inline-block;min-width:16px;padding:0 4px;border-radius:9
 .mood .mo button i{display:block;font-style:normal;font-size:26px;margin-bottom:2px}
 .mood .mo button.on{border-color:var(--g);background:var(--g-l);color:var(--g);font-weight:bold}
 .mood-nudge{border-left:4px solid var(--amber)}
+.hyg{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:12px}
+.hyg .hh{display:flex;justify-content:space-between;align-items:center;font-size:12px;letter-spacing:2px;color:var(--g);margin-bottom:6px}
+.hyg .seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden} .hyg .seg button{border:0;background:#fff;padding:4px 10px;font-size:12px;color:var(--mute)} .hyg .seg button.on{background:var(--g);color:#fff}
+.hyg .hi{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px dashed var(--line);font-size:14px;line-height:1.3} .hyg .hi:last-child{border-bottom:0}
+.hyg .hi .bx{width:24px;height:24px;border:2px solid var(--line);border-radius:7px;flex:none;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px} .hyg .hi.on .bx{background:var(--g);border-color:var(--g)}
+.hyg .tp{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px} .hyg .tp label{margin:0 0 2px;font-size:12px} .hyg .tp input{font-size:18px;padding:8px;text-align:center} .hyg .tp input.ng{border-color:var(--red);background:var(--red-l)}
+.hyg .hn{font-size:12px;color:var(--mute);margin-top:6px}
 .gcheck{background:var(--cream);border:1px solid var(--line);border-radius:12px;padding:10px 10px 6px;margin-bottom:12px}
 .gcheck .gh{font-weight:bold;color:var(--g);font-size:14px;margin-bottom:8px;text-align:center;letter-spacing:1px}
 .gcheck .chips{margin-bottom:4px}
@@ -324,7 +331,7 @@ let busy = false;
 function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2400); }
 function showMsg(el, text, cls){ el.innerHTML = text ? `<div class="msg ${cls||"err"}">${text}</div>` : ""; }
 // 書き込み系は同時に1つだけ（二重タップ防止）。進行中は上部に黄色いバー。
-const WRITES = new Set(["punch","wishes_save","fix_request","change_pass","login","logout","notice_read","note_add","note_done","guide_read","mood_save"]);
+const WRITES = new Set(["punch","wishes_save","fix_request","change_pass","login","logout","notice_read","note_add","note_done","guide_read","mood_save","hyg_save"]);
 let inflight = 0;
 async function api(action, body){
   const isWrite = WRITES.has(action);
@@ -557,6 +564,7 @@ function punchSheet(type){
   sheet(`
     <h3>${isIn?"出勤":"退勤"}時刻を確認してください</h3>
     ${isIn?`<div class="gcheck"><div class="gh">古いけれど、清潔。</div><div class="chips c3" id="gChips">${["服","髪","髭","爪","靴","エプロン"].map(x=>`<button class="chip" onclick="this.classList.toggle('on')">${x}</button>`).join("")}</div><div class="mini center">確認できたものをタップ（全部でなくても出勤は押せます）</div></div>`:""}
+    ${hygBlock(isIn)}
     <div class="mini">時刻をタップすると選び直せます（未来の時刻は不可）</div>
     <div class="timebox"><button onclick="ptAdd(-5)">−5分</button><div class="tdisp"><span id="ptd">${def}</span><small>タップで時刻を選ぶ</small><input type="time" id="pt" value="${def}" step="300" onchange="ptSync()"></div><button onclick="ptAdd(5)">+5分</button></div>
     <div class="chips">
@@ -567,20 +575,59 @@ function punchSheet(type){
     <div class="chips c4" id="brkChips">${[0,15,30,45].map(n=>`<button class="chip ${n===0?"on":""}" onclick="setBrk(${n})">${n}分</button>`).join("")}</div>
     <input type="hidden" id="brk" value="0">`}
     <div style="height:12px"></div>
-    <button class="btn ${isIn?"":"out"}" onclick="var b=Number(($('brk')||{}).value)||0;var t=$('pt').value;var c=[...document.querySelectorAll('#gChips .chip.on')].map(x=>x.textContent);closeOv();punch('${type}', b, t, c)">${isIn?"出勤":"退勤"}を記録する</button>
+    <button class="btn ${isIn?"":"out"}" id="punchGo" disabled onclick="var b=Number(($('brk')||{}).value)||0;var t=$('pt').value;var c=[...document.querySelectorAll('#gChips .chip.on')].map(x=>x.textContent);var h=hygCollect();closeOv();punch('${type}', b, t, c, h)">${isIn?"出勤":"退勤"}を記録する</button>
+    <div class="mini center" id="punchHint" style="margin-top:6px">${isIn?"健康チェック":"衛生チェック"}がすべて済むと押せます</div>
     <button class="btn sec" style="margin-top:10px" onclick="closeOv()">やめる</button>`);
+  hygValidate();
+}
+// ───── 衛生記録（HACCP）: 出勤時=健康チェック(+厨房は庫内温度)、退勤時=担当別チェック ─────
+const HYG = {
+  health: ["体調に異常なし（発熱・下痢・嘔吐なし）","手指に傷・化膿なし"],
+  temps: [{k:"fridge",l:"冷蔵庫",max:10},{k:"freezer",l:"冷凍庫",max:-15},{k:"combo_r",l:"冷蔵冷凍庫（冷蔵室）",max:10},{k:"combo_f",l:"冷蔵冷凍庫（冷凍室）",max:-15}],
+  kitchen: ["加熱して提供した（中心まで十分に）","調理器具・まな板の洗浄と殺菌","冷蔵庫内の整理（期限・ラップ・床置きなし）","厨房の清掃・ゴミ出し","手洗い（作業前・トイレ後・生ものの後）"],
+  hall: ["トイレ清掃・ペーパー補充","テーブル・卓上調味料の拭き上げ","客席・床の清掃","手洗い場の石けん・ペーパー補充","食器の洗浄・乾燥・収納"],
+};
+let HYGAREA = null;
+function hygArea(){ if (HYGAREA) return HYGAREA; return (COMM && COMM.kitchen) ? "kitchen" : "hall"; }
+function hygBlock(isIn){
+  const area = hygArea();
+  const seg = `<span class="seg"><button class="${area==="kitchen"?"on":""}" onclick="hygSetArea('kitchen')">厨房</button><button class="${area==="hall"?"on":""}" onclick="hygSetArea('hall')">客席</button></span>`;
+  const item = (t,i,grp) => `<div class="hi" data-g="${grp}" onclick="this.classList.toggle('on');hygValidate()"><span class="bx">✓</span><span>${t}</span></div>`;
+  if (isIn){
+    return `<div class="hyg" id="hygBox"><div class="hh"><span>健康チェック</span>${seg}</div>${HYG.health.map((t,i)=>item(t,i,"health")).join("")}
+      ${area==="kitchen"?`<div class="hh" style="margin-top:10px"><span>庫内温度（℃）</span><span class="mini" style="letter-spacing:0">冷蔵10℃以下・冷凍−15℃以下</span></div><div class="tp">${HYG.temps.map(t=>`<div><label>${t.l}</label><input type="number" inputmode="decimal" step="0.1" id="tp_${t.k}" data-max="${t.max}" placeholder="${t.max>0?"例 4":"例 -18"}" oninput="hygValidate()"></div>`).join("")}</div>`:""}
+    </div>`;
+  }
+  const list = area==="kitchen" ? HYG.kitchen : HYG.hall;
+  return `<div class="hyg" id="hygBox"><div class="hh"><span>衛生チェック（${area==="kitchen"?"厨房":"客席"}）</span>${seg}</div>${list.map((t,i)=>item(t,i,"out")).join("")}<div class="hn">済んだものをタップ。まだのものがあれば、済ませてから退勤してください</div></div>`;
+}
+function hygSetArea(a){ HYGAREA = a; const isIn = !!document.querySelector("#brkChips") === false; const box = $("hygBox"); if(!box) return; box.outerHTML = hygBlock(isIn); hygValidate(); }
+function hygValidate(){
+  const box = $("hygBox"), go = $("punchGo"); if(!box || !go) return;
+  const items = [...box.querySelectorAll(".hi")]; let okAll = items.every(x=>x.classList.contains("on"));
+  box.querySelectorAll("input[id^=tp_]").forEach(i=>{ const v = i.value.trim(); const max = Number(i.dataset.max); const bad = v!=="" && Number(v) > max; i.classList.toggle("ng", bad); if (v==="") okAll = false; });
+  go.disabled = !okAll;
+  const hint = $("punchHint"); if (hint) hint.style.display = okAll ? "none" : "";
+}
+function hygCollect(){
+  const box = $("hygBox"); if(!box) return null;
+  const isIn = !!box.querySelector("[data-g=health]");
+  const items = [...box.querySelectorAll(".hi.on")].map(x=>x.children[1].textContent);
+  const temps = {}; box.querySelectorAll("input[id^=tp_]").forEach(i=>{ if(i.value.trim()!=="") temps[i.id.slice(3)] = Number(i.value); });
+  return {kind: isIn?"in":"out", area: hygArea(), items, temps};
 }
 function ptSet(v){ $("pt").value=v; ptSync(); }
 function ptSync(){ const v=$("pt").value; if(v) $("ptd").textContent=v; }
 function ptAdd(n){ const el=$("pt"); if(!el.value) return; let m=toMinC(el.value)+n; m=(m+1440)%1440; ptSet(pad2(Math.floor(m/60))+":"+pad2(m%60)); }
 function setBrk(n){ document.querySelectorAll("#brkChips .chip").forEach((b,i)=>b.classList.toggle("on",[0,15,30,45][i]===n)); $("brk").value=n; }
-async function punch(type, breakMin, time, check){
+async function punch(type, breakMin, time, check, hyg){
   if (busy) return; busy = true;
   const btns = document.querySelectorAll("#punchArea .btn"); btns.forEach(b=>b.disabled=true);
   try{
     const r = await api("punch", {type, breakMin, time, check: check||[]});
     if(!r.ok){ showMsg($("msg"), r.error); loadHome(); return; }
     toast(type==="in" ? `出勤 ${r.time} を記録しました` : `退勤 ${r.time} を記録しました（実労働 ${fmtMin(r.workMin)}）`);
+    if (hyg) api("hyg_save", hyg).then(h=>{ if(!h.ok) toast("衛生記録の保存に失敗: "+h.error); });
     if (type==="out") setTimeout(openMood, 400);
     loadHome();
   }catch(e){ showMsg($("msg"), "通信エラーです。電波のある場所でもう一度押してください（二重には記録されません）"); btns.forEach(b=>b.disabled=false); }
