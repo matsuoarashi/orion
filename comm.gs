@@ -164,7 +164,7 @@ ADMIN.hyg_month = function(p, me){
     var o = byDay[d] = byDay[d] || {date:d, health:[], temps:null, tempsBy:"", kitchen:null, hall:null, kitchenBy:"", hallBy:""};
     var items = String(r["項目"]||"").split("、").filter(Boolean);
     if (r["区分"]==="出勤"){
-      o.health.push({name:r["名前"], ok: items.length>=2});
+      o.health.push({name:r["名前"], ok: items.some(function(x){ return x.indexOf("体調")===0; }) && items.some(function(x){ return x.indexOf("手指")===0; }), groom: items.filter(function(x){ return ["服","髪","髭","爪","靴","エプロン"].indexOf(x)>=0; }).length});
       var tp = {}; try { tp = JSON.parse(r["温度"]||"{}"); } catch(e){}
       if (Object.keys(tp).length){ o.temps = tp; o.tempsBy = r["名前"]; }
     } else {
