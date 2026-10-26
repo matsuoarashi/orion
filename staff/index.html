@@ -55,6 +55,13 @@ nav button .bd{display:inline-block;min-width:16px;padding:0 4px;border-radius:9
 .credo-card .credo{color:#fff;font-size:14px}
 .credo-card .cs{display:block;text-align:center;font-size:10px;letter-spacing:3px;opacity:.75;margin-bottom:6px}
 .tip{border-left:4px solid var(--g)}
+.ntc{border-left:4px solid var(--line)} .ntc.unread{border-left-color:var(--amber);background:#fffdf5} .ntc.imp.unread{border-left-color:var(--red)}
+.ntc .nh{display:flex;justify-content:space-between;align-items:flex-start;gap:8px} .ntc .nt{font-size:15px;font-weight:bold;line-height:1.4} .ntc .nd{font-size:12px;color:var(--mute);margin-top:2px}
+.ntc .nb{font-size:14px;line-height:1.7;white-space:pre-wrap;margin-top:8px;display:none} .ntc.open .nb{display:block}
+.note{padding:10px 0;border-bottom:1px dashed var(--line)} .note:last-child{border-bottom:0} .note .nb{font-size:14px;line-height:1.6;white-space:pre-wrap} .note .nd{font-size:12px;color:var(--mute);margin-top:4px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.note.done .nb{color:var(--mute);text-decoration:line-through}
+.note .dn{border:1px solid var(--line);background:#fff;border-radius:999px;padding:3px 10px;font-size:12px;color:var(--g)}
+.hcomm{display:grid;grid-template-columns:1fr 1fr;gap:8px} .hcomm button{border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px 8px;text-align:left} .hcomm .k{font-size:11px;letter-spacing:1px;color:var(--mute)} .hcomm .v{display:block;font-size:15px;font-weight:bold;margin-top:2px;line-height:1.3} .hcomm .amber{color:var(--amber)} .hcomm .red{color:var(--red)}
 .tip .tl{font-size:11px;letter-spacing:2px;color:var(--mute);margin-bottom:4px}
 .tip .tb{font-size:15px;line-height:1.6}
 .tip .tb .ng{color:var(--red);text-decoration:line-through;margin-right:6px}
@@ -198,6 +205,9 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
           <div class="row"><span class="l">次回の勤務</span><b id="hNext">-</b></div>
           <div class="row" id="hWishRow"><span class="l">来月の希望</span><b id="hWish"></b></div>
         </div>
+        <div class="card" id="hCommCard"><h2>連絡 <small id="hCommSub"></small></h2>
+          <div class="hcomm"><button onclick="go('comm')"><span class="k">運営からのお知らせ</span><span class="v" id="hNotice">-</span></button><button onclick="go('comm','notes')"><span class="k">引き継ぎノート</span><span class="v" id="hNotes">-</span></button></div>
+        </div>
         <div class="card tip"><div class="tl">今日のひとこと</div><div class="tb" id="tipBody"></div></div>
         <div class="card">
           <div class="row"><span class="l">接客・身だしなみガイド</span><b id="hGuide" class="mini">-</b></div>
@@ -239,6 +249,22 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
         </div>
       </section>
 
+      <!-- 連絡 -->
+      <section id="pComm" class="hide">
+        <div class="card" id="noticeCard">
+          <h2>運営からのお知らせ <small id="noticeSub"></small></h2>
+          <div class="mini" style="margin-bottom:8px">タップで本文が開きます。読んだら「確認しました」を押してください</div>
+          <div id="noticeList"><div class="mini">読み込み中…</div></div>
+        </div>
+        <div class="card" id="notesCard">
+          <h2>引き継ぎノート <small id="notesSub"></small></h2>
+          <div class="mini">次に出勤する人に伝えたいことを書いてください（例: 卵が残り10個・○○様から予約の電話・レジ袋が少ない）</div>
+          <textarea id="noteIn" rows="3" maxlength="400" placeholder="例: 14時ごろ、常連の田中様から「明日3人で来る」と連絡あり" style="margin-top:8px"></textarea>
+          <button class="btn sm" style="margin-top:8px" onclick="noteAdd()">書き込む</button>
+          <div id="noteList" style="margin-top:10px"><div class="mini">読み込み中…</div></div>
+        </div>
+      </section>
+
       <!-- 確定シフト -->
       <section id="pShift" class="hide">
         <div class="card">
@@ -267,6 +293,7 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
     </main>
     <nav>
       <button id="n_home" class="on" onclick="go('home')"><i>⌂</i>ホーム</button>
+      <button id="n_comm" onclick="go('comm')"><i>✉</i>連絡<span class="bd hide" id="bdComm">!</span></button>
       <button id="n_wish" onclick="go('wish')"><i>✎</i>希望<span class="bd hide" id="bdWish">!</span></button>
       <button id="n_shift" onclick="go('shift')"><i>▦</i>シフト</button>
       <button id="n_hist" onclick="go('hist')"><i>≡</i>履歴</button>
@@ -288,7 +315,7 @@ let busy = false;
 function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2400); }
 function showMsg(el, text, cls){ el.innerHTML = text ? `<div class="msg ${cls||"err"}">${text}</div>` : ""; }
 // 書き込み系は同時に1つだけ（二重タップ防止）。進行中は上部に黄色いバー。
-const WRITES = new Set(["punch","wishes_save","fix_request","change_pass","login","logout"]);
+const WRITES = new Set(["punch","wishes_save","fix_request","change_pass","login","logout","notice_read","note_add","note_done","guide_read"]);
 let inflight = 0;
 async function api(action, body){
   const isWrite = WRITES.has(action);
@@ -354,19 +381,56 @@ async function doLogout(){ if(!confirm("ログアウトしますか？")) return
 
 // ───── 画面遷移 ─────
 function enterApp(){ $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); go("home"); }
-function go(p){
-  ["home","wish","shift","hist"].forEach(x=>{ $("p"+x[0].toUpperCase()+x.slice(1)).classList.toggle("hide", x!==p); $("n_"+x).classList.toggle("on", x===p); });
+function go(p, sub){
+  ["home","comm","wish","shift","hist"].forEach(x=>{ $("p"+x[0].toUpperCase()+x.slice(1)).classList.toggle("hide", x!==p); $("n_"+x).classList.toggle("on", x===p); });
   showMsg($("msg"), ""); closeOv();
-  if(p==="home") loadHome(); if(p==="wish") loadWish(); if(p==="shift") loadShift(); if(p==="hist") loadHist();
+  if(p==="home") loadHome(); if(p==="comm") loadComm(sub); if(p==="wish") loadWish(); if(p==="shift") loadShift(); if(p==="hist") loadHist();
   $("main").scrollTo(0,0);
+  if(p==="comm" && sub==="notes") setTimeout(()=>$("notesCard").scrollIntoView({behavior:"smooth"}), 150);
 }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 
 // ───── ホーム・打刻 ─────
 async function loadHome(){
   const c = cget("home"); if (c && c.today===todayStr()) renderHome(c, true);
-  const r = await api("home"); if(!r.ok){ if(!c) showMsg($("msg"), r.error); return; }
+  const cc = cget("comm"); if (cc) renderCommHome(cc);
+  const [r, k] = await Promise.all([api("home"), api("comm")]); if(!r.ok){ if(!c) showMsg($("msg"), r.error); return; }
   cset("home", r); renderHome(r, false);
+  if (k.ok){ cset("comm", k); renderCommHome(k); }
 }
+// ───── 連絡（お知らせ・引き継ぎ） ─────
+let COMM = null;
+function renderCommHome(k){
+  COMM = k;
+  const latest = k.notices[0];
+  $("hNotice").innerHTML = k.unread>0 ? `<span class="amber">未読 ${k.unread}件</span>` : (latest ? `<span style="font-weight:normal;font-size:13px">${esc(latest.title)}</span>` : "なし");
+  $("hNotes").innerHTML = k.openCount>0 ? `<span class="red">${k.openCount}件 未対応</span>` : "なし";
+  $("hCommSub").textContent = k.unread>0 ? "未読のお知らせがあります" : "";
+  $("bdComm").classList.toggle("hide", !(k.unread>0 || k.openCount>0)); $("bdComm").textContent = k.unread>0 ? k.unread : "!";
+}
+async function loadComm(sub){
+  const c = cget("comm"); if (c) renderComm(c);
+  const k = await api("comm"); if(!k.ok){ if(!c) showMsg($("msg"), k.error); return; }
+  cset("comm", k); renderComm(k); renderCommHome(k);
+}
+function renderComm(k){
+  COMM = k;
+  $("noticeSub").textContent = k.unread>0 ? `未読 ${k.unread}件` : "すべて確認済み";
+  $("noticeList").innerHTML = k.notices.length ? k.notices.map(n=>`
+    <div class="card ntc ${n.read?"":"unread"} ${n.important?"imp":""}" id="ntc_${n.notice_id}" onclick="ntcToggle('${n.notice_id}')">
+      <div class="nh"><div><div class="nt">${n.important?'<span class="pill red" style="margin-right:6px">重要</span>':""}${esc(n.title)}</div><div class="nd">${n.at.slice(0,10)}　${esc(n.by)}</div></div><span class="pill ${n.read?"":"amber"}">${n.read?"確認済":"未読"}</span></div>
+      <div class="nb">${esc(n.body)}${n.read ? "" : `<button class="btn sm" style="margin-top:12px" onclick="event.stopPropagation();noticeRead('${n.notice_id}')">確認しました</button>`}</div>
+    </div>`).join("") : `<div class="mini">お知らせはありません</div>`;
+  $("notesSub").textContent = k.openCount>0 ? `未対応 ${k.openCount}件` : "";
+  $("noteList").innerHTML = k.notes.length ? k.notes.map(n=>`
+    <div class="note ${n.status==="open"?"":"done"}"><div class="nb">${esc(n.body)}</div>
+      <div class="nd"><span>${n.at.slice(5)}　${esc(n.by)}${n.status==="open"?"":`　→ ${esc(n.doneBy)} 対応済`}</span>${n.status==="open" ? `<button class="dn" onclick="noteDone('${n.note_id}',false)">対応した</button>` : `<button class="dn" style="color:var(--mute)" onclick="noteDone('${n.note_id}',true)">戻す</button>`}</div>
+    </div>`).join("") : `<div class="mini">まだ書き込みはありません</div>`;
+}
+function ntcToggle(id){ const el = $("ntc_"+id); if(!el) return; el.classList.toggle("open"); }
+async function noticeRead(id){ const r = await api("notice_read", {notice_id:id}); if(!r.ok){ toast(r.error); return; } toast("確認を記録しました"); loadComm(); }
+async function noteAdd(){ const body = $("noteIn").value.trim(); if(!body){ toast("内容を入力してください"); return; } const r = await api("note_add", {body}); if(!r.ok){ toast(r.error); return; } $("noteIn").value=""; toast("書き込みました"); loadComm(); }
+async function noteDone(id, undo){ const r = await api("note_done", {note_id:id, undo}); if(!r.ok){ toast(r.error); return; } loadComm(); }
 function renderHome(r, stale){
   HOME = r; ME = r.staff; SET = r.settings; $("pHome").classList.toggle("stale", !!stale);
   $("hName").textContent = ME.name + (ME.role==="admin" ? "（管理者）" : "");

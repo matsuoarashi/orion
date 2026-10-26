@@ -112,6 +112,7 @@ body.loading main{opacity:.6;transition:opacity .2s}
       <button data-t="shift" onclick="go('shift')">シフト</button>
       <button data-t="att" onclick="go('att')">勤怠</button>
       <button data-t="pay" onclick="go('pay')">給与</button>
+      <button data-t="comm" onclick="go('comm')">連絡</button>
       <button data-t="staff" onclick="go('staff')">スタッフ</button>
       <button data-t="set" onclick="go('set')">設定</button>
     </div>
@@ -121,6 +122,7 @@ body.loading main{opacity:.6;transition:opacity .2s}
       <section id="pShift" class="hide"></section>
       <section id="pAtt" class="hide"></section>
       <section id="pPay" class="hide"></section>
+      <section id="pComm" class="hide"></section>
       <section id="pStaff" class="hide"></section>
       <section id="pSet" class="hide"></section>
     </main>
@@ -147,7 +149,7 @@ const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"
 function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2400); }
 function showMsg(text, cls){ $("msg").innerHTML = text ? `<div class="msg ${cls||"err"}">${esc(text)}</div>` : ""; if(text) window.scrollTo(0,0); }
 // 読み取り以外は同時に1つだけ（二重タップ防止）。通信中は上部に黄色いバー、0.3秒超で画面を薄く
-const READS = new Set(["admin.staff_list","admin.wishes_month","admin.shifts_month","admin.att_month","admin.payroll_month","admin.dashboard","admin.settings_get","admin.sync_status","admin.audit","admin.line_text","admin.bank_get","admin.payroll_csv","admin.bank_csv","staff_list"]);
+const READS = new Set(["admin.notices","comm","admin.staff_list","admin.wishes_month","admin.shifts_month","admin.att_month","admin.payroll_month","admin.dashboard","admin.settings_get","admin.sync_status","admin.audit","admin.line_text","admin.bank_get","admin.payroll_csv","admin.bank_csv","staff_list"]);
 let inflight = 0, dimT = null;
 async function api(action, body){
   const isWrite = !READS.has(action);
@@ -188,9 +190,43 @@ async function doLogout(){ if(!confirm("ログアウトしますか？")) return
 function enterApp(){ $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); $("hName").textContent = ME.name; go("today"); }
 function go(t){
   document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on", b.dataset.t===t));
-  ["today","shift","att","pay","staff","set"].forEach(x=>$("p"+x[0].toUpperCase()+x.slice(1)).classList.toggle("hide", x!==t));
-  showMsg(""); ({today:loadToday, shift:loadShift, att:loadAtt, pay:loadPay, staff:loadStaff, set:loadSet})[t]();
+  ["today","shift","att","pay","comm","staff","set"].forEach(x=>$("p"+x[0].toUpperCase()+x.slice(1)).classList.toggle("hide", x!==t));
+  showMsg(""); ({today:loadToday, shift:loadShift, att:loadAtt, pay:loadPay, comm:loadComm, staff:loadStaff, set:loadSet})[t]();
 }
+
+// ───── 連絡（お知らせ・引き継ぎ） ─────
+let NOTICES = [];
+async function loadComm(){ if(!$("pComm").dataset.loaded) $("pComm").innerHTML = loadingHtml(); $("pComm").dataset.loaded="1";
+  const [r, k] = await Promise.all([api("admin.notices"), api("comm")]); if(!r.ok){ showMsg(r.error); return; }
+  NOTICES = r.notices; const total = r.staff.length;
+  const act = r.notices.filter(n=>n.status==="active"), arc = r.notices.filter(n=>n.status!=="active");
+  const row = n => `<div class="row" style="align-items:flex-start;gap:8px"><div style="flex:1;min-width:0">
+      <b>${n.important?'<span class="pill red" style="margin-right:4px">重要</span>':""}${esc(n.title)}</b><div class="mini">${n.at.slice(0,10)}　${esc(n.by)}　既読 ${n.readIds.length}/${total}${n.unreadNames.length?`　<span style="color:var(--amber)">未読: ${esc(n.unreadNames.join("・"))}</span>`:""}</div>
+      <div class="mini" style="white-space:pre-wrap;max-height:3.2em;overflow:hidden;margin-top:4px;color:var(--ink)">${esc(n.body)}</div></div>
+      <div style="display:flex;flex-direction:column;gap:4px">${n.status==="active" ? `<button class="btn sec" style="padding:6px 10px;font-size:13px" onclick="noticeEdit('${n.notice_id}')">編集</button><button class="btn sec" style="padding:6px 10px;font-size:13px" onclick="noticeArchive('${n.notice_id}',false)">取り下げ</button>` : `<button class="btn sec" style="padding:6px 10px;font-size:13px" onclick="noticeArchive('${n.notice_id}',true)">再掲</button>`}</div></div>`;
+  const notes = (k.ok ? k.notes : []).map(n=>`<div class="row" style="align-items:flex-start"><div style="flex:1"><div style="white-space:pre-wrap;font-size:14px${n.status==="open"?"":";color:var(--mute);text-decoration:line-through"}">${esc(n.body)}</div><div class="mini">${n.at.slice(5)}　${esc(n.by)}${n.status==="open"?"":`　→ ${esc(n.doneBy)} 対応済`}</div></div></div>`).join("");
+  $("pComm").innerHTML = `
+    <div class="card"><h2>運営からのお知らせ <small>掲載中 ${act.length}件</small></h2>
+      <div class="mini" style="margin-bottom:8px">スタッフアプリの「連絡」タブとホームに表示されます。スタッフが「確認しました」を押すと既読になります。</div>
+      <button class="btn" onclick="noticeEdit('')">＋ 新しいお知らせ</button>
+      <div style="margin-top:8px">${act.map(row).join("")||'<div class="mini">掲載中のお知らせはありません</div>'}</div></div>
+    ${arc.length?`<div class="card"><h2>取り下げ済み</h2>${arc.map(row).join("")}</div>`:""}
+    <div class="card"><h2>引き継ぎノート <small>未対応 ${k.ok?k.openCount:"-"}件</small></h2>${notes||'<div class="mini">書き込みはありません</div>'}</div>`;
+}
+function noticeEdit(id){
+  const n = NOTICES.find(x=>x.notice_id===id) || {title:"",body:"",important:false};
+  modal(`<h3>${id?"お知らせを編集":"新しいお知らせ"}</h3>
+    <label>タイトル</label><input id="ntTitle" maxlength="40" value="${esc(n.title)}">
+    <label>本文</label><textarea id="ntBody" style="min-height:220px;line-height:1.6">${esc(n.body)}</textarea>
+    <label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink)"><input type="checkbox" id="ntImp" style="width:auto" ${n.important?"checked":""}>重要（赤いラベルで目立たせる）</label>
+    ${id?`<label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink)"><input type="checkbox" id="ntReset" style="width:auto">既読をリセットする（全員にもう一度確認してもらう）</label>`:""}
+    <div style="display:flex;gap:8px;margin-top:14px"><button class="btn sec" style="flex:1" onclick="closeOv()">キャンセル</button><button class="btn" style="flex:2" onclick="noticeSave('${id}')">${id?"保存":"掲載する"}</button></div>`);
+}
+async function noticeSave(id){
+  const body = {notice_id:id||"", title:$("ntTitle").value.trim(), body:$("ntBody").value.trim(), important:$("ntImp").checked, resetRead: !!($("ntReset")&&$("ntReset").checked)};
+  const r = await api("admin.notice_save", body); if(!r.ok){ toast(r.error); return; } closeOv(); toast(id?"保存しました":"掲載しました"); loadComm();
+}
+async function noticeArchive(id, restore){ if(!restore && !confirm("このお知らせを取り下げますか？（スタッフには表示されなくなります）")) return; const r = await api("admin.notice_archive", {notice_id:id, restore}); if(!r.ok){ toast(r.error); return; } loadComm(); }
 
 // ───── 今日 ─────
 async function loadToday(){ if(!$("pToday").dataset.loaded) $("pToday").innerHTML = loadingHtml(); $("pToday").dataset.loaded="1";
