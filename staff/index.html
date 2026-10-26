@@ -445,8 +445,18 @@ async function loadHome(){
 }
 // ───── 連絡（お知らせ・引き継ぎ） ─────
 let COMM = null;
+let DIAG_SENT = false;
+function sendDiag(){
+  if (DIAG_SENT || !isPilot()) return; DIAG_SENT = true;
+  setTimeout(()=>{ try{
+    const t = document.createElement("div"); t.style.cssText="position:fixed;top:0;left:0;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0;visibility:hidden"; document.body.appendChild(t); const cs = getComputedStyle(t); const sat = cs.paddingTop, sab = cs.paddingBottom; t.remove();
+    const nav = document.querySelector("nav").getBoundingClientRect(), app = document.querySelector(".app").getBoundingClientRect(), vv = window.visualViewport;
+    const d = {ih:innerHeight, oh:outerHeight, iw:innerWidth, sh:screen.height, sw:screen.width, dpr:devicePixelRatio, ch:document.documentElement.clientHeight, vvh: vv?Math.round(vv.height):null, vvt: vv?Math.round(vv.offsetTop):null, sat, sab, navTop:Math.round(nav.top), navBottom:Math.round(nav.bottom), appH:Math.round(app.height), standalone: navigator.standalone===true, dm: matchMedia("(display-mode: standalone)").matches, gap: document.documentElement.classList.contains("iosgap"), ua: navigator.userAgent.replace(/[^\w .;\/()]/g,"").slice(0,160)};
+    fetch(API_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({action:"diag", token:TOKEN, d: JSON.stringify(d)})});
+  }catch(e){} }, 1500);
+}
 function renderCommHome(k){
-  COMM = k;
+  COMM = k; sendDiag();
   const latest = k.notices[0];
   $("hNotice").innerHTML = k.unread>0 ? `<span class="amber">未読 ${k.unread}件</span>` : (latest ? `<span style="font-weight:normal;font-size:13px">${esc(latest.title)}</span>` : "なし");
   $("hNotes").innerHTML = k.openCount>0 ? `<span class="red">${k.openCount}件 未対応</span>` : "なし";
