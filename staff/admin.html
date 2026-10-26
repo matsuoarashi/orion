@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>管理 | 洋食オリオン</title>
 <style>
-:root{ --g:#2c4f39; --g-d:#1f3a2a; --g-l:#e4eee7; --cream:#faf6ee; --cream-d:#ece4d2; --ink:#2b2a26; --mute:#7a7265; --red:#a33c2e; --amber:#b7791f; --line:#d9d1bd; --blue:#2a5aa8; }
+:root{ --g:#2c4f39; --g-d:#1f3a2a; --g-l:#e4eee7; --cream:#faf6ee; --cream-d:#ece4d2; --ink:#2b2a26; --mute:#7a7265; --red:#a33c2e; --amber:#b7791f; --line:#d9d1bd; --blue:#2a5aa8; --red-l:#f6e3df; }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{font-family:-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:var(--cream);color:var(--ink);font-size:15px;line-height:1.5}
 .app{max-width:860px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
@@ -149,7 +149,7 @@ const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"
 function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2400); }
 function showMsg(text, cls){ $("msg").innerHTML = text ? `<div class="msg ${cls||"err"}">${esc(text)}</div>` : ""; if(text) window.scrollTo(0,0); }
 // 読み取り以外は同時に1つだけ（二重タップ防止）。通信中は上部に黄色いバー、0.3秒超で画面を薄く
-const READS = new Set(["admin.notices","comm","admin.staff_list","admin.wishes_month","admin.shifts_month","admin.att_month","admin.payroll_month","admin.dashboard","admin.settings_get","admin.sync_status","admin.audit","admin.line_text","admin.bank_get","admin.payroll_csv","admin.bank_csv","staff_list"]);
+const READS = new Set(["admin.mood_month","admin.notices","comm","admin.staff_list","admin.wishes_month","admin.shifts_month","admin.att_month","admin.payroll_month","admin.dashboard","admin.settings_get","admin.sync_status","admin.audit","admin.line_text","admin.bank_get","admin.payroll_csv","admin.bank_csv","staff_list"]);
 let inflight = 0, dimT = null;
 async function api(action, body){
   const isWrite = !READS.has(action);
@@ -197,7 +197,7 @@ function go(t){
 // ───── 連絡（お知らせ・引き継ぎ） ─────
 let NOTICES = [];
 async function loadComm(){ if(!$("pComm").dataset.loaded) $("pComm").innerHTML = loadingHtml(); $("pComm").dataset.loaded="1";
-  const [r, k] = await Promise.all([api("admin.notices"), api("comm")]); if(!r.ok){ showMsg(r.error); return; }
+  const [r, k, m] = await Promise.all([api("admin.notices"), api("comm"), api("admin.mood_month", {ym: MOODYM})]); if(!r.ok){ showMsg(r.error); return; }
   NOTICES = r.notices; const total = r.staff.length;
   const act = r.notices.filter(n=>n.status==="active"), arc = r.notices.filter(n=>n.status!=="active");
   const row = n => `<div class="row" style="align-items:flex-start;gap:8px"><div style="flex:1;min-width:0">
@@ -206,12 +206,34 @@ async function loadComm(){ if(!$("pComm").dataset.loaded) $("pComm").innerHTML =
       <div style="display:flex;flex-direction:column;gap:4px">${n.status==="active" ? `<button class="btn sec" style="padding:6px 10px;font-size:13px" onclick="noticeEdit('${n.notice_id}')">編集</button><button class="btn sec" style="padding:6px 10px;font-size:13px" onclick="noticeArchive('${n.notice_id}',false)">取り下げ</button>` : `<button class="btn sec" style="padding:6px 10px;font-size:13px" onclick="noticeArchive('${n.notice_id}',true)">再掲</button>`}</div></div>`;
   const notes = (k.ok ? k.notes : []).map(n=>`<div class="row" style="align-items:flex-start"><div style="flex:1"><div style="white-space:pre-wrap;font-size:14px${n.status==="open"?"":";color:var(--mute);text-decoration:line-through"}">${esc(n.body)}</div><div class="mini">${n.at.slice(5)}　${esc(n.by)}${n.status==="open"?"":`　→ ${esc(n.doneBy)} 対応済`}</div></div></div>`).join("");
   $("pComm").innerHTML = `
+    ${moodCard(m)}
     <div class="card"><h2>運営からのお知らせ <small>掲載中 ${act.length}件</small></h2>
       <div class="mini" style="margin-bottom:8px">スタッフアプリの「連絡」タブとホームに表示されます。スタッフが「確認しました」を押すと既読になります。</div>
       <button class="btn" onclick="noticeEdit('')">＋ 新しいお知らせ</button>
       <div style="margin-top:8px">${act.map(row).join("")||'<div class="mini">掲載中のお知らせはありません</div>'}</div></div>
     ${arc.length?`<div class="card"><h2>取り下げ済み</h2>${arc.map(row).join("")}</div>`:""}
     <div class="card"><h2>引き継ぎノート <small>未対応 ${k.ok?k.openCount:"-"}件</small></h2>${notes||'<div class="mini">書き込みはありません</div>'}</div>`;
+}
+// 店の空気（退勤時レポート）
+let MOODYM = (()=>{ const d=new Date(); return d.getFullYear()+"/"+String(d.getMonth()+1).padStart(2,"0"); })();
+function moodMove(n){ let [y,mo]=MOODYM.split("/").map(Number); mo+=n; if(mo>12){mo=1;y++;} if(mo<1){mo=12;y--;} MOODYM = y+"/"+String(mo).padStart(2,"0"); loadComm(); }
+const WX = {3:"☀️",2:"☁️",1:"☔"};
+function wxAvg(arr){ if(!arr.length) return "-"; const a = arr.reduce((x,y)=>x+y,0)/arr.length; return (a>=2.5?"☀️":a>=1.75?"☁️":"☔") + `<span class="mini"> ${a.toFixed(1)}</span>`; }
+function moodCard(m){
+  if(!m || !m.ok) return `<div class="card"><h2>店の空気</h2><div class="mini">${m&&m.error||"読み込めませんでした"}</div></div>`;
+  const list = m.list||[];
+  // 週ごと（月曜始まり）
+  const wk = {}; list.forEach(r=>{ const [y,mo,d]=r.date.split("/").map(Number); const dt=new Date(y,mo-1,d); const mon=new Date(dt); mon.setDate(dt.getDate()-((dt.getDay()+6)%7)); const key=`${mon.getMonth()+1}/${mon.getDate()}`; (wk[key]=wk[key]||{c:[],s:[],f:[],n:0}); wk[key].c.push(r.customer); wk[key].s.push(r.staff); wk[key].f.push(r.self); wk[key].n++; });
+  const wrows = Object.keys(wk).map(k=>{ const w=wk[k]; const rainS = w.s.filter(v=>v===1).length; const avgC=w.c.reduce((a,b)=>a+b,0)/w.c.length, avgS=w.s.reduce((a,b)=>a+b,0)/w.s.length; const flag = rainS>=2 || (avgC>=2.5 && avgS<1.75); return `<tr ${flag?'style="background:var(--red-l)"':""}><td>${k}〜</td><td>${w.n}</td><td>${wxAvg(w.c)}</td><td>${wxAvg(w.s)}${rainS?`<span class="mini"> ☔${rainS}</span>`:""}</td><td>${wxAvg(w.f)}</td></tr>`; }).join("");
+  const drows = list.map(r=>`<tr><td class="mini" style="white-space:nowrap">${r.date.slice(5)}</td><td style="white-space:nowrap">${esc(r.name)}</td><td>${WX[r.customer]||"-"}</td><td>${WX[r.staff]||"-"}</td><td>${WX[r.self]||"-"}</td><td class="mini">${esc(r.note)}</td></tr>`).join("");
+  const miss = (m.missing||[]).slice(0,10).map(x=>`${x.date.slice(5)} ${esc(x.name)}`).join("、");
+  return `<div class="card"><h2>店の空気 <small>${m.ym.replace("/","年")}月・回答 ${list.length}件</small></h2>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><button class="btn sec" style="padding:6px 12px" onclick="moodMove(-1)">◀</button><b>${m.ym.replace("/","年")}月</b><button class="btn sec" style="padding:6px 12px" onclick="moodMove(1)">▶</button></div>
+    <div class="mini" style="margin-bottom:6px">退勤時に全員が答える3項目。個人の回答は本人に触れず、週の傾向だけを話題にしてください。赤＝スタッフ☔が週2つ以上、またはお客様☀️なのにスタッフが重い週</div>
+    <table style="width:100%;font-size:14px"><tr><th>週</th><th>回答</th><th>お客様</th><th>スタッフ</th><th>自分</th></tr>${wrows||'<tr><td colspan="5" class="mini">まだ回答がありません</td></tr>'}</table>
+    ${miss?`<div class="mini" style="margin-top:6px;color:var(--amber)">未回答（退勤済み）: ${miss}</div>`:""}
+    <details style="margin-top:8px"><summary class="mini" style="cursor:pointer">日ごとの回答を見る（運営のみ）</summary><div class="scroll" style="margin-top:6px"><table style="width:100%;font-size:13px"><tr><th>日</th><th>名前</th><th>客</th><th>ス</th><th>自</th><th>ひとこと</th></tr>${drows||""}</table></div></details>
+  </div>`;
 }
 function noticeEdit(id){
   const n = NOTICES.find(x=>x.notice_id===id) || {title:"",body:"",important:false};

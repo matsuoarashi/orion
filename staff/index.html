@@ -67,6 +67,14 @@ nav button .bd{display:inline-block;min-width:16px;padding:0 4px;border-radius:9
 .tip .tb .ng{color:var(--red);text-decoration:line-through;margin-right:6px}
 .tip .tb .ok{color:var(--g);font-weight:bold}
 .tip .tk{display:inline-block;font-size:11px;background:var(--g-l);color:var(--g);border-radius:999px;padding:2px 8px;margin-top:6px}
+.mood h3{font-size:16px;color:var(--g);text-align:center;letter-spacing:2px;margin:0 0 4px}
+.mood .ml{font-size:13px;color:var(--mute);text-align:center;margin-bottom:12px;line-height:1.5}
+.mood .mq{margin-bottom:12px} .mood .mq .t{font-size:14px;font-weight:bold;margin-bottom:6px} .mood .mq .t small{font-weight:normal;color:var(--mute);margin-left:6px}
+.mood .mo{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mood .mo button{border:2px solid var(--line);background:#fff;border-radius:12px;padding:10px 4px 8px;font-size:13px;color:var(--mute);line-height:1.2}
+.mood .mo button i{display:block;font-style:normal;font-size:26px;margin-bottom:2px}
+.mood .mo button.on{border-color:var(--g);background:var(--g-l);color:var(--g);font-weight:bold}
+.mood-nudge{border-left:4px solid var(--amber)}
 .gcheck{background:var(--cream);border:1px solid var(--line);border-radius:12px;padding:10px 10px 6px;margin-bottom:12px}
 .gcheck .gh{font-weight:bold;color:var(--g);font-size:14px;margin-bottom:8px;text-align:center;letter-spacing:1px}
 .gcheck .chips{margin-bottom:4px}
@@ -205,6 +213,7 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
           <div class="row"><span class="l">次回の勤務</span><b id="hNext">-</b></div>
           <div class="row" id="hWishRow"><span class="l">来月の希望</span><b id="hWish"></b></div>
         </div>
+        <div class="card mood-nudge hide" id="hMoodCard"><div class="row"><span class="l">今日の空気レポート<br><span class="mini">退勤後に10秒だけ</span></span><button class="btn sm" style="width:auto;padding:10px 16px" onclick="openMood()">答える</button></div></div>
         <div class="card" id="hCommCard"><h2>連絡 <small id="hCommSub"></small></h2>
           <div class="hcomm"><button onclick="go('comm')"><span class="k">運営からのお知らせ</span><span class="v" id="hNotice">-</span></button><button onclick="go('comm','notes')"><span class="k">引き継ぎノート</span><span class="v" id="hNotes">-</span></button></div>
         </div>
@@ -315,7 +324,7 @@ let busy = false;
 function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2400); }
 function showMsg(el, text, cls){ el.innerHTML = text ? `<div class="msg ${cls||"err"}">${text}</div>` : ""; }
 // 書き込み系は同時に1つだけ（二重タップ防止）。進行中は上部に黄色いバー。
-const WRITES = new Set(["punch","wishes_save","fix_request","change_pass","login","logout","notice_read","note_add","note_done","guide_read"]);
+const WRITES = new Set(["punch","wishes_save","fix_request","change_pass","login","logout","notice_read","note_add","note_done","guide_read","mood_save"]);
 let inflight = 0;
 async function api(action, body){
   const isWrite = WRITES.has(action);
@@ -406,6 +415,7 @@ function renderCommHome(k){
   $("hNotice").innerHTML = k.unread>0 ? `<span class="amber">未読 ${k.unread}件</span>` : (latest ? `<span style="font-weight:normal;font-size:13px">${esc(latest.title)}</span>` : "なし");
   $("hNotes").innerHTML = k.openCount>0 ? `<span class="red">${k.openCount}件 未対応</span>` : "なし";
   $("hCommSub").textContent = k.unread>0 ? "未読のお知らせがあります" : "";
+  const a = HOME && HOME.att; $("hMoodCard").classList.toggle("hide", !(a && a.status==="done" && k.moodToday===false));
   $("bdComm").classList.toggle("hide", !(k.unread>0 || k.openCount>0)); $("bdComm").textContent = k.unread>0 ? k.unread : "!";
 }
 async function loadComm(sub){
@@ -426,6 +436,32 @@ function renderComm(k){
     <div class="note ${n.status==="open"?"":"done"}"><div class="nb">${esc(n.body)}</div>
       <div class="nd"><span>${n.at.slice(5)}　${esc(n.by)}${n.status==="open"?"":`　→ ${esc(n.doneBy)} 対応済`}</span>${n.status==="open" ? `<button class="dn" onclick="noteDone('${n.note_id}',false)">対応した</button>` : `<button class="dn" style="color:var(--mute)" onclick="noteDone('${n.note_id}',true)">戻す</button>`}</div>
     </div>`).join("") : `<div class="mini">まだ書き込みはありません</div>`;
+}
+// ───── 今日の空気レポート（退勤時・3項目） ─────
+const MOODQ = [
+  {k:"customer", t:"お客様の雰囲気", s:"常連さん・初めての方・難しい方…"},
+  {k:"staff", t:"スタッフ同士の雰囲気", s:"声の掛け合い・ピーク時の連携"},
+  {k:"self", t:"自分の調子", s:"体調・気分"},
+];
+const MOODO = [{v:3,i:"☀️",l:"良かった"},{v:2,i:"☁️",l:"ふつう"},{v:1,i:"☔",l:"重かった"}];
+let MOOD = {};
+function openMood(){
+  MOOD = {};
+  sheet(`<div class="mood">
+    <h3>今日の空気</h3>
+    <div class="ml">お疲れさまでした。10秒だけ教えてください。<br>人のことではなく、今日の空気について。運営だけが見ます</div>
+    ${MOODQ.map(q=>`<div class="mq"><div class="t">${q.t}<small>${q.s}</small></div><div class="mo" id="mo_${q.k}">${MOODO.map(o=>`<button onclick="moodPick('${q.k}',${o.v},this)"><i>${o.i}</i>${o.l}</button>`).join("")}</div></div>`).join("")}
+    <label>ひとこと（任意・良かったことがあれば）</label>
+    <input type="text" id="moodNote" maxlength="80" placeholder="例: ピークの連携がスムーズだった">
+    <button class="btn" id="moodBtn" style="margin-top:12px" disabled onclick="moodSave()">送る</button>
+    <button class="btn sec" style="margin-top:8px" onclick="closeOv()">あとで</button>
+  </div>`);
+}
+function moodPick(k, v, btn){ MOOD[k]=v; [...btn.parentNode.children].forEach(b=>b.classList.remove("on")); btn.classList.add("on"); $("moodBtn").disabled = !MOODQ.every(q=>MOOD[q.k]); }
+async function moodSave(){
+  const r = await api("mood_save", {customer:MOOD.customer, staff:MOOD.staff, self:MOOD.self, note:$("moodNote").value.trim()});
+  if(!r.ok){ toast(r.error); return; }
+  closeOv(); toast("ありがとうございます。お疲れさまでした"); $("hMoodCard").classList.add("hide"); cset("comm", Object.assign(cget("comm")||{}, {moodToday:true}));
 }
 function ntcToggle(id){ const el = $("ntc_"+id); if(!el) return; el.classList.toggle("open"); }
 async function noticeRead(id){ const r = await api("notice_read", {notice_id:id}); if(!r.ok){ toast(r.error); return; } toast("確認を記録しました"); loadComm(); }
@@ -545,6 +581,7 @@ async function punch(type, breakMin, time, check){
     const r = await api("punch", {type, breakMin, time, check: check||[]});
     if(!r.ok){ showMsg($("msg"), r.error); loadHome(); return; }
     toast(type==="in" ? `出勤 ${r.time} を記録しました` : `退勤 ${r.time} を記録しました（実労働 ${fmtMin(r.workMin)}）`);
+    if (type==="out") setTimeout(openMood, 400);
     loadHome();
   }catch(e){ showMsg($("msg"), "通信エラーです。電波のある場所でもう一度押してください（二重には記録されません）"); btns.forEach(b=>b.disabled=false); }
   finally{ busy = false; }
