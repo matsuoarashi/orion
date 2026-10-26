@@ -132,8 +132,21 @@ ADMIN.mood_month = function(p, me){
 };
 
 // ───────────────────────── 衛生記録（HACCP: 健康チェック・庫内温度・担当別チェック） ─────────────────────────
-SHEETS.hyg = ["衛生", ["hyg_id","日付","staff_id","名前","区分","担当","項目","温度","記録日時"]];
+SHEETS.hyg = ["衛生", ["hyg_id","日付","staff_id","名前","区分","担当","項目","温度","記録日時","対応"]];
+SHEETS.hygrev = ["衛生振り返り", ["年月","結果","内容","確認者","日時"]];
 READ_ACTIONS["admin.hyg_month"] = 1;
+// 衛生チェック項目（アプリ・記録表・計画書で共通。短縮名は記録表の列見出し）
+var HYG_ITEMS = {
+  health: [["体調に異常なし（発熱・下痢・嘔吐なし）","体調"],["手指に傷・化膿なし","手指"]],
+  kitchen: [["仕込んだソース・茹で麺を速やかに冷まして冷蔵した","冷却"],["提供時に十分に再加熱した（ソースは沸騰・麺は中まで）","再加熱"],["加熱して提供した（目玉焼き・ハンバーグ・コロッケは中まで）","加熱"],["調理器具・まな板の洗浄と殺菌","器具"],["冷蔵庫内の整理（生の食材と調理済みを分ける・期限・ラップ・床置きなし）","庫内"],["厨房の清掃・ゴミ出し","清掃"],["手洗い（作業前・トイレ後・生ものの後）","手洗"]],
+  hall: [["トイレ清掃・消毒・ペーパー補充","トイレ"],["テーブル・卓上調味料の拭き上げ","卓上"],["客席・床の清掃","床"],["手洗い場の石けん・ペーパー補充","手洗場"],["食器の洗浄・乾燥・収納","食器"]]
+};
+function ensureHeader_(key){
+  var s = sh(key), hdr = SHEETS[key][1];
+  var cur = s.getRange(1,1,1,hdr.length).getValues()[0];
+  if (cur.join("|") !== hdr.join("|")) s.getRange(1,1,1,hdr.length).setValues([hdr]).setFontWeight("bold");
+}
+function ensureSetting_(k, desc, dflt){ var v = settings()[k]; if (v === undefined){ writeRow("settings", {key:k, value:dflt||"", "説明":desc}); return dflt||""; } return v; }
 function pilotIds_(){
   var v = settings().pilot_ids;
   if (v === undefined){ writeRow("settings", {key:"pilot_ids", value:"s_48230c3becee", "説明":"衛生記録・空気レポートを先行して出す staff_id（カンマ区切り）。all で全員"}); v = "s_48230c3becee"; }
@@ -146,31 +159,50 @@ function kitchenIds_(){
   return String(v||"").split(",").map(function(x){ return x.trim(); }).filter(Boolean);
 }
 STAFF.hyg_save = function(p, me){
+  ensureHeader_("hyg");
   var kind = p.kind==="in" ? "出勤" : "退勤"; var area = p.area==="kitchen" ? "厨房" : "客席";
-  var items = Array.isArray(p.items) ? p.items.map(String).slice(0,12) : [];
+  var items = Array.isArray(p.items) ? p.items.map(String).slice(0,16) : [];
   var temps = (p.temps && typeof p.temps==="object") ? p.temps : {};
+  var action = String(p.action||"").slice(0,200);
   var t = today(), id = me.staff.staff_id;
   var cur = rows("hyg").filter(function(r){ return r.staff_id===id && fmtDate(r["日付"])===t && r["区分"]===kind; })[0];
-  var o = {hyg_id: cur ? cur.hyg_id : uid("hy_"), "日付":t, staff_id:id, "名前":me.staff["名前"], "区分":kind, "担当":area, "項目":items.join("、"), "温度":JSON.stringify(temps), "記録日時":nowStr()};
+  var o = {hyg_id: cur ? cur.hyg_id : uid("hy_"), "日付":t, staff_id:id, "名前":me.staff["名前"], "区分":kind, "担当":area, "項目":items.join("、"), "温度":JSON.stringify(temps), "記録日時":nowStr(), "対応":action};
   writeRow("hyg", o, cur ? cur._row : null);
-  audit(id, "hyg_save", o.hyg_id, kind+"/"+area+"/"+items.length);
+  audit(id, "hyg_save", o.hyg_id, kind+"/"+area+"/"+items.length+(action?"/対応あり":""));
   return ok();
 };
+function shortOf_(list, full){ for (var i=0;i<list.length;i++) if (list[i][0]===full) return list[i][1]; return null; }
 ADMIN.hyg_month = function(p, me){
   var ym = p.ym || Utilities.formatDate(new Date(), TZ, "yyyy/MM");
   var byDay = {};
   rows("hyg").forEach(function(r){
     var d = fmtDate(r["日付"]); if (d.slice(0,7)!==ym) return;
-    var o = byDay[d] = byDay[d] || {date:d, health:[], temps:null, tempsBy:"", kitchen:null, hall:null, kitchenBy:"", hallBy:""};
+    var o = byDay[d] = byDay[d] || {date:d, health:[], temps:null, tempsBy:"", kitchen:null, hall:null, kitchenBy:"", hallBy:"", kitchenItems:[], hallItems:[], actions:[]};
     var items = String(r["項目"]||"").split("、").filter(Boolean);
+    if (r["対応"]) o.actions.push(r["名前"]+": "+r["対応"]);
     if (r["区分"]==="出勤"){
       o.health.push({name:r["名前"], ok: items.some(function(x){ return x.indexOf("体調")===0; }) && items.some(function(x){ return x.indexOf("手指")===0; }), groom: items.filter(function(x){ return ["服","髪","髭","爪","靴","エプロン"].indexOf(x)>=0; }).length});
       var tp = {}; try { tp = JSON.parse(r["温度"]||"{}"); } catch(e){}
       if (Object.keys(tp).length){ o.temps = tp; o.tempsBy = r["名前"]; }
     } else {
-      if (r["担当"]==="厨房"){ o.kitchen = items.length; o.kitchenBy = r["名前"]; } else { o.hall = items.length; o.hallBy = r["名前"]; }
+      var list = r["担当"]==="厨房" ? HYG_ITEMS.kitchen : HYG_ITEMS.hall;
+      var shorts = items.map(function(x){ return shortOf_(list, x); }).filter(Boolean);
+      if (r["担当"]==="厨房"){ o.kitchen = shorts.length; o.kitchenBy = r["名前"]; o.kitchenItems = shorts; } else { o.hall = shorts.length; o.hallBy = r["名前"]; o.hallItems = shorts; }
     }
   });
   var days = Object.keys(byDay).sort().reverse().map(function(k){ return byDay[k]; });
-  return ok({ym:ym, days:days, kitchen_ids: kitchenIds_()});
+  var rev = rows("hygrev").filter(function(r){ return revYm_(r["年月"])===ym; }).map(function(r){ return {result:r["結果"], note:r["内容"], by:r["確認者"], at:String(r["日時"]||"").slice(0,16)}; })[0] || null;
+  var st = settings();
+  return ok({ym:ym, days:days, kitchen_ids: kitchenIds_(), items: HYG_ITEMS, review: rev,
+    store: {name: st.store_name||"", address: ensureSetting_("store_address","店舗所在地（衛生管理計画に記載）","東京都千代田区神田淡路町一丁目15番地 塚崎ビル1階"), manager: ensureSetting_("food_hygiene_manager","食品衛生責任者の氏名（衛生管理計画に記載）","長下 佳奈"), permit: ensureSetting_("permit_no","飲食店営業許可番号（衛生管理計画に記載）","3千千保生食許第1458号"), operator: ensureSetting_("operator_name","営業者（許可書の名義）","長下 佳奈"), permit_until: ensureSetting_("permit_until","営業許可の有効期限","令和9年12月31日"), office: ensureSetting_("health_office","所轄保健所・担当","千代田保健所 生活衛生課 食品監視指導係（神田） 03-5211-8168")},
+    closed_dow: String(st.closed_dow||"0,6"), holidays: String(st.holidays||"")});
+};
+function revYm_(v){ return (v instanceof Date) ? Utilities.formatDate(v, TZ, "yyyy/MM") : String(v||"").slice(0,7); }
+ADMIN.hyg_review_save = function(p, me){
+  var ym = String(p.ym||""); if (!/^\d{4}\/\d{2}$/.test(ym)) return err("年月が不正です");
+  var result = p.result==="問題あり" ? "問題あり" : "問題なし"; var note = String(p.note||"").slice(0,400);
+  var cur = rows("hygrev").filter(function(r){ return revYm_(r["年月"])===ym; })[0];
+  writeRow("hygrev", {"年月":"'"+ym, "結果":result, "内容":note, "確認者":me.staff["名前"], "日時":nowStr()}, cur ? cur._row : null);
+  audit(me.staff.staff_id, "hyg_review", ym, result);
+  return ok();
 };
