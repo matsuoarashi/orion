@@ -55,6 +55,8 @@ nav button .bd{display:inline-block;min-width:16px;padding:0 4px;border-radius:9
 .credo-card{background:var(--g);color:#fff;border-radius:var(--r);padding:12px 14px;margin-bottom:12px}
 .credo-card .credo{color:#fff;font-size:14px}
 .credo-card .cs{display:block;text-align:center;font-size:10px;letter-spacing:3px;opacity:.75;margin-bottom:6px}
+.motto{display:block;text-align:center;font-size:13px;letter-spacing:1px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.25);opacity:.95}
+.motto-l{text-align:center;color:var(--g);font-size:13px;font-weight:bold;letter-spacing:1px;margin:8px 0 0}
 .tip{border-left:4px solid var(--g)}
 .ntc{border-left:4px solid var(--line)} .ntc.unread{border-left-color:var(--amber);background:#fffdf5} .ntc.imp.unread{border-left-color:var(--red)}
 .ntc .nh{display:flex;justify-content:space-between;align-items:flex-start;gap:8px} .ntc .nt{font-size:15px;font-weight:bold;line-height:1.4} .ntc .nd{font-size:12px;color:var(--mute);margin-top:2px}
@@ -78,6 +80,7 @@ nav button .bd{display:inline-block;min-width:16px;padding:0 4px;border-radius:9
 .mood-nudge{border-left:4px solid var(--amber)}
 .mood .rq{font-size:15px;font-weight:bold;color:var(--g);background:var(--g-l);border-radius:10px;padding:8px 10px;margin-bottom:6px;line-height:1.5}
 .mood .mo button{padding:8px 4px 6px} .mood .mo button i{font-size:22px}
+#whyChips .chip,#nextChips .chip{min-height:40px;padding:8px 8px;font-size:14px;font-weight:normal} #whyChips .chip.on,#nextChips .chip.on{font-weight:bold}
 .thx{border-left:4px solid var(--g)} .thx .tb{font-size:15px;line-height:1.6}
 .hyg{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:12px}
 .hyg .hh{display:flex;justify-content:space-between;align-items:center;font-size:12px;letter-spacing:2px;color:var(--g);margin-bottom:6px}
@@ -198,7 +201,7 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
   <div id="vLogin" class="login">
     <h1>ORION STAFF</h1>
     <div class="store" id="loginStore">洋食オリオン</div>
-    <div class="credo"><span>古いけれど、清潔。</span><span>下町だけれど、丁寧。</span><span>親しみやすいけれど、雑ではない。</span></div>
+    <div class="credo"><span>古いけれど、清潔。</span><span>下町だけれど、丁寧。</span><span>親しみやすいけれど、雑ではない。</span></div><div class="motto-l">愛嬌よく、明るく。お店もお客様も、朗らかに。</div>
     <div id="loginMsg"></div>
     <div class="mini" style="margin-bottom:6px">名前を選んでください</div>
     <div class="sel" id="staffSel"></div>
@@ -220,7 +223,7 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
 
       <!-- ホーム -->
       <section id="pHome">
-        <div class="credo-card"><span class="cs">オリオンの約束</span><div class="credo"><span>古いけれど、清潔。</span><span>下町だけれど、丁寧。</span><span>親しみやすいけれど、雑ではない。</span></div></div>
+        <div class="credo-card"><span class="cs">オリオンの約束</span><div class="credo"><span>古いけれど、清潔。</span><span>下町だけれど、丁寧。</span><span>親しみやすいけれど、雑ではない。</span></div><span class="motto">愛嬌よく、明るく。お店もお客様も、朗らかに。</span></div>
         <div class="card">
           <h2>本日 <small id="hToday"></small></h2>
           <div class="big" id="hShift">-</div>
@@ -448,7 +451,7 @@ function renderCommHome(k){
   $("hNotice").innerHTML = k.unread>0 ? `<span class="amber">未読 ${k.unread}件</span>` : (latest ? `<span style="font-weight:normal;font-size:13px">${esc(latest.title)}</span>` : "なし");
   $("hNotes").innerHTML = k.openCount>0 ? `<span class="red">${k.openCount}件 未対応</span>` : "なし";
   $("hCommSub").textContent = k.unread>0 ? "未読のお知らせがあります" : "";
-  const th = k.thanks || []; $("hThx").classList.toggle("hide", !th.length); if (th.length) $("hThxBody").innerHTML = th.map(t=>`${esc(t.from)}さんから「ありがとう」<span class="mini">（${t.date.slice(5)}）</span>`).join("<br>");
+  const th = []; $("hThx").classList.toggle("hide", !th.length); if (th.length) $("hThxBody").innerHTML = th.map(t=>`${esc(t.from)}さんから「ありがとう」<span class="mini">（${t.date.slice(5)}）</span>`).join("<br>");
   const a = HOME && HOME.att; $("hMoodCard").classList.toggle("hide", !(k.pilot && a && a.status==="done" && k.moodToday===false));
   $("bdComm").classList.toggle("hide", !(k.unread>0 || k.openCount>0)); $("bdComm").textContent = k.unread>0 ? k.unread : "!";
 }
@@ -471,44 +474,38 @@ function renderComm(k){
       <div class="nd"><span>${n.at.slice(5)}　${esc(n.by)}${n.status==="open"?"":`　→ ${esc(n.doneBy)} 対応済`}</span>${n.status==="open" ? `<button class="dn" onclick="noteDone('${n.note_id}',false)">対応した</button>` : `<button class="dn" style="color:var(--mute)" onclick="noteDone('${n.note_id}',true)">戻す</button>`}</div>
     </div>`).join("") : `<div class="mini">まだ書き込みはありません</div>`;
 }
-// ───── 今日のふりかえり（退勤ボタンの前・全員同じ問い） ─────
-// 「人」ではなく「店の空気」と「自分の行動」を聞く。3つ目の問いは日替わりで、ガイド6章（スタッフ同士の会話）から出す
-const MOODO = [{v:3,i:"☀️",l:"良かった"},{v:2,i:"☁️",l:"ふつう"},{v:1,i:"☔",l:"重かった"}];
-const SELFO = [{v:3,i:"◎",l:"できた"},{v:2,i:"○",l:"少し"},{v:1,i:"△",l:"まだ"}];
-const REFLECT = [
-  "仲間に「ありがとう」「助かります」を伝えられた",
-  "何かを頼むとき「○○お願いします」と言えた",
-  "忙しい時間も、落ち着いた声とトーンでいられた",
-  "気づいたことを、相手を責めずに短く伝えられた",
-  "お客様の前で、ため息や強い言い方をしなかった",
-  "仲間が手いっぱいの時に、自分から手を貸せた",
-  "冗談を言う時、相手も笑えているかを気にかけた",
-];
-function todayReflect(){ const d=new Date(); const doy=Math.floor((d-new Date(d.getFullYear(),0,1))/86400000); return REFLECT[doy % REFLECT.length]; }
+// ───── 今日のふりかえり（退勤ボタンの前） ─────
+// 人ではなく「お店」と「連携」と「次の一手」を聞く。厨房からもホールからも同じ言葉で答えられるようにする
+const Q1 = [{v:3,i:"☀️",l:"朗らかだった"},{v:2,i:"⛅",l:"ふつう"},{v:1,i:"☁️",l:"少し重かった"}];
+const Q2 = [{v:3,i:"◎",l:"スムーズ"},{v:2,i:"○",l:"少し引っかかった"},{v:1,i:"△",l:"やりにくかった"}];
+const Q2WHY = ["伝え方（言い方・トーン・声の大きさ）","タイミング（忙しい時の声かけ・返事）","情報（オーダー・指示・引き継ぎ）","段取り・物（準備・在庫）","お客様対応"];
+const Q3 = ["準備・仕込み","役割分担","声かけ・確認","備品・道具","特になし"];
 let MOOD = {};
 function moodBlock(){
-  MOOD = {q: todayReflect(), thanks: ""};
+  MOOD = {why:[], next:""};
   const row = (k, opts) => `<div class="mo" id="mo_${k}">${opts.map(o=>`<button onclick="moodPick('${k}',${o.v},this)"><i>${o.i}</i>${o.l}</button>`).join("")}</div>`;
-  const cw = (COMM && COMM.coworkers) || [];
   return `<div class="hyg mood" id="moodBox">
     <div class="hh"><span>今日のふりかえり <span class="cnt" id="moodCnt">0/3</span></span><span class="mini" style="letter-spacing:0">運営だけが見ます</span></div>
-    <div class="mq"><div class="t">お客様の雰囲気</div>${row("customer", MOODO)}</div>
-    <div class="mq"><div class="t">お店の空気<small>声の掛け合い・ピーク時の連携</small></div>${row("staff", MOODO)}</div>
-    <div class="mq"><div class="t">今日のひとつ<small>全員同じ問い・日替わり</small></div><div class="rq">${esc(MOOD.q)}</div>${row("self", SELFO)}</div>
-    ${cw.length?`<div class="mq"><div class="t">「ありがとう」を伝えたい人<small>任意・相手のアプリに届きます</small></div><div class="chips c3" id="thxChips">${cw.map(c=>`<button class="chip" onclick="thxPick('${c.id}',this)">${esc(c.name)}さん</button>`).join("")}</div></div>`:""}
+    <div class="motto-l" style="margin:0 0 8px">愛嬌よく、明るく。お店もお客様も、朗らかに。</div>
+    <div class="mq"><div class="t">今日のお店、朗らかだった？</div>${row("customer", Q1)}</div>
+    <div class="mq"><div class="t">厨房とホールの連携は？</div>${row("staff", Q2)}
+      <div id="whyBox" class="hide" style="margin-top:6px"><div class="mini">どこが近い？（任意・いくつでも）</div><div class="chips" id="whyChips" style="grid-template-columns:1fr">${Q2WHY.map((w,i)=>`<button class="chip" style="text-align:left" onclick="whyPick(${i},this)">${w}</button>`).join("")}</div></div></div>
+    <div class="mq"><div class="t">次のシフトで1つ変えるなら？</div><div class="chips c3" id="nextChips">${Q3.map(n=>`<button class="chip" onclick="nextPick('${n}',this)">${n}</button>`).join("")}</div></div>
+    <label style="margin-top:6px">運営へひとこと（任意）</label><input type="text" id="moodNote" maxlength="120" placeholder="例: 14時台にパスタの皿が足りなくなった">
   </div>`;
 }
-function moodPick(k, v, btn){ MOOD[k]=v; [...btn.parentNode.children].forEach(b=>b.classList.remove("on")); btn.classList.add("on"); hygValidate(); }
-function thxPick(id, btn){ const on = !btn.classList.contains("on"); document.querySelectorAll("#thxChips .chip").forEach(b=>b.classList.remove("on")); if(on){ btn.classList.add("on"); MOOD.thanks=id; } else MOOD.thanks=""; }
-function moodReady(){ return !!(MOOD.customer && MOOD.staff && MOOD.self); }
+function moodPick(k, v, btn){ MOOD[k]=v; [...btn.parentNode.children].forEach(b=>b.classList.remove("on")); btn.classList.add("on"); if (k==="staff"){ $("whyBox").classList.toggle("hide", v===3); if (v===3){ MOOD.why=[]; document.querySelectorAll("#whyChips .chip").forEach(b=>b.classList.remove("on")); } } hygValidate(); }
+function whyPick(i, btn){ btn.classList.toggle("on"); MOOD.why = [...document.querySelectorAll("#whyChips .chip.on")].map(b=>b.textContent.split("（")[0]); }
+function nextPick(n, btn){ document.querySelectorAll("#nextChips .chip").forEach(b=>b.classList.remove("on")); btn.classList.add("on"); MOOD.next=n; hygValidate(); }
+function moodReady(){ return !!(MOOD.customer && MOOD.staff && MOOD.next); }
 async function moodSaveAfterOut(){
-  const r = await api("mood_save", {customer:MOOD.customer, staff:MOOD.staff, self:MOOD.self, q:MOOD.q, thanks:MOOD.thanks||"", note:""});
+  const r = await api("mood_save", {customer:MOOD.customer, staff:MOOD.staff, why:(MOOD.why||[]).join("・"), next:MOOD.next, toOps:MOOD.note||""});
   if(!r.ok){ toast("ふりかえりの保存に失敗: "+r.error); return; }
   cset("comm", Object.assign(cget("comm")||{}, {moodToday:true}));
 }
 // 退勤後に未回答だった場合（通信エラー等）だけ、ホームから答えられる
 function openMood(){
-  sheet(`<h3 style="text-align:center;color:var(--g)">今日のふりかえり</h3>${moodBlock()}<button class="btn" id="punchGo" disabled onclick="moodSaveAfterOut().then(()=>{closeOv();toast('ありがとうございます。お疲れさまでした');loadHome();})">送る</button><button class="btn sec" style="margin-top:8px" onclick="closeOv()">閉じる</button>`);
+  sheet(`<h3 style="text-align:center;color:var(--g)">今日のふりかえり</h3>${moodBlock()}<button class="btn" id="punchGo" disabled onclick="MOOD.note=($('moodNote')||{}).value||'';moodSaveAfterOut().then(()=>{closeOv();toast('ありがとうございます。お疲れさまでした');loadHome();})">送る</button><button class="btn sec" style="margin-top:8px" onclick="closeOv()">閉じる</button>`);
 }
 function ntcToggle(id){ const el = $("ntc_"+id); if(!el) return; el.classList.toggle("open"); }
 async function noticeRead(id){ const r = await api("notice_read", {notice_id:id}); if(!r.ok){ toast(r.error); return; } toast("確認を記録しました"); loadComm(); }
@@ -547,10 +544,11 @@ const TIPS = [
   {k:"清潔", t:"強い香水・香りの強い整髪料は避ける。爪は短く清潔に"},
   {k:"親しみ", t:"お客様をいじる、強く否定する、上から目線になる言い方は避ける"},
   {k:"丁寧", ng:"○○持ってきて", ok:"○○お願いします"},
-  {k:"丁寧", ng:"違う、そうじゃない", ok:"次から○○でお願いします"},
-  {k:"丁寧", t:"厨房とホールのやりとりは、お客様に全部聞こえている。お客様への丁寧さと、スタッフへの丁寧さは同じもの"},
-  {k:"親しみ", t:"冗談やいじりは、言われた側が笑えているかで判断する。体型・容姿・年齢・プライベートの話題は仲が良くてもしない"},
-  {k:"丁寧", t:"忙しい時ほど声は低く短く。ため息・舌打ち・物を強く置く音は「怒っている店」に見える"},
+  {k:"朗らか", t:"愛嬌よく、明るく。お店もお客様も、朗らかに"},
+  {k:"朗らか", t:"呼ばれたら、厨房もホールもまず「はい！」"},
+  {k:"丁寧", t:"頼まれたら「はい、○○ですね」と復唱。伝え漏れがなくなる"},
+  {k:"朗らか", t:"忙しい時ほど、明るく短く。笑顔と声のトーンはお客様にも伝わる"},
+  {k:"朗らか", t:"スタッフ同士の気持ちいい声掛けは、それだけでお店を明るく見せる"},
   {k:"丁寧", t:"「ありがとうございます」「助かります」は1日に何度言ってもいい"},
 ];
 function renderTip(){
@@ -576,10 +574,10 @@ function openGuide(){
     <table><tr><th>避けたい言い方</th><th>おすすめ</th></tr><tr><td>ちょっと待って</td><td>少々お待ちください</td></tr><tr><td>そこ座ってください</td><td>こちらのお席へどうぞ</td></tr><tr><td>ないです</td><td>申し訳ありません、こちらはご用意がありません</td></tr><tr><td>わかんないです</td><td>確認しますので、少々お待ちください</td></tr><tr><td>はいはい</td><td>はい、承知しました</td></tr></table>
     <h4>5｜お客様との会話</h4>
     <ul><li>自然な会話や笑顔は大歓迎です</li><li>常連のお客様でも、基本的な丁寧語は崩しすぎない</li><li>お客様の話をさえぎらず、まず聞く</li><li>お客様をいじる、強く否定する、上から目線になる言い方は避ける</li><li>会話を切り上げる時も「ありがとうございます、少々お待ちください」など感じよく</li></ul>
-    <h4>6｜スタッフ同士の会話（お客様から見えています）</h4>
-    <p>9席のオープンキッチンでは、厨房とホールのやりとりはお客様に全部聞こえています。スタッフ同士の空気は、料理と同じくらい店の印象を決めます。<b>お客様への丁寧さと、スタッフへの丁寧さは同じもの</b>です。</p>
-    <table><tr><th>避けたい言い方</th><th>おすすめ</th></tr><tr><td>○○持ってきて／早く</td><td>○○お願いします</td></tr><tr><td>違う、そうじゃない</td><td>次から○○でお願いします</td></tr><tr><td>（無言で受け取る）</td><td>ありがとうございます／助かります</td></tr><tr><td>なんでできないの</td><td>（営業中は言わない。気になることは営業後に）</td></tr></table>
-    <ul><li>指示・依頼は「○○お願いします」の形で。命令形・呼び捨て・大声は避ける</li><li>気づいたことは、その場で責めずに短く伝える。注意が必要なことは営業後に落ち着いて</li><li>忙しい時ほど声は低く短く。ため息・舌打ち・物を強く置く音も、お客様には「怒っている店」に見える</li><li>「ありがとうございます」「助かります」は1日に何度言ってもいい</li><li>冗談やいじりは、言われた側が笑えているかで判断する。体型・容姿・年齢・プライベートに触れる話題は、仲が良くてもしない</li><li>お客様の前で愚痴・不満・悪口・必要以上の私語をしない</li><li>言いにくいことがあれば、本人にぶつけず運営（松尾・長下）に相談する</li></ul>
+    <h4>6｜朗らかなお店をつくる（厨房とホールの連携）</h4>
+    <p><b>愛嬌よく、明るく。お店もお客様も、朗らかに。</b>これがオリオンの目指す空気です。9席のオープンキッチンでは、厨房とホールのやりとりもお客様に全部見えています。スタッフ同士が気持ちよく声を掛け合っていると、それだけでお店は明るく見えます。</p>
+    <table><tr><th>こんな時</th><th>こう言う</th></tr><tr><td>呼ばれた</td><td>「はい！」</td></tr><tr><td>何かを頼む</td><td>「○○お願いします」</td></tr><tr><td>頼まれた</td><td>「はい、○○ですね」（復唱）</td></tr><tr><td>助けてもらった</td><td>「ありがとうございます」「助かります」</td></tr><tr><td>料理が出る</td><td>「○○あがります、お願いします」</td></tr></table>
+    <ul><li>呼ばれたら、厨房もホールもまず「はい」と返事をする</li><li>頼む時は「お願いします」、受けたら復唱。これだけで伝え漏れがなくなる</li><li>忙しい時ほど、明るく短く。笑顔と声のトーンは、お客様にも伝わる</li><li>「ありがとう」「助かります」は1日に何度言ってもいい</li></ul>
     <h4>7｜厨房での立ち振る舞い</h4>
     <ul><li>腕を組む、壁やカウンターにもたれるなど、だらしなく見える姿勢は避ける</li><li>営業中に私用スマートフォンを触らない</li><li>大きなため息・舌打ち・お客様の前での飲食はしない</li><li>手が空いたら、厨房・食器・食材を整える、客席を見る</li><li>厨房内の清潔さも接客の一部と考える</li></ul>
     <div class="fin">古いけれど、清潔。<br>下町だけれど、丁寧。<br>親しみやすいけれど、雑ではない。</div>
@@ -616,7 +614,7 @@ function punchSheet(type){
     <div class="chips c4" id="brkChips">${[0,15,30,45].map(n=>`<button class="chip ${n===0?"on":""}" onclick="setBrk(${n})">${n}分</button>`).join("")}</div>
     <input type="hidden" id="brk" value="0">`}
     <div style="height:12px"></div>
-    <button class="btn ${isIn?"":"out"}" id="punchGo" ${isPilot()?"disabled":""} onclick="var b=Number(($('brk')||{}).value)||0;var t=$('pt').value;var c=[...document.querySelectorAll('#gChips .chip.on, #hygBox .hi.on[data-g=groom]')].map(x=>x.dataset.k||x.textContent);var h=hygCollect();closeOv();punch('${type}', b, t, c, h)">${isIn?"出勤":"退勤"}を記録する</button>
+    <button class="btn ${isIn?"":"out"}" id="punchGo" ${isPilot()?"disabled":""} onclick="var b=Number(($('brk')||{}).value)||0;var t=$('pt').value;var c=[...document.querySelectorAll('#gChips .chip.on, #hygBox .hi.on[data-g=groom]')].map(x=>x.dataset.k||x.textContent);var h=hygCollect();if($('moodNote'))MOOD.note=$('moodNote').value.trim();closeOv();punch('${type}', b, t, c, h)">${isIn?"出勤":"退勤"}を記録する</button>
     ${isPilot()?`<div class="mini center" id="punchHint" style="margin-top:6px">${isIn?"出勤チェック":"衛生チェックとふりかえり"}がすべて済むと押せます</div>`:""}
     <button class="btn sec" style="margin-top:10px" onclick="closeOv()">やめる</button>`);
   hygValidate();
@@ -665,7 +663,7 @@ function hygValidate(){
   let anyBad = false;
   (hb||box).querySelectorAll("[id^=tp_]").forEach(i=>{ const v = i.value.trim(); const max = Number(i.dataset.max); const bad = v!=="" && Number(v) > max; if (bad) anyBad = true; i.classList.toggle("ng", bad); i.classList.toggle("set", v!=="" && !bad); if (v==="") okAll = false; });
   const act = $("hygAct"); if (act){ act.classList.toggle("hide", !anyBad); if (anyBad && $("hygActIn").value.trim().length < 4) okAll = false; }
-  const mb = $("moodBox"); if (mb){ const n = ["customer","staff","self"].filter(k=>MOOD[k]).length; const c=$("moodCnt"); if(c){ c.textContent=n+"/3"; c.classList.toggle("ok", n===3); } if (n<3) okAll = false; }
+  const mb = $("moodBox"); if (mb){ const n = ["customer","staff","next"].filter(k=>MOOD[k]).length; const c=$("moodCnt"); if(c){ c.textContent=n+"/3"; c.classList.toggle("ok", n===3); } if (n<3) okAll = false; }
   go.disabled = !okAll;
   const hint = $("punchHint"); if (hint) hint.style.display = okAll ? "none" : "";
 }
