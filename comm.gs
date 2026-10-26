@@ -46,7 +46,7 @@ STAFF.comm = function(p, me){
   var notes = rows("note").map(noteNorm_).sort(function(a,b){ return a.at<b.at?1:-1; });
   var open = notes.filter(function(n){ return n.status==="open"; });
   var done = notes.filter(function(n){ return n.status!=="open"; }).slice(0,20);
-  return ok({notices:notices, unread: notices.filter(function(n){ return !n.read; }).length, notes: open.concat(done), openCount: open.length, moodToday: moodToday_(id)});
+  return ok({notices:notices, unread: notices.filter(function(n){ return !n.read; }).length, notes: open.concat(done), openCount: open.length, moodToday: moodToday_(id), kitchen: kitchenIds_().indexOf(id)>=0});
 };
 STAFF.notice_read = function(p, me){
   var id = me.staff.staff_id; var all = rows("notice");
@@ -129,4 +129,42 @@ ADMIN.mood_month = function(p, me){
   var names = {}; rows("staff").forEach(function(s){ names[s.staff_id] = s["名前"]; });
   var missing = rows("att").filter(function(a){ var d = fmtDate(a["日付"]); return d.slice(0,7)===ym && fmtHM(a["退勤"]) && !answered[d+"|"+a.staff_id]; }).map(function(a){ return {date:fmtDate(a["日付"]), name:names[a.staff_id]||a.staff_id}; });
   return ok({ym:ym, list:list, missing:missing});
+};
+
+// ───────────────────────── 衛生記録（HACCP: 健康チェック・庫内温度・担当別チェック） ─────────────────────────
+SHEETS.hyg = ["衛生", ["hyg_id","日付","staff_id","名前","区分","担当","項目","温度","記録日時"]];
+READ_ACTIONS["admin.hyg_month"] = 1;
+function kitchenIds_(){
+  var v = settings().kitchen_ids;
+  if (v === undefined){ writeRow("settings", {key:"kitchen_ids", value:"s_c88a307b2495", "説明":"厨房担当の staff_id（カンマ区切り）。出退勤時の衛生チェックが厨房用になる"}); v = "s_c88a307b2495"; }
+  return String(v||"").split(",").map(function(x){ return x.trim(); }).filter(Boolean);
+}
+STAFF.hyg_save = function(p, me){
+  var kind = p.kind==="in" ? "出勤" : "退勤"; var area = p.area==="kitchen" ? "厨房" : "客席";
+  var items = Array.isArray(p.items) ? p.items.map(String).slice(0,12) : [];
+  var temps = (p.temps && typeof p.temps==="object") ? p.temps : {};
+  var t = today(), id = me.staff.staff_id;
+  var cur = rows("hyg").filter(function(r){ return r.staff_id===id && fmtDate(r["日付"])===t && r["区分"]===kind; })[0];
+  var o = {hyg_id: cur ? cur.hyg_id : uid("hy_"), "日付":t, staff_id:id, "名前":me.staff["名前"], "区分":kind, "担当":area, "項目":items.join("、"), "温度":JSON.stringify(temps), "記録日時":nowStr()};
+  writeRow("hyg", o, cur ? cur._row : null);
+  audit(id, "hyg_save", o.hyg_id, kind+"/"+area+"/"+items.length);
+  return ok();
+};
+ADMIN.hyg_month = function(p, me){
+  var ym = p.ym || Utilities.formatDate(new Date(), TZ, "yyyy/MM");
+  var byDay = {};
+  rows("hyg").forEach(function(r){
+    var d = fmtDate(r["日付"]); if (d.slice(0,7)!==ym) return;
+    var o = byDay[d] = byDay[d] || {date:d, health:[], temps:null, tempsBy:"", kitchen:null, hall:null, kitchenBy:"", hallBy:""};
+    var items = String(r["項目"]||"").split("、").filter(Boolean);
+    if (r["区分"]==="出勤"){
+      o.health.push({name:r["名前"], ok: items.length>=2});
+      var tp = {}; try { tp = JSON.parse(r["温度"]||"{}"); } catch(e){}
+      if (Object.keys(tp).length){ o.temps = tp; o.tempsBy = r["名前"]; }
+    } else {
+      if (r["担当"]==="厨房"){ o.kitchen = items.length; o.kitchenBy = r["名前"]; } else { o.hall = items.length; o.hallBy = r["名前"]; }
+    }
+  });
+  var days = Object.keys(byDay).sort().reverse().map(function(k){ return byDay[k]; });
+  return ok({ym:ym, days:days, kitchen_ids: kitchenIds_()});
 };
