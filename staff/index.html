@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>勤怠 | 洋食オリオン</title>
 <style>
 :root{ --g:#2c4f39; --g-d:#1f3a2a; --g-l:#e4eee7; --cream:#faf6ee; --cream-d:#ece4d2; --ink:#2b2a26; --mute:#7a7265; --red:#a33c2e; --red-l:#f6e3df; --amber:#b7791f; --amber-l:#f7ebd3; --blue:#3b5a9a; --blue-l:#e6ebf7; --line:#d9d1bd; --r:14px; --sat:env(safe-area-inset-top); --sab:env(safe-area-inset-bottom); }
@@ -346,10 +346,11 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
     if (!(ios && standalone)) return;
     const portrait = window.innerWidth < window.innerHeight; if (!portrait) return;
     const full = Math.max(screen.width, screen.height), gap = full - window.innerHeight;
-    document.documentElement.classList.toggle("iosgap", gap > 20 && gap < 120);
+    const t = document.createElement("div"); t.style.cssText = "position:fixed;top:0;padding-top:env(safe-area-inset-top);visibility:hidden"; document.body.appendChild(t); const sat = parseFloat(getComputedStyle(t).paddingTop)||0; t.remove();
+    document.documentElement.classList.toggle("iosgap", sat > 20 && gap > 20 && gap < 120);
   }
   window.addEventListener("resize", fit); document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) setTimeout(fit, 100); });
-  fit(); setTimeout(fit, 500);
+  document.addEventListener("DOMContentLoaded", fit); setTimeout(fit, 500);
 })();
 const API_URL = "https://script.google.com/macros/s/AKfycbwgGW6rXzAW2rHVicdoCMdHOT_E3egrXPsaEJerX-_brZr0mYF6Qo_tRorX8PgLc7c/exec";
 const $ = id => document.getElementById(id);
