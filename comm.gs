@@ -340,3 +340,6 @@ function hygMonthlyJob(){
   var me = {staff: {staff_id:"system", "名前":"自動保存"}};
   hygArchive_(ym, me); audit("自動保存", "hyg_archive", ym, "monthly");
 }
+
+// 画面サイズの診断（表示崩れの調査用。松尾の端末のみ送信）
+STAFF.diag = function(p, me){ audit(me.staff["名前"], "viewport", "", String(p.d||"").slice(0,600)); return ok(); };
