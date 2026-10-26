@@ -46,7 +46,7 @@ STAFF.comm = function(p, me){
   var notes = rows("note").map(noteNorm_).sort(function(a,b){ return a.at<b.at?1:-1; });
   var open = notes.filter(function(n){ return n.status==="open"; });
   var done = notes.filter(function(n){ return n.status!=="open"; }).slice(0,20);
-  return ok({notices:notices, unread: notices.filter(function(n){ return !n.read; }).length, notes: open.concat(done), openCount: open.length, moodToday: moodToday_(id), kitchen: kitchenIds_().indexOf(id)>=0});
+  return ok({notices:notices, unread: notices.filter(function(n){ return !n.read; }).length, notes: open.concat(done), openCount: open.length, moodToday: moodToday_(id), kitchen: kitchenIds_().indexOf(id)>=0, pilot: pilotIds_().indexOf(id)>=0});
 };
 STAFF.notice_read = function(p, me){
   var id = me.staff.staff_id; var all = rows("notice");
@@ -134,6 +134,12 @@ ADMIN.mood_month = function(p, me){
 // ───────────────────────── 衛生記録（HACCP: 健康チェック・庫内温度・担当別チェック） ─────────────────────────
 SHEETS.hyg = ["衛生", ["hyg_id","日付","staff_id","名前","区分","担当","項目","温度","記録日時"]];
 READ_ACTIONS["admin.hyg_month"] = 1;
+function pilotIds_(){
+  var v = settings().pilot_ids;
+  if (v === undefined){ writeRow("settings", {key:"pilot_ids", value:"s_48230c3becee", "説明":"衛生記録・空気レポートを先行して出す staff_id（カンマ区切り）。all で全員"}); v = "s_48230c3becee"; }
+  if (String(v).trim()==="all") return rows("staff").map(function(s){ return s.staff_id; });
+  return String(v||"").split(",").map(function(x){ return x.trim(); }).filter(Boolean);
+}
 function kitchenIds_(){
   var v = settings().kitchen_ids;
   if (v === undefined){ writeRow("settings", {key:"kitchen_ids", value:"s_c88a307b2495", "説明":"厨房担当の staff_id（カンマ区切り）。出退勤時の衛生チェックが厨房用になる"}); v = "s_c88a307b2495"; }
