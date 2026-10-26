@@ -163,7 +163,7 @@ STAFF.hyg_save = function(p, me){
   var kind = p.kind==="in" ? "出勤" : "退勤"; var area = p.area==="kitchen" ? "厨房" : "客席";
   var items = Array.isArray(p.items) ? p.items.map(String).slice(0,16) : [];
   var temps = (p.temps && typeof p.temps==="object") ? p.temps : {};
-  var action = String(p.action||"").slice(0,200);
+  var action = String(p.fix||"").slice(0,200);
   var t = today(), id = me.staff.staff_id;
   var cur = rows("hyg").filter(function(r){ return r.staff_id===id && fmtDate(r["日付"])===t && r["区分"]===kind; })[0];
   var o = {hyg_id: cur ? cur.hyg_id : uid("hy_"), "日付":t, staff_id:id, "名前":me.staff["名前"], "区分":kind, "担当":area, "項目":items.join("、"), "温度":JSON.stringify(temps), "記録日時":nowStr(), "対応":action};
