@@ -583,7 +583,7 @@ function punchSheet(type){
     <input type="hidden" id="brk" value="0">`}
     <div style="height:12px"></div>
     <button class="btn ${isIn?"":"out"}" id="punchGo" ${isPilot()?"disabled":""} onclick="var b=Number(($('brk')||{}).value)||0;var t=$('pt').value;var c=[...document.querySelectorAll('#gChips .chip.on, #hygBox .hi.on[data-g=groom]')].map(x=>x.dataset.k||x.textContent);var h=hygCollect();closeOv();punch('${type}', b, t, c, h)">${isIn?"出勤":"退勤"}を記録する</button>
-    ${isPilot()?`<div class="mini center" id="punchHint" style="margin-top:6px">${isIn?"出勤チェック8項目":"衛生チェック5項目"}がすべて済むと押せます</div>`:""}
+    ${isPilot()?`<div class="mini center" id="punchHint" style="margin-top:6px">${isIn?"出勤チェック":"衛生チェック"}がすべて済むと押せます</div>`:""}
     <button class="btn sec" style="margin-top:10px" onclick="closeOv()">やめる</button>`);
   hygValidate();
 }
@@ -592,8 +592,8 @@ const HYG = {
   groom: ["服","髪","髭","爪","靴","エプロン"],
   health: ["体調に異常なし（発熱・下痢・嘔吐なし）","手指に傷・化膿なし"],
   temps: [{k:"fridge",l:"冷蔵庫",max:10},{k:"freezer",l:"冷凍庫",max:-15},{k:"combo_r",l:"冷蔵冷凍庫（冷蔵室）",max:10},{k:"combo_f",l:"冷蔵冷凍庫（冷凍室）",max:-15}],
-  kitchen: ["加熱して提供した（中心まで十分に）","調理器具・まな板の洗浄と殺菌","冷蔵庫内の整理（期限・ラップ・床置きなし）","厨房の清掃・ゴミ出し","手洗い（作業前・トイレ後・生ものの後）"],
-  hall: ["トイレ清掃・ペーパー補充","テーブル・卓上調味料の拭き上げ","客席・床の清掃","手洗い場の石けん・ペーパー補充","食器の洗浄・乾燥・収納"],
+  kitchen: ["仕込んだソース・茹で麺を速やかに冷まして冷蔵した","提供時に十分に再加熱した（ソースは沸騰・麺は中まで）","加熱して提供した（目玉焼き・ハンバーグ・コロッケは中まで）","調理器具・まな板の洗浄と殺菌","冷蔵庫内の整理（生の食材と調理済みを分ける・期限・ラップ・床置きなし）","厨房の清掃・ゴミ出し","手洗い（作業前・トイレ後・生ものの後）"],
+  hall: ["トイレ清掃・消毒・ペーパー補充","テーブル・卓上調味料の拭き上げ","客席・床の清掃","手洗い場の石けん・ペーパー補充","食器の洗浄・乾燥・収納"],
 };
 let HYGAREA = null;
 function hygArea(){ if (HYGAREA) return HYGAREA; return (COMM && COMM.kitchen) ? "kitchen" : "hall"; }
@@ -609,7 +609,8 @@ function hygBlock(isIn){
       <div class="gg">${HYG.groom.map((t,i)=>item(t,i,"groom")).join("")}</div>
       <div class="gl">体調<small>衛生管理の記録として残ります</small></div>
       ${HYG.health.map((t,i)=>item(t,i,"health")).join("")}
-      ${area==="kitchen"?`<div class="hh" style="margin-top:10px"><span>庫内温度（℃）</span><span class="mini" style="letter-spacing:0">冷蔵10℃以下・冷凍−15℃以下</span></div><div class="tp">${HYG.temps.map(t=>`<div><label>${t.l}</label><select id="tp_${t.k}" data-max="${t.max}" onchange="hygValidate()">${tempOpts(t.max>0)}</select></div>`).join("")}</div>`:""}
+      ${area==="kitchen"?`<div class="hh" style="margin-top:10px"><span>庫内温度（℃）</span><span class="mini" style="letter-spacing:0">冷蔵10℃以下・冷凍−15℃以下</span></div><div class="tp">${HYG.temps.map(t=>`<div><label>${t.l}</label><select id="tp_${t.k}" data-max="${t.max}" onchange="hygValidate()">${tempOpts(t.max>0)}</select></div>`).join("")}</div>
+      <div id="hygAct" class="hide" style="margin-top:8px"><label style="color:var(--red);margin:0 0 4px">基準外の温度があります。何をしたか書いてください</label><input type="text" id="hygActIn" maxlength="200" placeholder="例: 扉が半開きだった。閉めて1時間後に再確認 −18℃。食材の状態は問題なし" oninput="hygValidate()"></div>`:""}
     </div>`;
   }
   const list = area==="kitchen" ? HYG.kitchen : HYG.hall;
@@ -627,7 +628,9 @@ function hygValidate(){
   const box = $("hygBox"), go = $("punchGo"); if(!box || !go) return;
   const items = [...box.querySelectorAll(".hi")]; let okAll = items.every(x=>x.classList.contains("on"));
   const cnt = $("hygCnt"); if (cnt){ const n = items.filter(x=>x.classList.contains("on")).length; cnt.textContent = n+"/"+items.length; cnt.classList.toggle("ok", n===items.length); }
-  box.querySelectorAll("[id^=tp_]").forEach(i=>{ const v = i.value.trim(); const max = Number(i.dataset.max); const bad = v!=="" && Number(v) > max; i.classList.toggle("ng", bad); i.classList.toggle("set", v!=="" && !bad); if (v==="") okAll = false; });
+  let anyBad = false;
+  box.querySelectorAll("[id^=tp_]").forEach(i=>{ const v = i.value.trim(); const max = Number(i.dataset.max); const bad = v!=="" && Number(v) > max; if (bad) anyBad = true; i.classList.toggle("ng", bad); i.classList.toggle("set", v!=="" && !bad); if (v==="") okAll = false; });
+  const act = $("hygAct"); if (act){ act.classList.toggle("hide", !anyBad); if (anyBad && $("hygActIn").value.trim().length < 4) okAll = false; }
   go.disabled = !okAll;
   const hint = $("punchHint"); if (hint) hint.style.display = okAll ? "none" : "";
 }
@@ -636,7 +639,8 @@ function hygCollect(){
   const isIn = !!box.querySelector("[data-g=health]");
   const items = [...box.querySelectorAll(".hi.on")].map(x=>x.dataset.k);
   const temps = {}; box.querySelectorAll("[id^=tp_]").forEach(i=>{ if(i.value.trim()!=="") temps[i.id.slice(3)] = Number(i.value); });
-  return {kind: isIn?"in":"out", area: hygArea(), items, temps};
+  const actEl = $("hygAct"), action = (actEl && !actEl.classList.contains("hide")) ? $("hygActIn").value.trim() : "";
+  return {kind: isIn?"in":"out", area: hygArea(), items, temps, action};
 }
 function ptSet(v){ $("pt").value=v; ptSync(); }
 function ptSync(){ const v=$("pt").value; if(v) $("ptd").textContent=v; }
