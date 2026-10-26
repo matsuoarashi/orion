@@ -207,3 +207,17 @@ ADMIN.hyg_review_save = function(p, me){
   audit(me.staff.staff_id, "hyg_review", ym, result);
   return ok();
 };
+
+// 管理: 指定スタッフ・指定日のテスト記録を削除（勤怠・衛生・空気）。必ず件数を返し、監査ログに残す
+ADMIN.purge_day = function(p, me){
+  var sid = String(p.staff_id||""), d = fmtDate(p.date||""); if (!sid || !/^\d{4}\/\d{2}\/\d{2}$/.test(d)) return err("staff_id と日付が必要です");
+  var keys = Array.isArray(p.sheets) ? p.sheets : ["att","hyg","mood"]; var res = {};
+  keys.forEach(function(k){
+    if (["att","hyg","mood"].indexOf(k)<0) return;
+    var hit = rows(k).filter(function(r){ return r.staff_id===sid && fmtDate(r["日付"])===d; }).map(function(r){ return r._row; }).sort(function(a,b){ return b-a; });
+    if (!p.dry) hit.forEach(function(rw){ sh(k).deleteRow(rw); });
+    uncache(k); res[k] = hit.length;
+  });
+  if (!p.dry){ audit(me.staff["名前"], "purge_day", sid+" "+d, JSON.stringify(res)); try { if (ADMIN.labor_rebuild) ADMIN.labor_rebuild({}, me); } catch(e){} }
+  return ok({deleted: res, dry: !!p.dry});
+};
