@@ -226,14 +226,17 @@ function moodCard(m){
   // 週ごと（月曜始まり）
   const wk = {}; list.forEach(r=>{ const [y,mo,d]=r.date.split("/").map(Number); const dt=new Date(y,mo-1,d); const mon=new Date(dt); mon.setDate(dt.getDate()-((dt.getDay()+6)%7)); const key=`${mon.getMonth()+1}/${mon.getDate()}`; (wk[key]=wk[key]||{c:[],s:[],f:[],n:0}); wk[key].c.push(r.customer); wk[key].s.push(r.staff); wk[key].f.push(r.self); wk[key].n++; });
   const wrows = Object.keys(wk).map(k=>{ const w=wk[k]; const rainS = w.s.filter(v=>v===1).length; const avgC=w.c.reduce((a,b)=>a+b,0)/w.c.length, avgS=w.s.reduce((a,b)=>a+b,0)/w.s.length; const flag = rainS>=2 || (avgC>=2.5 && avgS<1.75); return `<tr ${flag?'style="background:var(--red-l)"':""}><td>${k}〜</td><td>${w.n}</td><td>${wxAvg(w.c)}</td><td>${wxAvg(w.s)}${rainS?`<span class="mini"> ☔${rainS}</span>`:""}</td><td>${wxAvg(w.f)}</td></tr>`; }).join("");
-  const drows = list.map(r=>`<tr><td class="mini" style="white-space:nowrap">${r.date.slice(5)}</td><td style="white-space:nowrap">${esc(r.name)}</td><td>${WX[r.customer]||"-"}</td><td>${WX[r.staff]||"-"}</td><td>${WX[r.self]||"-"}</td><td class="mini">${esc(r.note)}</td></tr>`).join("");
+  const per = {}; list.forEach(r=>{ const p = per[r.staff_id] = per[r.staff_id] || {name:r.name, n:0, st:[], self3:0, sent:0, recv:0}; p.n++; p.st.push(r.staff); if (r.self===3) p.self3++; if (r.thanks) p.sent++; }); list.forEach(r=>{ if (r.thanks && per[r.thanks]) per[r.thanks].recv++; });
+  const personRows = Object.values(per).map(p=>`<tr><td>${esc(p.name)}</td><td style="text-align:center">${p.n}</td><td>${wxAvg(p.st)}</td><td style="text-align:center">${Math.round(p.self3/p.n*100)}%</td><td style="text-align:center">${p.sent} / ${p.recv}</td></tr>`).join("");
+  const drows = list.map(r=>`<tr><td class="mini" style="white-space:nowrap">${r.date.slice(5)}</td><td style="white-space:nowrap">${esc(r.name)}</td><td>${WX[r.customer]||"-"}</td><td>${WX[r.staff]||"-"}</td><td>${({3:"◎",2:"○",1:"△"})[r.self]||"-"}</td><td class="mini">${esc(r.q)}${r.thanksName?`<br>→ ${esc(r.thanksName)}さんへありがとう`:""}${r.note?`<br>${esc(r.note)}`:""}</td></tr>`).join("");
   const miss = (m.missing||[]).slice(0,10).map(x=>`${x.date.slice(5)} ${esc(x.name)}`).join("、");
   return `<div class="card"><h2>店の空気 <small>${m.ym.replace("/","年")}月・回答 ${list.length}件</small></h2>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><button class="btn sec" style="padding:6px 12px" onclick="moodMove(-1)">◀</button><b>${m.ym.replace("/","年")}月</b><button class="btn sec" style="padding:6px 12px" onclick="moodMove(1)">▶</button></div>
-    <div class="mini" style="margin-bottom:6px">退勤時に全員が答える3項目。個人の回答は本人に触れず、週の傾向だけを話題にしてください。赤＝スタッフ☔が週2つ以上、またはお客様☀️なのにスタッフが重い週</div>
-    <table style="width:100%;font-size:14px"><tr><th>週</th><th>回答</th><th>お客様</th><th>スタッフ</th><th>自分</th></tr>${wrows||'<tr><td colspan="5" class="mini">まだ回答がありません</td></tr>'}</table>
+    <div class="mini" style="margin-bottom:6px">退勤前に全員が答える3項目（お客様の雰囲気・お店の空気・日替わりのふりかえり）。個人の回答は本人に触れず、週の傾向だけを話題にしてください。赤＝スタッフ☔が週2つ以上、またはお客様☀️なのにスタッフが重い週</div>
+    <table style="width:100%;font-size:14px"><tr><th>週</th><th>回答</th><th>お客様</th><th>お店の空気</th><th>ふりかえり</th></tr>${wrows||'<tr><td colspan="5" class="mini">まだ回答がありません</td></tr>'}</table>
     ${miss?`<div class="mini" style="margin-top:6px;color:var(--amber)">未回答（退勤済み）: ${miss}</div>`:""}
-    <details style="margin-top:8px"><summary class="mini" style="cursor:pointer">日ごとの回答を見る（運営のみ）</summary><div class="scroll" style="margin-top:6px"><table style="width:100%;font-size:13px"><tr><th>日</th><th>名前</th><th>客</th><th>ス</th><th>自</th><th>ひとこと</th></tr>${drows||""}</table></div></details>
+    ${personRows?`<div style="margin-top:10px"><b style="font-size:13px">人ごと（今月）</b><table style="width:100%;font-size:13px;margin-top:4px"><tr><th>名前</th><th>回答</th><th>お店の空気</th><th>ふりかえり◎</th><th>ありがとう 送/受</th></tr>${personRows}</table><div class="mini">ふりかえりは本人の自己評価です。1on1の材料にする時も、本人の言葉として扱ってください</div></div>`:""}
+    <details style="margin-top:8px"><summary class="mini" style="cursor:pointer">日ごとの回答を見る（運営のみ）</summary><div class="scroll" style="margin-top:6px"><table style="width:100%;font-size:13px"><tr><th>日</th><th>名前</th><th>客</th><th>店</th><th>ふ</th><th>問い・ありがとう</th></tr>${drows||""}</table></div></details>
   </div>`;
 }
 // 衛生記録（HACCP）
