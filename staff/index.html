@@ -422,7 +422,7 @@ function renderCommHome(k){
   $("hNotice").innerHTML = k.unread>0 ? `<span class="amber">未読 ${k.unread}件</span>` : (latest ? `<span style="font-weight:normal;font-size:13px">${esc(latest.title)}</span>` : "なし");
   $("hNotes").innerHTML = k.openCount>0 ? `<span class="red">${k.openCount}件 未対応</span>` : "なし";
   $("hCommSub").textContent = k.unread>0 ? "未読のお知らせがあります" : "";
-  const a = HOME && HOME.att; $("hMoodCard").classList.toggle("hide", !(a && a.status==="done" && k.moodToday===false));
+  const a = HOME && HOME.att; $("hMoodCard").classList.toggle("hide", !(k.pilot && a && a.status==="done" && k.moodToday===false));
   $("bdComm").classList.toggle("hide", !(k.unread>0 || k.openCount>0)); $("bdComm").textContent = k.unread>0 ? k.unread : "!";
 }
 async function loadComm(sub){
@@ -575,8 +575,8 @@ function punchSheet(type){
     <div class="chips c4" id="brkChips">${[0,15,30,45].map(n=>`<button class="chip ${n===0?"on":""}" onclick="setBrk(${n})">${n}分</button>`).join("")}</div>
     <input type="hidden" id="brk" value="0">`}
     <div style="height:12px"></div>
-    <button class="btn ${isIn?"":"out"}" id="punchGo" disabled onclick="var b=Number(($('brk')||{}).value)||0;var t=$('pt').value;var c=[...document.querySelectorAll('#gChips .chip.on')].map(x=>x.textContent);var h=hygCollect();closeOv();punch('${type}', b, t, c, h)">${isIn?"出勤":"退勤"}を記録する</button>
-    <div class="mini center" id="punchHint" style="margin-top:6px">${isIn?"健康チェック":"衛生チェック"}がすべて済むと押せます</div>
+    <button class="btn ${isIn?"":"out"}" id="punchGo" ${isPilot()?"disabled":""} onclick="var b=Number(($('brk')||{}).value)||0;var t=$('pt').value;var c=[...document.querySelectorAll('#gChips .chip.on')].map(x=>x.textContent);var h=hygCollect();closeOv();punch('${type}', b, t, c, h)">${isIn?"出勤":"退勤"}を記録する</button>
+    ${isPilot()?`<div class="mini center" id="punchHint" style="margin-top:6px">${isIn?"健康チェック":"衛生チェック"}がすべて済むと押せます</div>`:""}
     <button class="btn sec" style="margin-top:10px" onclick="closeOv()">やめる</button>`);
   hygValidate();
 }
@@ -589,7 +589,9 @@ const HYG = {
 };
 let HYGAREA = null;
 function hygArea(){ if (HYGAREA) return HYGAREA; return (COMM && COMM.kitchen) ? "kitchen" : "hall"; }
+function isPilot(){ return !!(COMM && COMM.pilot); }
 function hygBlock(isIn){
+  if (!isPilot()) return "";
   const area = hygArea();
   const seg = `<span class="seg"><button class="${area==="kitchen"?"on":""}" onclick="hygSetArea('kitchen')">厨房</button><button class="${area==="hall"?"on":""}" onclick="hygSetArea('hall')">客席</button></span>`;
   const item = (t,i,grp) => `<div class="hi" data-g="${grp}" onclick="this.classList.toggle('on');hygValidate()"><span class="bx">✓</span><span>${t}</span></div>`;
@@ -628,7 +630,7 @@ async function punch(type, breakMin, time, check, hyg){
     if(!r.ok){ showMsg($("msg"), r.error); loadHome(); return; }
     toast(type==="in" ? `出勤 ${r.time} を記録しました` : `退勤 ${r.time} を記録しました（実労働 ${fmtMin(r.workMin)}）`);
     if (hyg) api("hyg_save", hyg).then(h=>{ if(!h.ok) toast("衛生記録の保存に失敗: "+h.error); });
-    if (type==="out") setTimeout(openMood, 400);
+    if (type==="out" && isPilot()) setTimeout(openMood, 400);
     loadHome();
   }catch(e){ showMsg($("msg"), "通信エラーです。電波のある場所でもう一度押してください（二重には記録されません）"); btns.forEach(b=>b.disabled=false); }
   finally{ busy = false; }
