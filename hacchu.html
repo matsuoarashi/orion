@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>発注 | 洋食オリオン</title>
+<meta name="theme-color" content="#2c4f39">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="発注">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-hacchu-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-hacchu-192.png">
+<link rel="manifest" href="manifest-hacchu.json">
+<style>
+:root{ --g:#2c4f39; --g-d:#1f3a2a; --g-l:#e4eee7; --cream:#faf6ee; --cream-d:#ece4d2; --ink:#2b2a26; --mute:#7a7265; --red:#a33c2e; --red-l:#f6e3df; --amber:#b7791f; --amber-l:#f7ebd3; --line:#d9d1bd; --r:14px; --sat:env(safe-area-inset-top); --sab:env(safe-area-inset-bottom); }
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic',sans-serif;background:var(--cream);color:var(--ink);font-size:15px;line-height:1.5}
+.app{height:100%;display:flex;flex-direction:column;max-width:560px;margin:0 auto}
+.hide{display:none!important}
+button{font-family:inherit;cursor:pointer}
+.login{padding:calc(36px + var(--sat)) 22px 40px;overflow-y:auto}
+.login h1{font-size:14px;letter-spacing:6px;text-align:center;color:var(--g);margin:0 0 4px}
+.login .store{text-align:center;color:var(--mute);font-size:13px;margin-bottom:14px}
+.credo{display:flex;flex-direction:column;gap:3px;text-align:center;color:var(--g);font-size:14px;font-weight:bold;letter-spacing:1px;line-height:1.5;margin:0 0 26px;padding:12px 8px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+label{display:block;font-size:12px;color:var(--mute);margin:12px 0 6px}
+input,select,textarea{width:100%;padding:12px;border:2px solid var(--line);border-radius:12px;font-size:17px;background:#fff;font-family:inherit;color:var(--ink)}
+.btn{width:100%;padding:14px;border-radius:12px;border:0;background:var(--g);color:#fff;font-size:16px;font-weight:bold;letter-spacing:2px}
+.btn.sec{background:#fff;color:var(--g);border:2px solid var(--g)}
+.btn.sm{padding:9px 12px;font-size:13px;width:auto;letter-spacing:0}
+.btn.out{background:var(--red)}
+.btn:disabled{opacity:.5}
+header{background:var(--g);color:#fff;padding:calc(10px + var(--sat)) 14px 10px;display:flex;justify-content:space-between;align-items:center}
+header .t{font-size:11px;letter-spacing:4px;opacity:.85}header .n{font-size:16px;font-weight:bold}
+header button{background:rgba(255,255,255,.15);border:0;color:#fff;border-radius:8px;padding:6px 10px;font-size:12px}
+main{flex:1;overflow-y:auto;padding:12px 12px 24px;-webkit-overflow-scrolling:touch}
+nav{display:flex;background:#fff;border-top:1px solid var(--line);padding-bottom:var(--sab)}
+nav button{flex:1;border:0;background:none;padding:8px 2px 6px;font-size:11px;color:var(--mute);position:relative}
+nav button i{display:block;font-style:normal;font-size:18px;line-height:1.2}
+nav button.on{color:var(--g);font-weight:bold}
+nav .bd{position:absolute;top:4px;right:calc(50% - 20px);background:var(--red);color:#fff;font-size:10px;border-radius:999px;min-width:16px;height:16px;line-height:16px;padding:0 4px;text-align:center}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:12px}
+.card h2{font-size:12px;letter-spacing:2px;color:var(--g);margin:0 0 8px;display:flex;justify-content:space-between;align-items:center}
+.card h2 small{letter-spacing:0;color:var(--mute);font-weight:normal}
+.mini{font-size:12px;color:var(--mute)}
+.pill{display:inline-block;font-size:11px;border-radius:999px;padding:2px 8px;background:var(--g-l);color:var(--g);font-weight:bold}
+.pill.amber{background:var(--amber-l);color:var(--amber)}.pill.red{background:var(--red-l);color:var(--red)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed var(--line)}
+.row:last-child{border-bottom:0}
+.row .l{min-width:0;flex:1}.row .l small{display:block;font-size:11px;color:var(--mute)}
+.todo{display:flex;align-items:center;gap:10px;padding:12px;border:2px solid var(--line);border-radius:12px;background:#fff;margin-bottom:8px;text-align:left;width:100%}
+.todo.urgent{border-color:var(--amber);background:var(--amber-l)}
+.todo .ic{font-size:22px;width:30px;text-align:center}
+.todo .tt{flex:1}.todo .tt b{display:block;font-size:15px}.todo .tt small{color:var(--mute);font-size:12px}
+.todo .ar{color:var(--mute)}
+.sec{font-size:11px;letter-spacing:2px;color:var(--mute);margin:14px 4px 6px}
+.step{display:flex;align-items:center;gap:4px}
+.step button{width:40px;height:40px;border-radius:10px;border:2px solid var(--line);background:#fff;font-size:20px;font-weight:bold;color:var(--g)}
+.step .v{min-width:62px;text-align:center;font-size:19px;font-weight:bold;font-variant-numeric:tabular-nums}
+.step .v small{font-size:10px;color:var(--mute);font-weight:normal;margin-left:2px}
+.step .v.chg{color:var(--g)}
+.tri{display:flex;gap:4px}
+.tri button{border:2px solid var(--line);background:#fff;border-radius:8px;padding:8px 9px;font-size:12px;font-weight:bold;color:var(--ink);min-width:46px}
+.tri button.on{background:var(--g);color:#fff;border-color:var(--g)}
+.tri button.on.low{background:var(--amber);border-color:var(--amber)}
+.tri button.on.out{background:var(--red);border-color:var(--red)}
+.seg{display:flex;background:var(--cream-d);border-radius:10px;padding:3px;margin-bottom:10px}
+.seg button{flex:1;border:0;background:none;padding:8px;border-radius:8px;font-size:13px;color:var(--mute);font-weight:bold}
+.seg button.on{background:#fff;color:var(--g);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.sticky{position:sticky;bottom:0;background:linear-gradient(transparent,var(--cream) 30%);padding:10px 0 4px}
+.qty{width:70px;padding:8px;text-align:right;font-size:17px}
+.ovl{position:fixed;inset:0;background:rgba(20,30,20,.45);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+.sheet{background:var(--cream);width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:14px 16px calc(16px + var(--sab));max-height:92vh;overflow-y:auto}
+.sheet h3{margin:0 0 10px;font-size:16px;color:var(--g)}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 10px}
+.toast{position:fixed;left:50%;bottom:calc(70px + var(--sab));transform:translateX(-50%);background:var(--g-d);color:#fff;padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:30;white-space:nowrap}
+.toast.show{opacity:1}
+#msg:empty{display:none}#msg{background:var(--red-l);color:var(--red);padding:10px 12px;border-radius:10px;font-size:13px;margin-bottom:10px}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}.tbl td,.tbl th{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left;vertical-align:top}
+.tbl th{font-size:11px;color:var(--mute);font-weight:normal}
+.loading{text-align:center;color:var(--mute);padding:30px 0}
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="vLogin" class="login">
+    <h1>発 注</h1>
+    <div class="store">洋食オリオン｜在庫・発注管理</div>
+    <div class="credo"><span>古いけれど、清潔。</span><span>下町だけれど、丁寧。</span><span>親しみやすいけれど、雑ではない。</span></div>
+    <div id="loginMsg"></div>
+    <label>名前</label><select id="staffSel"><option value="">読み込み中…</option></select>
+    <label>パスコード（勤怠アプリと同じ）</label>
+    <input type="password" inputmode="numeric" pattern="[0-9]*" id="passIn" placeholder="●●●●" autocomplete="off">
+    <div style="height:18px"></div>
+    <button class="btn" id="loginBtn" onclick="doLogin()">ログイン</button>
+    <p class="mini" style="text-align:center;margin-top:16px">勤怠アプリにログイン済みのスマホでは、そのまま入れます</p>
+  </div>
+
+  <div id="vApp" class="hide" style="display:flex;flex-direction:column;height:100%">
+    <header><div><div class="t">発 注</div><div class="n" id="hName">-</div></div><button onclick="loadHome(true)">更新</button></header>
+    <main id="main">
+      <div id="msg"></div>
+      <section id="pHome"><div class="loading">読み込み中…</div></section>
+      <section id="pStock" class="hide"></section>
+      <section id="pOrder" class="hide"></section>
+      <section id="pReport" class="hide"></section>
+      <section id="pMaster" class="hide"></section>
+    </main>
+    <nav>
+      <button id="n_home" class="on" onclick="go('home')"><i>⌂</i>ホーム</button>
+      <button id="n_stock" onclick="go('stock')"><i>▤</i>在庫</button>
+      <button id="n_order" onclick="go('order')"><i>⇄</i>発注<span class="bd hide" id="bdOrder">0</span></button>
+      <button id="n_report" onclick="go('report')"><i>!</i>報告<span class="bd hide" id="bdRep">0</span></button>
+      <button id="n_master" onclick="go('master')"><i>≡</i>品目</button>
+    </nav>
+  </div>
+</div>
+<div id="ov"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbzFNl4UM3fkoANru-agWmuOox-h3cS1yJmx4UZxpGFemEBnAUv45Gdp1VOvtCqOVUg/exec";
+const STAFF_API = "https://script.google.com/macros/s/AKfycbwgGW6rXzAW2rHVicdoCMdHOT_E3egrXPsaEJerX-_brZr0mYF6Qo_tRorX8PgLc7c/exec";
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let TOKEN = localStorage.getItem("os-token") || "";
+let HOME = null, ME = null, MASTER = [], CHEF = [], PAGE = "home", OWNER = "シェフ";
+function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2400); }
+function showMsg(m){ $("msg").textContent = m||""; }
+function closeOv(){ $("ov").innerHTML=""; }
+function sheet(html){ $("ov").innerHTML = `<div class="ovl" onclick="if(event.target===this)closeOv()"><div class="sheet"><div class="grab"></div>${html}</div></div>`; }
+async function get(mode, params){ const q = Object.assign({mode, token:TOKEN, t:Date.now()}, params||{}); const u = SHEET_URL+"?"+Object.keys(q).map(k=>k+"="+encodeURIComponent(q[k])).join("&");
+  try{ const r = await fetch(u, {cache:"no-store"}); return await r.json(); }catch(e){ return {error:"通信エラー"}; } }
+async function post(type, body){ try{ const r = await fetch(SHEET_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(Object.assign({type, token:TOKEN}, body||{}))}); return await r.json(); }catch(e){ return {error:"通信エラー"}; } }
+function fmtD(s){ if(!s) return "—"; const m = String(s).match(/(\d{4})\/(\d{2})\/(\d{2})/); return m ? Number(m[2])+"/"+Number(m[3]) : s; }
+function daysAgo(s){ if(!s) return null; const m = String(s).match(/(\d{4})\/(\d{2})\/(\d{2})/); if(!m) return null; const d = new Date(Number(m[1]),Number(m[2])-1,Number(m[3])); const t = new Date(); t.setHours(0,0,0,0); return Math.round((t-d)/86400000); }
+
+// ───── ログイン（勤怠アプリと同じ名前・パスコード） ─────
+async function boot(){
+  if (TOKEN){ const r = await get("inv_home"); if(!r.error){ enterApp(r); return; } if(r.error!=="auth"){ showLogin(r.error); return; } TOKEN=""; }
+  showLogin();
+}
+async function showLogin(msg){
+  $("vLogin").classList.remove("hide"); $("vApp").classList.add("hide"); $("loginMsg").textContent = msg||"";
+  try{ const r = await (await fetch(STAFF_API+"?action=staff_list")).json(); $("staffSel").innerHTML = `<option value="">名前を選んでください</option>` + (r.staff||[]).map(s=>`<option value="${s.staff_id}">${esc(s.name)}</option>`).join(""); }catch(e){ $("loginMsg").textContent="通信できません"; }
+}
+async function doLogin(){
+  const id = $("staffSel").value, pass = $("passIn").value; if(!id){ $("loginMsg").textContent="名前を選んでください"; return; } if(!pass){ $("loginMsg").textContent="パスコードを入力してください"; return; }
+  $("loginBtn").disabled = true;
+  try{ const r = await (await fetch(STAFF_API,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({action:"login",staff_id:id,passcode:pass})})).json();
+    if(!r.ok){ $("loginMsg").textContent = r.error||"ログインできません"; return; }
+    TOKEN = r.token; localStorage.setItem("os-token", TOKEN); $("passIn").value=""; const h = await get("inv_home"); if(h.error){ $("loginMsg").textContent=h.error; return; } enterApp(h);
+  }catch(e){ $("loginMsg").textContent="通信できません"; } finally{ $("loginBtn").disabled=false; }
+}
+function enterApp(h){ $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); applyHome(h); go("home"); }
+function go(p){ PAGE = p; ["home","stock","order","report","master"].forEach(x=>{ $("p"+x[0].toUpperCase()+x.slice(1)).classList.toggle("hide", x!==p); $("n_"+x).classList.toggle("on", x===p); }); showMsg(""); closeOv();
+  if(p==="home") renderHome(); if(p==="stock") renderStock(); if(p==="order") renderOrder(); if(p==="report") renderReport(); if(p==="master") renderMaster(); $("main").scrollTo(0,0); }
+async function loadHome(reload){ const r = await get("inv_home"); if(r.error){ if(r.error==="auth"){ TOKEN=""; localStorage.removeItem("os-token"); showLogin("ログインし直してください"); } else showMsg(r.error); return; } applyHome(r); if(reload) toast("更新しました"); go(PAGE); }
+function applyHome(h){ HOME = h; ME = h.me; MASTER = h.items||[]; CHEF = h.chefNames||[]; $("hName").textContent = ME.name + (ME.role==="admin"?"（管理者）":""); OWNER = CHEF.includes(ME.name) ? "シェフ" : (ME.role==="admin" ? "シェフ" : "ホール");
+  const nO = (h.suggest||[]).length; $("bdOrder").textContent = nO; $("bdOrder").classList.toggle("hide", !nO);
+  const nR = (h.reports||[]).length; $("bdRep").textContent = nR; $("bdRep").classList.toggle("hide", !nR); }
+
+// ───── ホーム：今日やること ─────
+function dueItems(owner){
+  return MASTER.filter(it=>it.owner===owner).filter(it=>{ const ago = daysAgo(it.stockAt); if(it.freq==="毎日") return ago===null || ago>=1; if(it.freq==="週次") return ago===null || ago>=7; return false; });
+}
+function renderHome(){
+  const h = HOME; const chefDue = dueItems("シェフ"), hallDue = dueItems("ホール"); const lc = h.lastChecks||{};
+  const sug = h.suggest||[], del = h.deliveriesToday||[], rep = h.reports||[], open = (h.orders||[]).filter(o=>o.status==="発注済");
+  const mine = OWNER==="シェフ" ? chefDue : hallDue;
+  $("pHome").innerHTML = `
+    <div class="card"><h2>今日やること <small>${esc(h.today)}</small></h2>
+      <button class="todo ${mine.length?"urgent":""}" onclick="go('stock')"><span class="ic">▤</span><span class="tt"><b>${OWNER==="シェフ"?"食材の在庫入力":"備品チェック"}</b><small>${mine.length?mine.length+"品目が未入力（前回 "+fmtD((lc[OWNER]||{}).date)+(lc[OWNER]?" "+esc(lc[OWNER].by):"")+"）":"今日の分は入力済み"}</small></span><span class="ar">›</span></button>
+      ${ME.role==="admin"||sug.length?`<button class="todo ${sug.length?"urgent":""}" onclick="go('order')"><span class="ic">⇄</span><span class="tt"><b>発注が必要な商品</b><small>${sug.length?sug.length+"件（"+[...new Set(sug.map(s=>s.supplier))].join("・")+"）":"なし"}</small></span><span class="ar">›</span></button>`:""}
+      <button class="todo" onclick="go('order')"><span class="ic">📦</span><span class="tt"><b>本日の納品予定</b><small>${del.length?del.map(o=>esc(o.supplier)+" "+esc(o.name)+" ×"+o.qty).join("、"):"なし"}${open.length?"　／ 納品待ち "+open.length+"件":""}</small></span><span class="ar">›</span></button>
+      <button class="todo" onclick="go('report')"><span class="ic">!</span><span class="tt"><b>不足・破損の報告</b><small>${rep.length?"未対応 "+rep.length+"件":"未対応なし"}</small></span><span class="ar">›</span></button>
+    </div>
+    <div class="card"><h2>最終チェック</h2>
+      <div class="row"><span class="l">シェフ（食材）</span><b>${lc["シェフ"]?fmtD(lc["シェフ"].date)+" "+esc(lc["シェフ"].by):"—"}</b></div>
+      <div class="row"><span class="l">ホール（備品・飲料・資材）<small>レジの「閉店後」タブからも記録できます</small></span><b>${lc["ホール"]?fmtD(lc["ホール"].date)+" "+esc(lc["ホール"].by):"—"}</b></div>
+    </div>`;
+}
+
+// ───── 在庫入力 ─────
+let STK = {};
+function renderStock(){
+  const items = MASTER.filter(it=>it.owner===OWNER); const groups = {}; items.forEach(it=>{ (groups[it.cat]=groups[it.cat]||[]).push(it); });
+  const isChef = OWNER==="シェフ"; STK = {};
+  $("pStock").innerHTML = `
+    <div class="seg"><button class="${isChef?"on":""}" onclick="OWNER='シェフ';renderStock()">食材（シェフ）</button><button class="${!isChef?"on":""}" onclick="OWNER='ホール';renderStock()">備品・飲料（ホール）</button></div>
+    <div class="mini" style="margin:0 4px 8px">${isChef?"残っている量を入れてください。前回の値から ± で直すだけ。":"週1回、3択でタップ。「少」「無」は発注候補・買い出しリストに載ります。"}</div>
+    ${Object.keys(groups).map(cat=>`<div class="sec">${esc(cat)}</div><div class="card">${groups[cat].map(it=>{
+      const due = (it.freq==="毎日" && (daysAgo(it.stockAt)===null||daysAgo(it.stockAt)>=1)) || (it.freq==="週次" && (daysAgo(it.stockAt)===null||daysAgo(it.stockAt)>=7));
+      if(isChef || it.unit){ // 数量入力
+        return `<div class="row"><span class="l">${esc(it.name)} ${due?"":"<span class='pill'>入力済</span>"}<small>${esc(it.freq)}${it.min!==null?"・最低 "+it.min+esc(it.unit):""}${it.stockAt?"・前回 "+fmtD(it.stockAt):""}</small></span>
+          <span class="step"><button onclick="stAdd('${it.id}',-1)">−</button><span class="v" id="v_${it.id}">${it.stock===null?"—":it.stock}<small>${esc(it.unit)}</small></span><button onclick="stAdd('${it.id}',1)">＋</button></span></div>`;
+      }
+      return `<div class="row"><span class="l">${esc(it.name)}<small>${esc(it.freq)}</small></span><span class="tri"><button onclick="stState('${it.id}','十分',this)">十分</button><button onclick="stState('${it.id}','少',this)">少</button><button onclick="stState('${it.id}','無',this)">無</button></span></div>`;
+    }).join("")}</div>`).join("")}
+    <div class="sticky"><button class="btn" onclick="saveStock()">記録する<span id="stN"></span></button></div>`;
+}
+function stAdd(id, d){ const it = MASTER.find(x=>x.id===id); const cur = STK[id]!==undefined ? STK[id].qty : (it.stock===null?0:it.stock); const v = Math.max(0, cur + d); STK[id] = {qty:v}; const el=$("v_"+id); el.innerHTML = v+"<small>"+esc(it.unit)+"</small>"; el.classList.add("chg"); stCount(); }
+function stState(id, s, btn){ STK[id] = {state:s}; [...btn.parentNode.children].forEach(b=>b.className=""); btn.className = "on "+(s==="少"?"low":s==="無"?"out":""); stCount(); }
+function stCount(){ const n = Object.keys(STK).length; $("stN").textContent = n?`（${n}品目）`:""; }
+async function saveStock(){
+  const entries = Object.keys(STK).map(id=>Object.assign({item_id:id}, STK[id])); if(!entries.length){ toast("変更がありません"); return; }
+  const r = await post("inv_stock", {entries, owner: OWNER}); if(r.error){ showMsg(r.error); return; }
+  toast(`${r.saved}品目を記録しました`); await loadHome(); if((r.suggest||[]).length && OWNER==="シェフ") go("order"); else go("home");
+}
+
+// ───── 発注 ─────
+function renderOrder(){
+  const sug = HOME.suggest||[], orders = HOME.orders||[]; const bySup = {}; sug.forEach(s=>{ (bySup[s.supplier||"（仕入先未設定）"]=bySup[s.supplier||"（仕入先未設定）"]||[]).push(s); });
+  const open = orders.filter(o=>o.status==="発注済"); const cand = orders.filter(o=>o.status==="候補");
+  $("pOrder").innerHTML = `
+    <div class="sec">発注候補（自動）</div>
+    ${Object.keys(bySup).length ? Object.keys(bySup).map(sup=>`<div class="card"><h2>${esc(sup)} <small>${esc(bySup[sup][0].lead||"")}</small></h2>
+      ${bySup[sup].map(s=>`<div class="row"><span class="l">${esc(s.name)}<small>${esc(s.reason)}</small></span><span style="display:flex;align-items:center;gap:4px"><input class="qty" type="number" inputmode="numeric" id="q_${s.id}" value="${s.qty}"><span class="mini">${esc(s.orderUnit||s.unit)}</span></span></div>`).join("")}
+      ${ME.role==="admin"||ME.role==="staff"?`<div style="display:flex;gap:8px;margin-top:10px"><button class="btn sm" style="flex:1" onclick="orderSup('${esc(sup)}','発注済')">発注した（記録）</button><button class="btn sm sec" onclick="copySup('${esc(sup)}')">コピー</button></div>`:""}
+    </div>`).join("") : `<div class="card mini">今は発注が必要な商品はありません（在庫入力の結果から自動で出ます）</div>`}
+    ${cand.length?`<div class="sec">保留中の候補</div><div class="card">${cand.map(o=>`<div class="row"><span class="l">${esc(o.supplier)} ${esc(o.name)} ×${o.qty}${esc(o.unit)}</span><button class="btn sm" onclick="ordUpd('${o.id}','発注済')">発注した</button></div>`).join("")}</div>`:""}
+    <div class="sec">納品待ち（発注済）</div>
+    <div class="card">${open.length?open.map(o=>`<div class="row"><span class="l">${esc(o.supplier)}｜${esc(o.name)} ×${o.qty}${esc(o.unit)}<small>発注 ${fmtD(o.orderedAt)}${o.eta?"・納品予定 "+fmtD(o.eta):""}・${esc(o.by)}</small></span><span style="display:flex;gap:4px"><button class="btn sm" onclick="recvSheet('${o.id}')">納品</button><button class="btn sm sec" onclick="ordUpd('${o.id}','取消')">取消</button></span></div>`).join(""):`<div class="mini">納品待ちはありません</div>`}</div>
+    <button class="btn sec" onclick="manualOrder()">手動で発注を記録</button>
+    <div style="height:8px"></div>
+    <button class="btn sec" onclick="orderHistory()">発注・納品の履歴</button>`;
+}
+function supItems(sup){ return (HOME.suggest||[]).filter(s=>(s.supplier||"（仕入先未設定）")===sup).map(s=>({item_id:s.id, qty:Number(($("q_"+s.id)||{}).value)||s.qty, name:s.name, unit:s.orderUnit||s.unit})).filter(x=>x.qty>0); }
+async function orderSup(sup, status){
+  const items = supItems(sup); if(!items.length){ toast("数量が0です"); return; }
+  const eta = prompt(`${sup} の納品予定日（例 2026/10/29）。未定なら空欄`, ""); if(eta===null) return;
+  const r = await post("inv_order_create", {items, supplier: sup, status, eta}); if(r.error){ showMsg(r.error); return; } toast("発注を記録しました"); loadHome();
+}
+function copySup(sup){ const items = supItems(sup); const txt = `【洋食オリオン 発注】${sup}\n` + items.map(x=>`・${x.name} ×${x.qty}${x.unit}`).join("\n"); navigator.clipboard.writeText(txt).then(()=>toast("発注内容をコピーしました")).catch(()=>toast(txt)); }
+async function ordUpd(id, status){ if(status==="取消" && !confirm("この発注を取り消しますか？")) return; const r = await post("inv_order_update", {order_id:id, status}); if(r.error){ showMsg(r.error); return; } toast(status==="取消"?"取り消しました":"更新しました"); loadHome(); }
+function recvSheet(id){ const o = (HOME.orders||[]).find(x=>x.id===id); if(!o) return;
+  sheet(`<h3>納品確認：${esc(o.name)}</h3><div class="mini">届いた数量を確認して記録します。数量違いはそのまま入れてください（備考に残ります）</div>
+    <label>届いた数量（${esc(o.unit)}）</label><input type="number" inputmode="numeric" id="rcQty" value="${o.qty}">
+    <label>1${esc(o.unit)}あたりの入数（在庫の単位に換算。例：1箱＝24袋なら 24）</label><input type="number" inputmode="numeric" id="rcPer" value="1">
+    <div style="height:14px"></div><button class="btn" onclick="recvDo('${id}')">納品済にして在庫に加える</button><button class="btn sec" style="margin-top:8px" onclick="closeOv()">やめる</button>`); }
+async function recvDo(id){ const r = await post("inv_order_update", {order_id:id, status:"納品済", received:Number($("rcQty").value)||0, perUnit:Number($("rcPer").value)||1}); if(r.error){ showMsg(r.error); return; } closeOv(); toast("納品を記録しました"); loadHome(); }
+function manualOrder(){
+  const opts = MASTER.map(it=>`<option value="${it.id}">${esc(it.name)}（${esc(it.supplier||"—")}）</option>`).join("");
+  sheet(`<h3>手動で発注を記録</h3><label>品目</label><select id="moItem">${opts}</select><label>数量</label><input type="number" inputmode="numeric" id="moQty" value="1"><label>納品予定日（任意）</label><input id="moEta" placeholder="2026/10/29">
+    <div style="height:14px"></div><button class="btn" onclick="manualDo()">発注済として記録</button><button class="btn sec" style="margin-top:8px" onclick="closeOv()">やめる</button>`); }
+async function manualDo(){ const it = MASTER.find(x=>x.id===$("moItem").value); const r = await post("inv_order_create", {items:[{item_id:it.id, qty:Number($("moQty").value)||1, eta:$("moEta").value}], supplier: it.supplier}); if(r.error){ showMsg(r.error); return; } closeOv(); toast("記録しました"); loadHome(); }
+async function orderHistory(){ const r = await get("inv_orders"); if(r.error){ showMsg(r.error); return; } const list = (r.orders||[]).slice().reverse();
+  sheet(`<h3>発注・納品の履歴</h3><table class="tbl"><tr><th>日付</th><th>仕入先・品目</th><th>数量</th><th>状態</th></tr>${list.map(o=>`<tr><td>${fmtD(o.at)}</td><td>${esc(o.supplier)}<br>${esc(o.name)}</td><td>${o.qty}${esc(o.unit)}${o.received!==""&&o.received!==undefined?"<br><span class='mini'>納 "+o.received+"</span>":""}</td><td>${esc(o.status)}<br><span class="mini">${fmtD(o.receivedAt||o.orderedAt)}</span></td></tr>`).join("")||"<tr><td colspan=4>まだありません</td></tr>"}</table><button class="btn sec" style="margin-top:10px" onclick="closeOv()">閉じる</button>`); }
+
+// ───── 報告 ─────
+function renderReport(){
+  const rep = HOME.reports||[]; const opts = `<option value="">（品目を選ぶ／下に自由記入）</option>` + MASTER.map(it=>`<option value="${it.id}">${esc(it.name)}</option>`).join("");
+  $("pReport").innerHTML = `
+    <div class="card"><h2>不足・破損・紛失の報告</h2>
+      <label>品目</label><select id="rpItem">${opts}</select>
+      <label>品目名（一覧にない物）</label><input id="rpName" placeholder="例：ペン">
+      <label>種別</label><div class="tri" id="rpKind"><button class="on" onclick="rpK(this)">不足</button><button onclick="rpK(this)">破損</button><button onclick="rpK(this)">紛失</button><button onclick="rpK(this)">その他</button></div>
+      <label>数量（任意）</label><input type="number" inputmode="numeric" id="rpQty">
+      <label>メモ（任意）</label><input id="rpMemo" placeholder="例：フォークが2本曲がった">
+      <div style="height:12px"></div><button class="btn" onclick="sendReport()">報告する</button></div>
+    <div class="sec">未対応の報告</div>
+    <div class="card">${rep.length?rep.map(r=>`<div class="row"><span class="l">${esc(r.name)} <span class="pill ${r.kind==="不足"?"amber":"red"}">${esc(r.kind)}</span>${r.qty?" ×"+r.qty:""}<small>${fmtD(r.at)} ${esc(r.by)}${r.memo?"・"+esc(r.memo):""}</small></span>${ME.role==="admin"?`<button class="btn sm sec" onclick="repDone('${r.id}')">対応済</button>`:""}</div>`).join(""):`<div class="mini">未対応の報告はありません</div>`}</div>
+    <button class="btn sec" onclick="reportHistory()">報告の履歴</button>`;
+}
+function rpK(b){ [...b.parentNode.children].forEach(x=>x.classList.remove("on")); b.classList.add("on"); }
+async function sendReport(){ const kind = $("rpKind").querySelector(".on").textContent; const item_id = $("rpItem").value, name = $("rpName").value.trim(); if(!item_id && !name){ toast("品目を選ぶか入力してください"); return; }
+  const r = await post("inv_report", {item_id, name, kind, qty: $("rpQty").value?Number($("rpQty").value):undefined, memo: $("rpMemo").value}); if(r.error){ showMsg(r.error); return; } toast("報告しました"); loadHome(); }
+async function repDone(id){ const r = await post("inv_report_done", {report_id:id}); if(r.error){ showMsg(r.error); return; } toast("対応済にしました"); loadHome(); }
+async function reportHistory(){ const r = await get("inv_reports"); if(r.error){ showMsg(r.error); return; } const list=(r.reports||[]).slice().reverse();
+  sheet(`<h3>報告の履歴</h3><table class="tbl"><tr><th>日付</th><th>品目</th><th>種別</th><th>状態</th></tr>${list.map(x=>`<tr><td>${fmtD(x.at)}</td><td>${esc(x.name)}${x.memo?"<br><span class='mini'>"+esc(x.memo)+"</span>":""}</td><td>${esc(x.kind)}${x.qty?" ×"+x.qty:""}</td><td>${esc(x.status)}</td></tr>`).join("")||"<tr><td colspan=4>まだありません</td></tr>"}</table><button class="btn sec" style="margin-top:10px" onclick="closeOv()">閉じる</button>`); }
+
+// ───── 品目（マスター） ─────
+const MFIELDS = [["品目","品目名"],["区分","区分（食材/飲料/資材/消耗品/調味料/備品/仕込）"],["仕入先","仕入先"],["購入方法","購入方法"],["規格(入数など)","規格・入数"],["仕入単価(税込)","仕入単価（税込）"],["発注単位","発注単位（箱・袋・ケース）"],["入力単位","入力単位（個・袋・kg）"],["担当","担当（シェフ/ホール）"],["管理頻度","管理頻度（毎日/週次/必要時）"],["最低在庫","最低在庫（数字）"],["発注方式","発注方式（数量提案/最低在庫/定期/手動/台帳）"],["配送・納期","配送・納期"],["用途(商品)","用途"],["備考","備考"]];
+function renderMaster(){
+  const groups = {}; MASTER.forEach(it=>{ (groups[it.owner||"未設定"]=groups[it.owner||"未設定"]||[]).push(it); });
+  $("pMaster").innerHTML = `<div class="mini" style="margin:0 4px 8px">${MASTER.length}品目。${ME.role==="admin"?"タップで編集。空欄（規格・単価など）は分かった時に埋めてください。":"編集は管理者のみ。"}</div>
+    ${ME.role==="admin"?`<button class="btn sec" style="margin-bottom:10px" onclick="editItem(null)">＋ 品目を追加</button>`:""}
+    ${Object.keys(groups).map(ow=>`<div class="sec">${esc(ow)}</div><div class="card">${groups[ow].map(it=>`<div class="row" ${ME.role==="admin"?`onclick="editItem('${it.id}')" style="cursor:pointer"`:""}><span class="l">${esc(it.name)}<small>${esc(it.supplier||"仕入先未設定")}・${esc(it.freq)}${it.min!==null?"・最低 "+it.min+esc(it.unit):""}${it.spec?"・"+esc(it.spec):""}${it.price?"・"+it.price.toLocaleString()+"円":""}</small></span><b>${it.stock===null?"—":it.stock+esc(it.unit)}</b></div>`).join("")}</div>`).join("")}`;
+}
+function editItem(id){
+  const it = id ? MASTER.find(x=>x.id===id) : null; const raw = it ? {"品目":it.name,"区分":it.cat,"仕入先":it.supplier,"購入方法":it.method,"規格(入数など)":it.spec,"仕入単価(税込)":it.price===null?"":it.price,"発注単位":it.orderUnit,"入力単位":it.unit,"担当":it.owner,"管理頻度":it.freq,"最低在庫":it.min===null?"":it.min,"発注方式":it.mode,"配送・納期":it.lead,"用途(商品)":it.use,"備考":it.note} : {};
+  sheet(`<h3>${it?"品目を編集":"品目を追加"}</h3>${MFIELDS.map(([k,l],i)=>`<label>${esc(l)}</label><input id="mf_${i}" value="${esc(raw[k]===undefined?"":raw[k])}">`).join("")}
+    <div style="height:14px"></div><button class="btn" onclick="saveItem('${id||""}')">保存</button>${it?`<button class="btn sec" style="margin-top:8px" onclick="stopItem('${id}')">この品目を使わない（非表示）</button>`:""}<button class="btn sec" style="margin-top:8px" onclick="closeOv()">やめる</button>`);
+}
+async function saveItem(id){ const fields = {}; MFIELDS.forEach(([k],i)=>{ fields[k] = $("mf_"+i).value.trim(); }); const r = await post("inv_master_save", {item_id:id||undefined, fields}); if(r.error){ showMsg(r.error); closeOv(); return; } closeOv(); toast("保存しました"); loadHome(); }
+async function stopItem(id){ if(!confirm("この品目を一覧から外しますか？（記録は残ります）")) return; const r = await post("inv_master_save", {item_id:id, fields:{"状態":"stop"}}); if(r.error){ showMsg(r.error); return; } closeOv(); toast("非表示にしました"); loadHome(); }
+
+boot();
+</script>
+</body>
+</html>

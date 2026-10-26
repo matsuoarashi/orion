@@ -203,6 +203,7 @@
   .mi .s{font-size:11px;color:var(--midori);font-weight:bold;margin-top:auto}
   .mi.wide{grid-column:1/-1}
   .mi:active{background:var(--cream-d)}
+  .tri3{border:2px solid var(--wood-d);background:#fff;border-radius:8px;padding:8px 8px;font-size:12px;font-weight:bold;color:#3a2a18;min-width:44px}
 </style>
 <meta name="theme-color" content="#5c3413">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -250,7 +251,7 @@
     <div class="dtiles"><span>会計<b><span id="aCount">0</span><small style="font-size:11px;margin-left:2px;color:#e8d5ac">件</small></b></span><span>売上<b><span id="aSum">0</span><small style="font-size:11px;margin-left:2px;color:#e8d5ac">円</small></b></span><span>来店<b><span id="aVisit">0</span><small style="font-size:11px;margin-left:2px;color:#e8d5ac">人</small></b></span></div>
     <div class="grp">毎 日 の 締 め 作 業</div>
     <div class="menu">
-      <button class="mi" onclick="openStock()"><span class="t">在庫チェック</span><span class="d">シェフ担当。残数を入力</span><span class="s">▶ 開く</span></button>
+      <button class="mi" onclick="openStock()"><span class="t">備品チェック</span><span class="d">ホール担当。週1回、3択でタップ</span><span class="s" id="aStock">▶ 開く</span></button>
       <button class="mi" onclick="openShime()"><span class="t">レジ締め</span><span class="d">ホール担当。現金を数えて記録</span><span class="s">▶ 開く</span></button>
       <button class="mi" onclick="openClock()"><span class="t">出退勤</span><span class="d">出勤・退勤の打刻</span><span class="s">▶ 開く</span></button>
       <button class="mi" onclick="openSummary()"><span class="t">日計</span><span class="d">本日の会計一覧・シートへ再送</span><span class="s" id="aQueue">▶ 開く</span></button>
@@ -350,9 +351,10 @@
 <!-- 在庫シート -->
 <div class="overlay" id="stockOv">
   <div class="sheet">
-    <h2>在 庫 チ ェ ッ ク</h2>
-    <button class="fillBtn" onclick="fillTheoretical()">▼ 理論残(前回残−本日出数)を一括入力</button>
+    <h2>備 品 チ ェ ッ ク</h2>
+    <div class="lbl" id="stockLast" style="text-align:center"></div>
     <div class="sum-list" id="stockList" style="max-height:46vh"></div>
+    <div class="fm" style="grid-template-columns:minmax(0,1fr) 150px;border:0"><span>記録する人</span><span class="in"><select id="stockBy" style="width:140px;height:40px;font-size:16px;border:2px solid var(--wood-d);border-radius:8px;background:#fff"></select></span></div>
     <button class="save" onclick="saveStock()">記録する</button>
     <button class="cancel" onclick="document.getElementById('stockOv').classList.remove('show')">閉じる</button>
   </div>
@@ -464,6 +466,35 @@ function renderGrid(){
   });
 }
 renderGrid();
+
+// ===== 備品チェック（ホール）：発注アプリと同じマスター（購入品目）を読み、3択で記録する =====
+let INV = { items: [], last: null, pick: {} };
+async function invFetch(){
+  try{ const r = await fetch(`${SHEET_URL}?mode=inv_master&key=${encodeURIComponent(oKey())}&t=${Date.now()}`, {cache:"no-store"}); const j = await r.json(); if(j.error) return null;
+    INV.items = (j.items||[]).filter(it=>it.owner==="ホール"); INV.last = (j.lastChecks||{})["ホール"] || null; return j; }catch(e){ return null; }
+}
+function invLastText(){ const l = INV.last; if(!l) return "まだ記録なし"; const m = String(l.date||"").match(/(\d{4})\/(\d{2})\/(\d{2})/); if(!m) return l.date; const d = new Date(+m[1],+m[2]-1,+m[3]); const ago = Math.round((new Date().setHours(0,0,0,0) - d)/86400000);
+  return `最終 ${+m[2]}/${+m[3]}（${["日","月","火","水","木","金","土"][d.getDay()]}）${l.by||""}・${ago===0?"今日":ago+"日前"}`; }
+async function invRefreshCard(){ const el = $("aStock"); if(!el) return; if(!INV.last) await invFetch(); const t = invLastText(); el.textContent = t; const m = t.match(/(\d+)日前/); el.style.color = (m && +m[1] >= 7) || !INV.last ? "var(--enji)" : ""; }
+async function openStock(){
+  $("stockOv").classList.add("show"); $("stockList").innerHTML = "読み込み中…"; INV.pick = {};
+  const j = await invFetch(); if(!j){ $("stockList").innerHTML = "通信できません。電波を確認してもう一度開いてください"; return; }
+  $("stockLast").textContent = invLastText();
+  const sel = $("stockBy"); sel.innerHTML = STAFF.filter(n=>n!=="臨時").map(n=>`<option>${n}</option>`).join("") + `<option>その他</option>`;
+  const groups = {}; INV.items.forEach(it=>{ (groups[it.cat]=groups[it.cat]||[]).push(it); });
+  $("stockList").innerHTML = Object.keys(groups).map(cat=>`<div class="stSec">${cat}</div>` + groups[cat].map(it=>`<div class="fm" style="grid-template-columns:minmax(0,1fr) auto"><span class="nm">${it.name}<div class="pt" style="text-align:left">${it.min!==null?"最低 "+it.min+it.unit:""}${it.stockAt?"・前回 "+it.stockAt.slice(5,10):""}</div></span>
+    <span class="in" style="gap:4px"><button class="tri3" onclick="invPick('${it.id}','十分',this)">十分</button><button class="tri3" onclick="invPick('${it.id}','少',this)">少</button><button class="tri3" onclick="invPick('${it.id}','無',this)">無</button></span></div>`).join("")).join("") || "ホール担当の品目がありません（発注アプリの「品目」で担当を設定）";
+}
+function invPick(id, st, btn){ INV.pick[id] = st; [...btn.parentNode.children].forEach(b=>{ b.style.background="#fff"; b.style.color="#3a2a18"; }); btn.style.background = st==="少" ? "#b7791f" : st==="無" ? "#93332a" : "#2c4f39"; btn.style.color = "#fff"; }
+async function saveStock(){
+  const entries = Object.keys(INV.pick).map(id=>({item_id:id, state:INV.pick[id]})); if(!entries.length){ alert("各品目を 十分／少／無 でタップしてください"); return; }
+  const by = $("stockBy").value;
+  try{ const r = await fetch(SHEET_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({type:"inv_stock", key:oKey(), by, owner:"ホール", entries})}); const j = await r.json(); if(j.error){ alert("記録できませんでした: "+j.error); return; }
+    INV.last = (j.lastChecks||{})["ホール"] || INV.last; $("stockOv").classList.remove("show"); invRefreshCard();
+    const low = entries.filter(e=>e.state!=="十分").length; alert(`${j.saved}品目を記録しました${low?`（少・無 ${low}件は発注候補に載せました）`:""}`); }
+  catch(e){ alert("通信エラーです。電波のある場所でもう一度押してください"); }
+}
+function fillTheoretical(){}
 
 function showPay(){
   if(!items.length) return;
@@ -941,7 +972,7 @@ function refreshVisits(){
   $("vLast").textContent = last ? new Date(last.t).toTimeString().slice(0,5) : "--:--";
   const av = $("aVisit"); if(av) av.textContent = c.total;
 }
-function goTab(p){ const o = p==="open"; $("pOpen").classList.toggle("hide", !o); $("pAfter").classList.toggle("hide", o); $("tOpen").classList.toggle("on", o); $("tAfter").classList.toggle("on", !o); if(!o){ refreshDaily(); refreshVisits(); } }
+function goTab(p){ const o = p==="open"; $("pOpen").classList.toggle("hide", !o); $("pAfter").classList.toggle("hide", o); $("tOpen").classList.toggle("on", o); $("tAfter").classList.toggle("on", !o); if(!o){ refreshDaily(); refreshVisits(); invRefreshCard(); } }
 // テイクアウト：次の受け渡し1件をトップに出す
 function toRender(){
   const live = O.orders.filter(o=>o.status==="new"||o.status==="ready").sort((a,b)=>a.slot<b.slot?-1:a.slot>b.slot?1:0);
