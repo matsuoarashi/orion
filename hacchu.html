@@ -137,8 +137,10 @@ function daysAgo(s){ if(!s) return null; const m = String(s).match(/(\d{4})\/(\d
 
 // ───── ログイン（勤怠アプリと同じ名前・パスコード） ─────
 async function boot(){
-  if (TOKEN){ const r = await get("inv_home"); if(!r.error){ enterApp(r); return; } if(r.error!=="auth"){ showLogin(r.error); return; } TOKEN=""; }
-  showLogin();
+  // 勤怠アプリ（os-token）か管理画面（os-admin-token）のログインをそのまま使う
+  const cands = [localStorage.getItem("os-token"), localStorage.getItem("os-admin-token")].filter(Boolean);
+  for (const tk of cands){ TOKEN = tk; const r = await get("inv_home"); if(!r.error){ enterApp(r); return; } if(r.error!=="auth"){ showLogin(r.error); return; } }
+  TOKEN = ""; showLogin();
 }
 async function showLogin(msg){
   $("vLogin").classList.remove("hide"); $("vApp").classList.add("hide"); $("loginMsg").textContent = msg||"";
@@ -188,17 +190,20 @@ function renderStock(){
   const isChef = OWNER==="シェフ"; STK = {};
   $("pStock").innerHTML = `
     <div class="seg"><button class="${isChef?"on":""}" onclick="OWNER='シェフ';renderStock()">食材（シェフ）</button><button class="${!isChef?"on":""}" onclick="OWNER='ホール';renderStock()">備品・飲料（ホール）</button></div>
-    <div class="mini" style="margin:0 4px 8px">${isChef?"残っている量を入れてください。前回の値から ± で直すだけ。":"週1回、3択でタップ。「少」「無」は発注候補・買い出しリストに載ります。"}</div>
+    <div class="mini" style="margin:0 4px 8px">${isChef?"残っている量を入れてください。± で直すか、数字をタップして入力。":"週1回、3択でタップ。「少」「無」は発注候補・買い出しリストに載ります。"}</div>
     ${Object.keys(groups).map(cat=>`<div class="sec">${esc(cat)}</div><div class="card">${groups[cat].map(it=>{
       const due = (it.freq==="毎日" && (daysAgo(it.stockAt)===null||daysAgo(it.stockAt)>=1)) || (it.freq==="週次" && (daysAgo(it.stockAt)===null||daysAgo(it.stockAt)>=7));
       if(isChef || it.unit){ // 数量入力
         return `<div class="row"><span class="l">${esc(it.name)} ${due?"":"<span class='pill'>入力済</span>"}<small>${esc(it.freq)}${it.min!==null?"・最低 "+it.min+esc(it.unit):""}${it.stockAt?"・前回 "+fmtD(it.stockAt):""}</small></span>
-          <span class="step"><button onclick="stAdd('${it.id}',-1)">−</button><span class="v" id="v_${it.id}">${it.stock===null?"—":it.stock}<small>${esc(it.unit)}</small></span><button onclick="stAdd('${it.id}',1)">＋</button></span></div>`;
+          <span class="step"><button onclick="stAdd('${it.id}',-1)">−</button><span class="v" id="v_${it.id}" onclick="stEdit('${it.id}')" style="cursor:pointer">${it.stock===null?"—":it.stock}<small>${esc(it.unit)}</small></span><button onclick="stAdd('${it.id}',1)">＋</button></span></div>`;
       }
       return `<div class="row"><span class="l">${esc(it.name)}<small>${esc(it.freq)}</small></span><span class="tri"><button onclick="stState('${it.id}','十分',this)">十分</button><button onclick="stState('${it.id}','少',this)">少</button><button onclick="stState('${it.id}','無',this)">無</button></span></div>`;
     }).join("")}</div>`).join("")}
     <div class="sticky"><button class="btn" onclick="saveStock()">記録する<span id="stN"></span></button></div>`;
 }
+function stEdit(id){ const it = MASTER.find(x=>x.id===id); const cur = STK[id]!==undefined ? STK[id].qty : (it.stock===null?"":it.stock);
+  sheet(`<h3>${esc(it.name)}</h3><label>残っている量（${esc(it.unit)}）</label><input type="number" inputmode="decimal" id="stIn" value="${cur}" autofocus><div style="height:12px"></div><button class="btn" onclick="stSet('${id}')">決定</button><button class="btn sec" style="margin-top:8px" onclick="closeOv()">やめる</button>`); setTimeout(()=>{ const i=$("stIn"); if(i){ i.focus(); i.select(); } }, 50); }
+function stSet(id){ const v = Number($("stIn").value); if(isNaN(v)){ toast("数字を入れてください"); return; } const it = MASTER.find(x=>x.id===id); STK[id] = {qty: Math.max(0,v)}; const el=$("v_"+id); el.innerHTML = Math.max(0,v)+"<small>"+esc(it.unit)+"</small>"; el.classList.add("chg"); stCount(); closeOv(); }
 function stAdd(id, d){ const it = MASTER.find(x=>x.id===id); const cur = STK[id]!==undefined ? STK[id].qty : (it.stock===null?0:it.stock); const v = Math.max(0, cur + d); STK[id] = {qty:v}; const el=$("v_"+id); el.innerHTML = v+"<small>"+esc(it.unit)+"</small>"; el.classList.add("chg"); stCount(); }
 function stState(id, s, btn){ STK[id] = {state:s}; [...btn.parentNode.children].forEach(b=>b.className=""); btn.className = "on "+(s==="少"?"low":s==="無"?"out":""); stCount(); }
 function stCount(){ const n = Object.keys(STK).length; $("stN").textContent = n?`（${n}品目）`:""; }
