@@ -149,7 +149,7 @@ const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"
 function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2400); }
 function showMsg(text, cls){ $("msg").innerHTML = text ? `<div class="msg ${cls||"err"}">${esc(text)}</div>` : ""; if(text) window.scrollTo(0,0); }
 // 読み取り以外は同時に1つだけ（二重タップ防止）。通信中は上部に黄色いバー、0.3秒超で画面を薄く
-const READS = new Set(["admin.hyg_month","admin.mood_month","admin.notices","comm","admin.staff_list","admin.wishes_month","admin.shifts_month","admin.att_month","admin.payroll_month","admin.dashboard","admin.settings_get","admin.sync_status","admin.audit","admin.line_text","admin.bank_get","admin.payroll_csv","admin.bank_csv","staff_list"]);
+const READS = new Set(["admin.hyg_folder","admin.hyg_month","admin.mood_month","admin.notices","comm","admin.staff_list","admin.wishes_month","admin.shifts_month","admin.att_month","admin.payroll_month","admin.dashboard","admin.settings_get","admin.sync_status","admin.audit","admin.line_text","admin.bank_get","admin.payroll_csv","admin.bank_csv","staff_list"]);
 let inflight = 0, dimT = null;
 async function api(action, body){
   const isWrite = !READS.has(action);
@@ -263,8 +263,25 @@ function hygCard(h){
       <button class="btn" style="padding:8px 12px;font-size:13px" onclick="hygPrint()">提出用を開く（計画書＋記録表）</button>
       <button class="btn sec" style="padding:8px 12px;font-size:13px" onclick="hygCsv()">CSVをコピー</button>
     </div>
+    <div style="margin-top:10px;padding:10px;border-radius:10px;border:1px solid var(--line)">
+      <b style="font-size:14px">保存先（Googleドライブ）</b>
+      <div class="mini" style="margin:4px 0 6px">「洋食オリオン_衛生管理（HACCP）」フォルダに、計画書・月次記録表（PDF）・元データ（CSV）を保存します。毎月1日の朝6時に前月分を自動保存し、振り返りを記録した時も保存し直します。納品書の写真と営業許可書もこのフォルダに入れてください</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec" style="padding:8px 12px;font-size:13px" onclick="hygFolder()">保管フォルダを開く</button><button class="btn sec" style="padding:8px 12px;font-size:13px" onclick="hygArchiveNow()">この月を今すぐ保存</button></div>
+      <div class="mini" id="hygArch" style="margin-top:6px"></div>
+    </div>
     ${missing.length?`<div class="mini" style="margin-top:6px;color:var(--amber)">計画書に入る ${missing.join("・")} が未設定です（設定タブの store_address / food_hygiene_manager / permit_no）</div>`:""}
   </div>`;
+}
+async function hygFolder(){
+  const w = window.open("", "_blank");
+  const r = await api("admin.hyg_folder"); if(!r.ok){ if(w) w.close(); toast(r.error); return; }
+  if (w) w.location.href = r.folder; else location.href = r.folder;
+  $("hygArch").textContent = r.archived ? "最後の保存: "+r.archived : "まだ保存していません";
+}
+async function hygArchiveNow(){
+  const r = await api("admin.hyg_archive", {ym: HYGM.ym}); if(!r.ok){ toast(r.error); return; }
+  toast(HYGM.ym.replace("/","年")+"月分をドライブに保存しました");
+  $("hygArch").innerHTML = `保存しました：<a href="${r.record}" target="_blank">記録表PDF</a>　<a href="${r.folder}" target="_blank">フォルダ</a>`;
 }
 function hygReview(){
   const rv = HYGM.review || {result:"問題なし", note:""};
