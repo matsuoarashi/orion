@@ -237,24 +237,128 @@ function moodCard(m){
   </div>`;
 }
 // 衛生記録（HACCP）
+let HYGM = null;
+const TL = {fridge:["冷蔵",10],freezer:["冷凍",-15],combo_r:["冷冷(蔵)",10],combo_f:["冷冷(凍)",-15]};
 function hygCard(h){
   if(!h || !h.ok) return `<div class="card"><h2>衛生記録</h2><div class="mini">${h&&h.error||"読み込めませんでした"}</div></div>`;
-  const TL = {fridge:["冷蔵",10],freezer:["冷凍",-15],combo_r:["冷蔵冷凍(冷)",10],combo_f:["冷蔵冷凍(凍)",-15]};
+  HYGM = h; const nk = h.items.kitchen.length, nh = h.items.hall.length;
   const rows = (h.days||[]).map(d=>{
     const hl = d.health.map(x=>`${esc(x.name)}${x.ok?"":"⚠"}`).join("・") || `<span style="color:var(--red)">なし</span>`;
     const tp = d.temps ? Object.keys(TL).map(k=>{ const v=d.temps[k]; if(v===undefined) return `<span class="mini">${TL[k][0]} -</span>`; const bad = v > TL[k][1]; return `<span style="${bad?"color:var(--red);font-weight:bold":""}">${TL[k][0]} ${v}℃</span>`; }).join(" / ") : `<span style="color:var(--red)">未記録</span>`;
-    const kc = d.kitchen==null ? `<span style="color:var(--red)">未</span>` : `${d.kitchen}/5`;
-    const hc = d.hall==null ? `<span style="color:var(--red)">未</span>` : `${d.hall}/5`;
-    return `<tr><td class="mini" style="white-space:nowrap">${d.date.slice(5)}</td><td style="font-size:12px">${hl}</td><td style="font-size:12px;white-space:nowrap">${tp}</td><td style="text-align:center">${kc}</td><td style="text-align:center">${hc}</td></tr>`;
+    const kc = d.kitchen==null ? `<span style="color:var(--red)">未</span>` : `${d.kitchen}/${nk}`;
+    const hc = d.hall==null ? `<span style="color:var(--red)">未</span>` : `${d.hall}/${nh}`;
+    const act = d.actions.length ? `<tr><td></td><td colspan="4" class="mini" style="color:var(--red)">対応: ${esc(d.actions.join(" ／ "))}</td></tr>` : "";
+    return `<tr><td class="mini" style="white-space:nowrap">${d.date.slice(5)}</td><td style="font-size:12px">${hl}</td><td style="font-size:12px">${tp}</td><td style="text-align:center">${kc}</td><td style="text-align:center">${hc}</td></tr>${act}`;
   }).join("");
+  const rv = h.review;
+  const missing = ["address","manager","permit"].filter(k=>!h.store[k]).map(k=>({address:"所在地",manager:"食品衛生責任者",permit:"営業許可番号"})[k]);
   return `<div class="card"><h2>衛生記録（HACCP） <small>${h.ym.replace("/","年")}月・${(h.days||[]).length}日分</small></h2>
-    <div class="mini" style="margin-bottom:6px">出勤時＝健康チェック（全員）＋庫内温度（厨房）、退勤時＝厨房5項目／客席5項目。赤＝未記録または基準外（冷蔵10℃超・冷凍−15℃超）。厨房担当は設定「kitchen_ids」で変更できます</div>
-    <div class="scroll"><table style="width:100%;font-size:13px"><tr><th>日</th><th>健康チェック</th><th>庫内温度</th><th>厨房</th><th>客席</th></tr>${rows||'<tr><td colspan="5" class="mini">まだ記録がありません</td></tr>'}</table></div>
-    <div style="margin-top:8px"><button class="btn sec" style="padding:8px 12px;font-size:13px" onclick="hygCsv(${JSON.stringify(h.ym)})">この月をCSVでコピー（保健所提出用）</button></div>
+    <div class="mini" style="margin-bottom:6px">出勤時＝健康チェック（全員）＋庫内温度（厨房）、退勤時＝厨房${nk}項目／客席${nh}項目。赤＝未記録または基準外（冷蔵10℃超・冷凍−15℃超）</div>
+    <div class="scroll"><table style="width:100%;font-size:13px"><tr><th>日</th><th>健康</th><th>庫内温度</th><th>厨房</th><th>客席</th></tr>${rows||'<tr><td colspan="5" class="mini">まだ記録がありません</td></tr>'}</table></div>
+    <div style="margin-top:10px;padding:10px;border-radius:10px;background:${rv?"var(--g-l)":"var(--cream)"}">
+      <b style="font-size:14px">今月の振り返り</b> ${rv?`<span class="pill">${esc(rv.result)}</span> <span class="mini">${esc(rv.by)} ${rv.at.slice(5,10)}</span><div class="mini" style="margin-top:4px;white-space:pre-wrap;color:var(--ink)">${esc(rv.note)||"（記載なし）"}</div>`:`<span class="mini">未記録</span>`}
+      <div style="margin-top:6px"><button class="btn sec" style="padding:6px 12px;font-size:13px" onclick="hygReview()">${rv?"振り返りを編集":"振り返りを記録する"}</button></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+      <button class="btn" style="padding:8px 12px;font-size:13px" onclick="hygPrint()">提出用を開く（計画書＋記録表）</button>
+      <button class="btn sec" style="padding:8px 12px;font-size:13px" onclick="hygCsv()">CSVをコピー</button>
+    </div>
+    ${missing.length?`<div class="mini" style="margin-top:6px;color:var(--amber)">計画書に入る ${missing.join("・")} が未設定です（設定タブの store_address / food_hygiene_manager / permit_no）</div>`:""}
   </div>`;
 }
-let HYGDATA = null;
-async function hygCsv(ym){ const h = await api("admin.hyg_month",{ym}); if(!h.ok){ toast(h.error); return; } const TL={fridge:"冷蔵庫",freezer:"冷凍庫",combo_r:"冷蔵冷凍庫(冷蔵室)",combo_f:"冷蔵冷凍庫(冷凍室)"}; const lines=[["日付","健康チェック","冷蔵庫℃","冷凍庫℃","冷蔵冷凍庫(冷蔵)℃","冷蔵冷凍庫(冷凍)℃","厨房チェック","客席チェック"].join(",")]; h.days.slice().reverse().forEach(d=>{ const t=d.temps||{}; lines.push([d.date, d.health.map(x=>x.name+(x.ok?"OK":"要確認")).join(" "), t.fridge??"", t.freezer??"", t.combo_r??"", t.combo_f??"", d.kitchen==null?"未":d.kitchen+"/5", d.hall==null?"未":d.hall+"/5"].join(",")); }); copyPlain(lines.join("\n"), "CSVをコピーしました"); }
+function hygReview(){
+  const rv = HYGM.review || {result:"問題なし", note:""};
+  modal(`<h3>${HYGM.ym.replace("/","年")}月の振り返り</h3>
+    <div class="mini">記録表を見て、基準外や記録漏れがなかったか、あった場合に何を改善するかを残します（保健所の確認項目です）</div>
+    <label>結果</label><select id="rvRes"><option ${rv.result==="問題なし"?"selected":""}>問題なし</option><option ${rv.result==="問題あり"?"selected":""}>問題あり</option></select>
+    <label>内容・改善すること</label><textarea id="rvNote" style="min-height:120px" placeholder="例: 10/14 冷凍庫−12℃（扉の閉め忘れ）→ 扉にパッキン点検の張り紙。記録漏れ1日（10/20 客席）→ 退勤時の声かけを徹底">${esc(rv.note||"")}</textarea>
+    <div style="display:flex;gap:8px;margin-top:14px"><button class="btn sec" style="flex:1" onclick="closeOv()">キャンセル</button><button class="btn" style="flex:2" onclick="hygReviewSave()">保存</button></div>`);
+}
+async function hygReviewSave(){ const r = await api("admin.hyg_review_save", {ym:HYGM.ym, result:$("rvRes").value, note:$("rvNote").value.trim()}); if(!r.ok){ toast(r.error); return; } closeOv(); toast("振り返りを保存しました"); loadComm(); }
+function hygCsv(){ const h = HYGM; if(!h) return; const K=h.items.kitchen.map(x=>x[1]), H=h.items.hall.map(x=>x[1]);
+  const lines=[["日付","健康チェック","冷蔵庫℃","冷凍庫℃","冷蔵冷凍庫(冷蔵)℃","冷蔵冷凍庫(冷凍)℃",...K.map(x=>"厨房:"+x),...H.map(x=>"客席:"+x),"基準外の対応"].join(",")];
+  h.days.slice().reverse().forEach(d=>{ const t=d.temps||{}; lines.push([d.date, d.health.map(x=>x.name+(x.ok?"OK":"要確認")).join(" "), t.fridge??"", t.freezer??"", t.combo_r??"", t.combo_f??"", ...K.map(x=>d.kitchen==null?"":(d.kitchenItems.includes(x)?"○":"×")), ...H.map(x=>d.hall==null?"":(d.hallItems.includes(x)?"○":"×")), '"'+d.actions.join(" / ").replace(/"/g,'""')+'"'].join(",")); });
+  copyPlain(lines.join("\n"), "CSVをコピーしました"); }
+// 提出用（衛生管理計画＋月次記録表）。新しいタブで開き、印刷→PDF保存
+function hygPrint(){
+  const h = HYGM; if(!h){ toast("読み込み中です"); return; }
+  const w = window.open("", "_blank"); if(!w){ toast("ポップアップを許可してください"); return; }
+  const [Y,M] = h.ym.split("/").map(Number); const last = new Date(Y,M,0).getDate();
+  const closed = h.closed_dow.split(",").map(Number); const hol = h.holidays.split(",").map(x=>x.trim());
+  const by = {}; h.days.forEach(d=>by[d.date]=d);
+  const K = h.items.kitchen, HL = h.items.hall, YO=["日","月","火","水","木","金","土"];
+  const e = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const fill = (v, w) => v ? e(v) : `<span class="blank" style="width:${w||12}em"></span>`;
+  let body = "";
+  for (let d=1; d<=last; d++){
+    const ds = `${Y}/${String(M).padStart(2,"0")}/${String(d).padStart(2,"0")}`; const dw = new Date(Y,M-1,d).getDay(); const r = by[ds];
+    const isClosed = (closed.includes(dw) || hol.includes(ds)) && !r;
+    if (isClosed){ body += `<tr class="off"><td>${d}</td><td>${YO[dw]}</td><td colspan="${6+K.length+HL.length}">定休日</td><td></td></tr>`; continue; }
+    const t = (r&&r.temps)||{};
+    const tc = k => { const v=t[k]; if(v===undefined) return `<td></td>`; return `<td class="${v>TL[k][1]?"ng":""}">${v}</td>`; };
+    const hl = r ? (r.health.length ? `${r.health.filter(x=>x.ok).length}/${r.health.length}` : "") : "";
+    const mk = (arr, list, has) => list.map(x=>`<td>${has==null?"":(arr.includes(x[1])?"○":"<b class=ng>×</b>")}</td>`).join("");
+    const names = r ? [...new Set([...r.health.map(x=>x.name), r.kitchenBy, r.hallBy].filter(Boolean))].join("・") : "";
+    body += `<tr><td>${d}</td><td>${YO[dw]}</td><td>${hl}</td>${tc("fridge")}${tc("freezer")}${tc("combo_r")}${tc("combo_f")}${mk(r?r.kitchenItems:[],K,r?r.kitchen:null)}${mk(r?r.hallItems:[],HL,r?r.hall:null)}<td class="note">${r?e(r.actions.join(" / ")):""}</td><td class="nm">${e(names)}</td></tr>`;
+  }
+  const rv = h.review;
+  const html = `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>衛生管理計画・記録 ${h.ym}</title>
+<style>
+*{box-sizing:border-box} body{font-family:"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;color:#111;margin:0;background:#eee}
+.page{background:#fff;width:210mm;min-height:297mm;margin:10px auto;padding:12mm 12mm;page-break-after:always;overflow:hidden} .page:last-of-type{page-break-after:auto}
+.page.land{width:297mm;height:210mm;min-height:0;padding:7mm 8mm}
+h1{font-size:17px;margin:0 0 2px} h2{font-size:13px;margin:12px 0 4px;border-left:4px solid #2c4f39;padding-left:6px}
+.sub{font-size:10px;color:#555;margin-bottom:8px}
+table{width:100%;border-collapse:collapse;font-size:10px} th,td{border:1px solid #444;padding:3px 4px;vertical-align:top} th{background:#eef2ee;font-weight:bold}
+.meta td{font-size:11px;padding:5px} .meta th{width:22%;text-align:left}
+.blank{display:inline-block;border-bottom:1px solid #444;height:1em}
+.rec th,.rec td{text-align:center;padding:1px;font-size:8.5px;line-height:1.25} .rec td.note{text-align:left;font-size:8px;width:22%} .rec td.nm{font-size:8px;width:8%} .rec tr.off td{background:#f2f2f2;color:#888}
+.ng{color:#b00;font-weight:bold} .vt{writing-mode:vertical-rl;white-space:nowrap;height:4.2em;margin:0 auto}
+.foot{font-size:9px;color:#555;margin-top:6px} .sign td{height:26px;font-size:11px}
+.bar{position:sticky;top:0;background:#2c4f39;color:#fff;padding:8px 12px;font-size:13px;display:flex;gap:10px;align-items:center;justify-content:space-between}
+.bar button{background:#fff;color:#2c4f39;border:0;border-radius:6px;padding:6px 12px;font-weight:bold}
+@page{size:A4;margin:0} @page land{size:A4 landscape;margin:0} .page.land{page:land}
+@media print{body{background:#fff}.bar{display:none}.page{margin:0;box-shadow:none}}
+</style></head><body>
+<div class="bar"><span>印刷 → 「PDFに保存」で提出用PDFになります（計画書1枚＋記録表1枚）</span><button onclick="print()">印刷 / PDF</button></div>
+<div class="page">
+<h1>衛生管理計画（HACCPの考え方を取り入れた衛生管理）</h1>
+<div class="sub">小規模な一般飲食店事業者向けの手引書の様式を参考に作成</div>
+<table class="meta"><tr><th>店舗名</th><td>${fill(h.store.name,20)}</td></tr><tr><th>所在地</th><td>${fill(h.store.address,24)}</td></tr><tr><th>営業者</th><td>${fill(h.store.operator,10)}</td></tr><tr><th>営業許可番号（有効期限）</th><td>${fill(h.store.permit,14)}${h.store.permit_until?"（"+e(h.store.permit_until)+"まで）":""}</td></tr><tr><th>食品衛生責任者</th><td>${fill(h.store.manager,10)}</td></tr><tr><th>所轄保健所</th><td>${fill(h.store.office,24)}</td></tr><tr><th>作成日 / 見直し日</th><td>${Y}年${M}月　/　<span class="blank" style="width:8em"></span></td></tr></table>
+<h2>1. 一般衛生管理のポイント</h2>
+<table><tr><th style="width:15%">項目</th><th style="width:15%">いつ</th><th>どのように</th><th style="width:24%">問題があったとき</th><th style="width:13%">記録</th></tr>
+<tr><td>①原材料の受入の確認</td><td>納品時</td><td>外観・におい・包装の状態、表示（期限・保存方法）、冷蔵・冷凍品の温度を確認する</td><td>返品・交換する。使用しない</td><td>納品書に確認者が署名</td></tr>
+<tr><td>②冷蔵・冷凍庫の温度の確認</td><td>毎日（出勤時）</td><td>庫内温度計で確認する。冷蔵10℃以下、冷凍−15℃以下（冷蔵庫1台・冷凍庫1台・冷蔵冷凍庫1台）</td><td>原因（扉・詰め過ぎ・故障）を確認して対処し、再確認する。食材の状態を確認し、必要なら廃棄。対応を記録する</td><td>勤怠アプリ（出勤チェック）</td></tr>
+<tr><td>③交差汚染・二次汚染の防止</td><td>毎日</td><td>冷蔵庫内で生の肉・卵と調理済み品（ソース・茹で麺）を分け、容器・ラップで保管する。床に直接置かない</td><td>汚染の恐れのある食品は廃棄する。保管場所を見直す</td><td>勤怠アプリ（退勤・厨房）</td></tr>
+<tr><td>④器具等の洗浄・消毒・殺菌</td><td>毎日（使用後）</td><td>まな板・包丁・ボウル・トング等を洗剤で洗い、アルコール・熱湯等で消毒する。食器は洗浄・乾燥して収納する</td><td>汚れが残っていれば再度洗浄・消毒する</td><td>勤怠アプリ（退勤）</td></tr>
+<tr><td>⑤トイレの洗浄・消毒</td><td>毎日（営業後）</td><td>便座・ドアノブ・水洗レバー・手すりを洗剤で清掃し、消毒する</td><td>再度清掃・消毒する</td><td>勤怠アプリ（退勤・客席）</td></tr>
+<tr><td>⑥従業員の健康管理等</td><td>毎日（出勤時）</td><td>下痢・嘔吐・発熱等の症状、手指の傷の有無を確認する。服・髪・髭・爪・靴・エプロンの身だしなみを確認する</td><td>症状がある者は調理作業に従事させない。手指に傷がある場合は手袋を着用する</td><td>勤怠アプリ（出勤チェック）</td></tr>
+<tr><td>⑦手洗いの実施</td><td>作業前・トイレの後・生の食材を扱った後・盛付けの前</td><td>石けんで洗浄し、ペーパーで拭いて消毒する。手洗い場の石けん・ペーパーを切らさない</td><td>気づいた時点で直ちに洗い直す</td><td>勤怠アプリ（退勤）</td></tr>
+</table>
+<h2>2. 重要管理のポイント</h2>
+<table><tr><th style="width:17%">分類</th><th style="width:22%">メニュー</th><th>チェック方法</th><th style="width:22%">問題があったとき</th></tr>
+<tr><td>第1グループ<br>（非加熱のもの）</td><td>瓶ドリンク・瓶ビール（開栓して提供）</td><td>冷蔵庫で保管し、提供直前に開栓する</td><td>破損・異物があれば提供しない</td></tr>
+<tr><td>第2グループ<br>（加熱してすぐ提供）</td><td>目玉焼き、ハンバーグ、ミートコロッケ、ウィンナー</td><td>中心まで十分に加熱する（焼き色、肉汁が透明、卵白が固まっていることを目で確認）</td><td>加熱を延長する</td></tr>
+<tr><td>第3グループ<br>（加熱後冷却し再加熱）</td><td>ナポリタンソース（仕込み）、茹で麺（仕込み）、オリオン／ナシナシ</td><td>仕込み後は小分け・浅い容器で速やかに冷まし、冷蔵保存する。提供時はソースを沸騰するまで、麺を中まで温まるまで再加熱する</td><td>冷却が遅れたもの・保存期間を過ぎたものは廃棄する。再加熱が不十分なら加熱を延長する</td></tr>
+</table>
+<h2>3. 記録と振り返り</h2>
+<table><tr><td style="font-size:11px;line-height:1.6">・上記の確認は、出勤時・退勤時に勤怠アプリで毎日記録する（記録者・日時は自動で残る）。<br>・月に1回、記録表を確認し、問題の有無と改善点を記録する（記録表の下欄）。<br>・記録は1年間保存する。メニューや設備を変えた時は本計画を見直す。</td></tr></table>
+<div class="foot">${e(h.store.name)}　衛生管理計画</div>
+</div>
+<div class="page land">
+<h1>衛生管理記録表　${Y}年${M}月</h1>
+<div class="sub">${e(h.store.name)}　／　○＝実施　×＝未実施　空欄＝記録なし　／　温度の赤字＝基準外（冷蔵10℃超・冷凍−15℃超）</div>
+<table class="rec">
+<tr><th rowspan="2">日</th><th rowspan="2">曜</th><th rowspan="2">健康<br>OK/人</th><th colspan="4">庫内温度（℃）</th><th colspan="${K.length}">厨房（重要管理・一般衛生）</th><th colspan="${HL.length}">客席</th><th rowspan="2">特記事項（基準外の対応）</th><th rowspan="2">記録者</th></tr>
+<tr><th>冷蔵</th><th>冷凍</th><th>冷冷<br>蔵</th><th>冷冷<br>凍</th>${K.map(x=>`<th><div class="vt">${x[1]}</div></th>`).join("")}${HL.map(x=>`<th><div class="vt">${x[1]}</div></th>`).join("")}</tr>
+${body}
+</table>
+<table class="sign" style="margin-top:6px"><tr><th style="width:14%">月の振り返り</th><td style="width:12%">${rv?e(rv.result):"問題なし ・ 問題あり"}</td><th style="width:10%">内容</th><td>${rv?e(rv.note):""}</td><th style="width:8%">確認者</th><td style="width:12%">${rv?e(rv.by)+"　"+rv.at.slice(0,10):""}</td></tr></table>
+<div class="foot">各項目の内容は衛生管理計画（1枚目）のとおり。記録は勤怠アプリの出勤・退勤チェックから自動集計。</div>
+</div>
+</body></html>`;
+  w.document.open(); w.document.write(html); w.document.close();
+}
 function noticeEdit(id){
   const n = NOTICES.find(x=>x.notice_id===id) || {title:"",body:"",important:false};
   modal(`<h3>${id?"お知らせを編集":"新しいお知らせ"}</h3>
