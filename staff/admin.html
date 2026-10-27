@@ -432,7 +432,9 @@ async function loadShift(){ if(!$("pShift").dataset.loaded) $("pShift").innerHTM
   $("pShift").innerHTML = `<div class="mini">読み込み中…</div>`;
   const [s, w] = await Promise.all([api("admin.shifts_month",{month:SM}), api("admin.wishes_month",{month:SM})]);
   if(!s.ok){ showMsg(s.error); return; } SD = {s, w};
-  const staff = s.staff.filter(x=>x.status==="active"); const n = staff.length;
+  if (!window._noShift){ try{ const st = await api("admin.settings_get"); const row = (st.settings||[]).find(x=>x.key==="no_shift_ids"); window._noShift = new Set(String(row&&row.value||"").split(",").map(x=>x.trim()).filter(Boolean)); }catch(e){ window._noShift = new Set(); } }
+  // no_shift_ids（設定）のメンバーはシフト表に出さない（出勤対象外の管理者など）
+  const staff = s.staff.filter(x=>x.status==="active" && !window._noShift.has(x.staff_id)); const n = staff.length;
   const byDate = {}; s.shifts.forEach(x=>{ (byDate[x.date]=byDate[x.date]||{})[x.staff_id]=x; });
   const wishBy = {}; (w.wishes||[]).forEach(x=>{ (wishBy[x.date]=wishBy[x.date]||{})[x.staff_id]=x; });
   const drafts = s.shifts.filter(x=>x.status==="draft").length;
