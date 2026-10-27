@@ -379,14 +379,14 @@
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbzFNl4UM3fkoANru-agWmuOox-h3cS1yJmx4UZxpGFemEBnAUv45Gdp1VOvtCqOVUg/exec";
 
 
-// 初期メニュー(2026/9/19確定・10/28 ナシナシ ハーフ600→700円)。店内・持ち帰りとも同一メニュー・同一価格
+// 初期メニュー(2026/9/19確定)。ナシナシ ハーフの価格は分析シート「注文設定」の「ナシナシハーフ価格」で切り替える(下の syncPrices)。店内・持ち帰りとも同一メニュー・同一価格
 // 折箱は無料だが個数を計測するためボタンを残す(0円)
 // n=集計用の商品名 / l=ボタン表示(| の位置で改行)
 const ITEMS = [
   {n:"オリオン",          l:"オリオン",          p:1100},
   {n:"オリオン ハーフ",   l:"オリオンH",         p:900},
   {n:"ナシナシ",          l:"ナシナシ",          p:800},
-  {n:"ナシナシ ハーフ",   l:"ナシナシH",         p:700},
+  {n:"ナシナシ ハーフ",   l:"ナシナシH",         p:600},
   {n:"コカ・コーラ",      l:"コーラ",            p:300},
   {n:"コカ・コーラ ゼロ", l:"コーラ0",           p:300},
   {n:"ジンジャーエール",  l:"ジンジャー",        p:300},
@@ -406,6 +406,17 @@ const TG_ITEMS = ITEMS
   .concat(ITEMS.filter(m => m.disc || m.topping));
 const MENUS = { "店内": ITEMS, "持ち帰り": TG_ITEMS };
 const ALL_ITEMS = [...MENUS["店内"], ...MENUS["持ち帰り"].filter(m=>!MENUS["店内"].some(e=>e.n===m.n))];
+// ナシナシ ハーフの価格切替: 注文設定シートの「ナシナシハーフ価格」を予約サイトと同じAPIから読む。読めない時は前回値→600円
+function applyNashiHalf(p){ p = Number(p); if(!(p > 0)) return false; let ch = false; ALL_ITEMS.forEach(m=>{ if((m.n==="ナシナシ ハーフ"||m.n==="TGナシナシ ハーフ") && m.p!==p){ m.p = p; ch = true; } }); return ch; }
+try{ applyNashiHalf(localStorage.getItem("nashiHalfP")); }catch(e){}
+async function syncPrices(){
+  try{
+    const r = await fetch(`${SHEET_URL}?mode=slots&t=${Date.now()}`, {cache:"no-store"}); const j = await r.json();
+    const m = (j.menu||[]).find(x=>x.name==="TGナシナシ ハーフ"); if(!m || !(m.price>0)) return;
+    try{ localStorage.setItem("nashiHalfP", String(m.price)); }catch(e){}
+    if(applyNashiHalf(m.price)){ renderGrid(); refresh(); }
+  }catch(e){}
+}
 
 let items = [], tender = 0, mode = "店内", payMethod = "cash";
 const $ = id => document.getElementById(id);
@@ -469,6 +480,7 @@ function renderGrid(){
   });
 }
 renderGrid();
+syncPrices(); setInterval(syncPrices, 10*60*1000); document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) syncPrices(); });
 
 // ===== 備品チェック（ホール）：発注アプリと同じマスター（購入品目）を読み、3択で記録する =====
 let INV = { items: [], last: null, pick: {} };
