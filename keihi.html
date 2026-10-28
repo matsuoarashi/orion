@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>経費 | 洋食オリオン</title>
+<meta name="theme-color" content="#2c4f39">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="経費">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-keihi-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-keihi-192.png">
+<link rel="manifest" href="manifest-keihi.json">
+<style>
+:root{ --g:#2c4f39; --g-d:#1f3a2a; --g-l:#e4eee7; --cream:#faf6ee; --cream-d:#ece4d2; --ink:#2b2a26; --mute:#7a7265; --red:#a33c2e; --red-l:#f6e3df; --amber:#b7791f; --amber-l:#f7ebd3; --line:#d9d1bd; --r:14px; --sat:env(safe-area-inset-top); --sab:env(safe-area-inset-bottom); }
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic',sans-serif;background:var(--cream);color:var(--ink);font-size:15px;line-height:1.5}
+.app{position:fixed;top:0;bottom:0;left:0;right:0;display:flex;flex-direction:column;max-width:560px;margin:0 auto}
+.hide{display:none!important}
+button{font-family:inherit;cursor:pointer}
+.login{padding:calc(36px + var(--sat)) 22px 40px;overflow-y:auto}
+.login h1{font-size:14px;letter-spacing:6px;text-align:center;color:var(--g);margin:0 0 4px}
+.login .store{text-align:center;color:var(--mute);font-size:13px;margin-bottom:14px}
+.credo{display:flex;flex-direction:column;gap:3px;text-align:center;color:var(--g);font-size:14px;font-weight:bold;letter-spacing:1px;line-height:1.5;margin:0 0 26px;padding:12px 8px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+label{display:block;font-size:12px;color:var(--mute);margin:12px 0 6px}
+input,select,textarea{width:100%;padding:12px;border:2px solid var(--line);border-radius:12px;font-size:17px;background:#fff;font-family:inherit;color:var(--ink)}
+input[type=date]{min-height:50px}
+.btn{width:100%;padding:14px;border-radius:12px;border:0;background:var(--g);color:#fff;font-size:16px;font-weight:bold;letter-spacing:2px}
+.btn.sec{background:#fff;color:var(--g);border:2px solid var(--g)}
+.btn.sm{padding:9px 12px;font-size:13px;width:auto;letter-spacing:0}
+.btn.out{background:var(--red)}
+.btn:disabled{opacity:.5}
+header{background:var(--g);color:#fff;padding:calc(10px + var(--sat)) 14px 10px;display:flex;justify-content:space-between;align-items:center}
+header .t{font-size:11px;letter-spacing:4px;opacity:.85}header .n{font-size:16px;font-weight:bold}
+header button{background:rgba(255,255,255,.15);border:0;color:#fff;border-radius:8px;padding:6px 10px;font-size:12px}
+main{flex:1;overflow-y:auto;padding:12px 12px 24px;-webkit-overflow-scrolling:touch}
+nav{display:flex;background:#fff;border-top:1px solid var(--line);padding-bottom:var(--sab)}
+nav button{flex:1;border:0;background:none;padding:8px 2px 6px;font-size:11px;color:var(--mute);position:relative}
+nav button i{display:block;font-style:normal;font-size:18px;line-height:1.2}
+nav button.on{color:var(--g);font-weight:bold}
+nav .bd{position:absolute;top:4px;right:calc(50% - 20px);background:var(--red);color:#fff;font-size:10px;border-radius:999px;min-width:16px;height:16px;line-height:16px;padding:0 4px;text-align:center}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:12px}
+.card h2{font-size:12px;letter-spacing:2px;color:var(--g);margin:0 0 8px;display:flex;justify-content:space-between;align-items:center}
+.card h2 small{letter-spacing:0;color:var(--mute);font-weight:normal}
+.mini{font-size:12px;color:var(--mute)}
+.pill{display:inline-block;font-size:11px;border-radius:999px;padding:2px 8px;background:var(--g-l);color:var(--g);font-weight:bold}
+.pill.amber{background:var(--amber-l);color:var(--amber)}.pill.red{background:var(--red-l);color:var(--red)}
+.shot{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;width:100%;padding:26px 12px;border:2px dashed var(--g);border-radius:16px;background:#fff;color:var(--g);font-weight:bold;font-size:17px}
+.shot i{font-style:normal;font-size:34px;line-height:1}
+.shot small{font-weight:normal;font-size:12px;color:var(--mute)}
+.prev{display:flex;gap:10px;align-items:center;margin-bottom:6px}
+.prev img{width:76px;height:96px;object-fit:cover;border-radius:10px;border:1px solid var(--line);background:#eee}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{border:2px solid var(--line);background:#fff;border-radius:999px;padding:7px 12px;font-size:13px;font-weight:bold;color:var(--ink)}
+.chips button.on{background:var(--g);color:#fff;border-color:var(--g)}
+.seg{display:flex;background:var(--cream-d);border-radius:10px;padding:3px}
+.seg button{flex:1;border:0;background:none;padding:9px;border-radius:8px;font-size:14px;color:var(--mute);font-weight:bold}
+.seg button.on{background:#fff;color:var(--g);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.amt{font-size:26px;font-weight:bold;text-align:right;font-variant-numeric:tabular-nums}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line);width:100%;background:none;border-left:0;border-right:0;border-top:0;text-align:left;font-size:15px;color:var(--ink)}
+.row:last-child{border-bottom:0}
+.row .l{min-width:0;flex:1}.row .l b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.row .l small{display:block;font-size:11px;color:var(--mute)}
+.row .r{text-align:right;font-weight:bold;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sum{display:flex;justify-content:space-between;padding:4px 0;font-size:14px}.sum b{font-variant-numeric:tabular-nums}
+.sum.total{border-top:1px solid var(--line);margin-top:4px;padding-top:8px;font-size:16px}
+.mon{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:10px}
+.mon button{border:2px solid var(--line);background:#fff;border-radius:10px;width:44px;height:38px;font-size:16px;color:var(--g)}
+.mon b{font-size:17px;min-width:110px;text-align:center}
+.ovl{position:fixed;inset:0;background:rgba(20,30,20,.45);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+.sheet{background:var(--cream);width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:14px 16px calc(16px + var(--sab));max-height:92vh;overflow-y:auto}
+.sheet h3{margin:0 0 10px;font-size:16px;color:var(--g)}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 10px}
+.toast{position:fixed;left:50%;bottom:calc(70px + var(--sab));transform:translateX(-50%);background:var(--g-d);color:#fff;padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:30;white-space:nowrap}
+.toast.show{opacity:1}
+#msg:empty{display:none}#msg{background:var(--red-l);color:var(--red);padding:10px 12px;border-radius:10px;font-size:13px;margin-bottom:10px}
+.reading{display:flex;align-items:center;gap:8px;color:var(--g);font-size:13px;font-weight:bold}
+.spin{width:16px;height:16px;border:3px solid var(--g-l);border-top-color:var(--g);border-radius:50%;animation:sp 1s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
+.loading{text-align:center;color:var(--mute);padding:30px 0}
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="vLogin" class="login hide">
+    <h1>経 費</h1>
+    <div class="store">洋食オリオン｜レシート登録</div>
+    <div class="credo"><span>古いけれど、清潔。</span><span>下町だけれど、丁寧。</span><span>親しみやすいけれど、雑ではない。</span></div>
+    <div id="loginMsg"></div>
+    <label>名前</label><select id="staffSel"><option value="">読み込み中…</option></select>
+    <label>パスコード（勤怠アプリと同じ）</label>
+    <input type="password" inputmode="numeric" pattern="[0-9]*" id="passIn" placeholder="●●●●" autocomplete="off">
+    <div style="height:18px"></div>
+    <button class="btn" id="loginBtn" onclick="doLogin()">ログイン</button>
+    <p class="mini" style="text-align:center;margin-top:16px">勤怠アプリにログイン済みのスマホでは、そのまま入れます</p>
+  </div>
+  <div id="vApp" class="hide" style="display:flex;flex-direction:column;flex:1;min-height:0">
+    <header><div><div class="t">ORION 経費</div><div class="n" id="hName"></div></div><button onclick="logout()">ログアウト</button></header>
+    <main id="main">
+      <div id="msg"></div>
+      <div id="pAdd"></div>
+      <div id="pList" class="hide"></div>
+    </main>
+    <nav>
+      <button id="n_add" class="on" onclick="go('add')"><i>📷</i>登録</button>
+      <button id="n_list" onclick="go('list')"><i>☰</i>一覧<span class="bd hide" id="bdList"></span></button>
+    </nav>
+  </div>
+</div>
+<input type="file" id="fileIn" accept="image/*" capture="environment" class="hide" onchange="onPhoto(this)">
+<div id="ov"></div>
+<div class="toast" id="toast"></div>
+<script>
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbzFNl4UM3fkoANru-agWmuOox-h3cS1yJmx4UZxpGFemEBnAUv45Gdp1VOvtCqOVUg/exec";
+const STAFF_API = "https://script.google.com/macros/s/AKfycbwgGW6rXzAW2rHVicdoCMdHOT_E3egrXPsaEJerX-_brZr0mYF6Qo_tRorX8PgLc7c/exec";
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const yen = n => (Number(n)||0).toLocaleString()+"円";
+let TOKEN = localStorage.getItem("os-token") || "";
+let ME = null, ACCOUNTS = ["仕入高","消耗品費","修繕費","広告宣伝費","支払手数料","通信費","水道光熱費","交通費","雑費"], YM = "", LIST = [], PAGE = "add";
+let F = null; // 入力中のレシート
+const PAYS = ["アメックス","レジ現金","現金（立替）","PayPay","振込","未払い（納品書・掛け）"];
+// よく使う店：表記ゆれ → 店名・科目・支払元の初期値
+const VENDORS = [
+  [/トーホー|TOHO/i,"トーホー","仕入高","未払い（納品書・掛け）"],
+  [/カクヤス/,"カクヤス","仕入高","未払い（納品書・掛け）"],
+  [/業務スーパー|業務用スーパー/,"業務スーパー","仕入高","アメックス"],
+  [/ハナマサ/,"肉のハナマサ","仕入高","アメックス"],
+  [/シモジマ|SHIMOJIMA/i,"シモジマ","消耗品費","アメックス"],
+  [/コーナン|KOHNAN/i,"コーナン","消耗品費","アメックス"],
+  [/ウエルシア|WELCIA/i,"ウエルシア","消耗品費","アメックス"],
+  [/キャンドゥ|Can[\s★]?Do/i,"キャンドゥ","消耗品費","アメックス"],
+  [/ダイソー|DAISO/i,"ダイソー","消耗品費","アメックス"],
+  [/テンポス/,"テンポス","消耗品費","アメックス"],
+  [/マルゼン/,"マルゼン","修繕費","振込"],
+  [/ヨドバシ/,"ヨドバシカメラ","消耗品費","アメックス"],
+  [/Amazon|アマゾン/i,"Amazon","消耗品費","アメックス"],
+  [/セブン.?イレブン|7-ELEVEN/i,"セブン-イレブン","消耗品費","現金（立替）"],
+  [/ローソン|LAWSON/i,"ローソン","消耗品費","現金（立替）"],
+  [/ファミリーマート|FamilyMart/i,"ファミリーマート","消耗品費","現金（立替）"],
+  [/まいばすけっと/,"まいばすけっと","仕入高","現金（立替）"],
+];
+
+function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2400); }
+function showMsg(m){ $("msg").textContent = m||""; }
+function closeOv(){ $("ov").innerHTML=""; }
+function sheet(html){ $("ov").innerHTML = `<div class="ovl" onclick="if(event.target===this)closeOv()"><div class="sheet"><div class="grab"></div>${html}</div></div>`; }
+async function get(mode, params){ const q = Object.assign({mode, token:TOKEN, t:Date.now()}, params||{}); const u = SHEET_URL+"?"+Object.keys(q).map(k=>k+"="+encodeURIComponent(q[k])).join("&");
+  try{ const r = await fetch(u, {cache:"no-store"}); return await r.json(); }catch(e){ return {error:"通信エラー"}; } }
+async function post(type, body){ try{ const r = await fetch(SHEET_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(Object.assign({type, token:TOKEN}, body||{}))}); return await r.json(); }catch(e){ return {error:"通信エラー"}; } }
+function today(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function thisYM(){ return today().slice(0,7).replace("-","/"); }
+
+// ───── ログイン（勤怠アプリと同じ） ─────
+async function boot(){
+  const cands = [localStorage.getItem("os-token"), localStorage.getItem("os-admin-token")].filter(Boolean);
+  for (const tk of cands){ TOKEN = tk; const r = await get("rc_home"); if(!r.error){ enterApp(r); return; } if(r.error!=="auth"){ showLogin(r.error); return; } }
+  TOKEN = ""; showLogin();
+}
+async function showLogin(msg){
+  $("vLogin").classList.remove("hide"); $("vApp").classList.add("hide"); $("loginMsg").textContent = msg||"";
+  try{ const r = await (await fetch(STAFF_API+"?action=staff_list")).json(); $("staffSel").innerHTML = `<option value="">名前を選んでください</option>` + (r.staff||[]).map(s=>`<option value="${s.staff_id}">${esc(s.name)}</option>`).join(""); }catch(e){ $("loginMsg").textContent="通信できません"; }
+}
+async function doLogin(){
+  const id = $("staffSel").value, pass = $("passIn").value; if(!id){ $("loginMsg").textContent="名前を選んでください"; return; } if(!pass){ $("loginMsg").textContent="パスコードを入力してください"; return; }
+  $("loginBtn").disabled = true;
+  try{ const r = await (await fetch(STAFF_API,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({action:"login",staff_id:id,passcode:pass})})).json();
+    if(!r.ok){ $("loginMsg").textContent = r.error||"ログインできません"; return; }
+    TOKEN = r.token; localStorage.setItem("os-token", TOKEN); $("passIn").value=""; const h = await get("rc_home"); if(h.error){ $("loginMsg").textContent=h.error; return; } enterApp(h);
+  }catch(e){ $("loginMsg").textContent="通信できません"; } finally{ $("loginBtn").disabled=false; }
+}
+function logout(){ if(!confirm("ログアウトしますか？")) return; localStorage.removeItem("os-token"); TOKEN=""; showLogin(); }
+function enterApp(h){ $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); applyHome(h); go("add"); }
+function applyHome(h){ ME = h.me; YM = h.ym; LIST = h.list||[]; if(h.accounts) ACCOUNTS = h.accounts; $("hName").textContent = ME.name + (ME.role==="admin"?"（管理者）":"");
+  const n = h.unchecked||0; $("bdList").textContent = n; $("bdList").classList.toggle("hide", !n); }
+function go(p){ PAGE = p; $("pAdd").classList.toggle("hide", p!=="add"); $("pList").classList.toggle("hide", p!=="list"); $("n_add").classList.toggle("on", p==="add"); $("n_list").classList.toggle("on", p==="list"); showMsg(""); closeOv();
+  if(p==="add") renderAdd(); else renderList(); $("main").scrollTo(0,0); }
+
+// ───── 登録 ─────
+function blank(){ return { id:"", date:today(), vendor:"", amount:"", account:"消耗品費", pay:"アメックス", kind:"運用", memo:"", image:"", thumb:"", ocr:"", reading:false }; }
+function renderAdd(){
+  if(!F){
+    $("pAdd").innerHTML = `
+      <div class="card"><h2>レシート・納品書を登録</h2>
+        <button class="shot" onclick="$('fileIn').click()"><i>📷</i>撮影する／写真を選ぶ<small>日付・お店・金額を読み取って下に入れます</small></button>
+        <div style="height:10px"></div>
+        <button class="btn sec" onclick="F=blank();renderAdd()">写真なしで入力する</button>
+      </div>
+      <div class="card"><h2>使い方</h2><div class="mini">
+        ・お店の買い出し、トーホー・カクヤスの納品書、修理代の領収書などを登録します。<br>
+        ・読み取った内容は必ず目で確かめてから保存してください。<br>
+        ・登録した写真はドライブに保存されるので、紙のレシートは月ごとにまとめて保管でOKです。</div></div>`;
+    return;
+  }
+  $("pAdd").innerHTML = formHtml(F, false);
+}
+function formHtml(f, edit){
+  return `<div class="card"><h2>${edit?"登録内容を直す":"内容を確認して保存"}${f.thumb||f.url?"":""}</h2>
+    ${f.thumb ? `<div class="prev"><img src="${f.thumb}"><div class="mini">${f.reading?`<div class="reading"><span class="spin"></span>文字を読み取っています…</div>`:(f.ocr?"読み取りました。違うところは直してください":"読み取れませんでした。手で入れてください")}<br><button class="btn sm sec" style="margin-top:6px" onclick="$('fileIn').click()">撮り直す</button></div></div>` : (f.url?`<div class="mini"><a href="${esc(f.url)}" target="_blank">登録した写真を見る</a></div>`:"")}
+    <label>日付</label><input type="date" id="fDate" value="${esc(f.date)}" onchange="F.date=this.value">
+    <label>お店</label><input id="fVendor" list="vendList" value="${esc(f.vendor)}" placeholder="例：業務スーパー" oninput="F.vendor=this.value" onchange="vendorPick(this.value)">
+    <datalist id="vendList">${VENDORS.map(v=>`<option value="${v[1]}">`).join("")}</datalist>
+    <label>金額（税込）</label><input class="amt" type="number" inputmode="numeric" id="fAmt" value="${esc(f.amount)}" placeholder="0" oninput="F.amount=this.value">
+    <label>科目</label><div class="chips">${ACCOUNTS.map(a=>`<button class="${f.account===a?"on":""}" onclick="F.account='${a}';refreshForm()">${a}</button>`).join("")}</div>
+    <label>支払い方法</label><div class="chips">${PAYS.map(p=>`<button class="${f.pay===p?"on":""}" onclick="F.pay='${p}';refreshForm()">${p}</button>`).join("")}</div>
+    <label>区分</label><div class="seg"><button class="${f.kind==="運用"?"on":""}" onclick="F.kind='運用';refreshForm()">毎月の経費</button><button class="${f.kind==="初期"?"on":""}" onclick="F.kind='初期';refreshForm()">初期費用（設備・工事など）</button></div>
+    <label>メモ（何を買ったか）</label><input id="fMemo" value="${esc(f.memo)}" placeholder="例：卵・玉ねぎ" oninput="F.memo=this.value">
+    <div style="height:16px"></div>
+    <button class="btn" id="saveBtn" onclick="save()" ${f.reading?"disabled":""}>${edit?"直して保存":"保存する"}</button>
+    <div style="height:8px"></div>
+    ${edit ? `<div style="display:flex;gap:8px">${ME.role==="admin"&&f.status!=="確認済"?`<button class="btn sec" onclick="check('${f.id}')">確認済にする</button>`:""}<button class="btn out" onclick="del('${f.id}')">削除</button></div><div style="height:8px"></div><button class="btn sec" onclick="closeOv();F=null">閉じる</button>`
+           : `<button class="btn sec" onclick="F=null;renderAdd()">やめる</button>`}
+  </div>`;
+}
+function refreshForm(){ if(EDIT){ $("ov").querySelector(".sheet").innerHTML = `<div class="grab"></div>` + formHtml(F, true); } else renderAdd(); }
+let EDIT = false;
+function vendorPick(v){ F.vendor = v; const hit = VENDORS.find(x=>x[1]===v); if(hit){ F.account = hit[2]; F.pay = hit[3]; refreshForm(); } }
+
+async function onPhoto(inp){
+  const file = inp.files && inp.files[0]; inp.value = ""; if(!file) return;
+  if(!F || EDIT){ if(!EDIT) F = blank(); }
+  try{ const {b64, thumb} = await shrink(file); F.image = b64; F.thumb = thumb; }catch(e){ toast("写真を読み込めませんでした"); return; }
+  F.reading = true; refreshForm();
+  const r = await post("rc_ocr", {image: F.image}); F.reading = false;
+  if(r.error){ F.ocr = ""; refreshForm(); showMsg(r.error==="auth"?"ログインし直してください":"読み取りに失敗しました："+r.error); return; }
+  F.ocr = r.text||""; const p = parseReceipt(F.ocr);
+  if(p.date) F.date = p.date; if(p.amount) F.amount = p.amount; if(p.vendor) F.vendor = p.vendor; if(p.account) F.account = p.account; if(p.pay) F.pay = p.pay;
+  refreshForm();
+}
+// 写真を長辺1600pxのJPEGに縮める（通信量を減らすため）
+function shrink(file){ return new Promise((ok, ng)=>{ const url = URL.createObjectURL(file); const img = new Image();
+  img.onload = ()=>{ const M = 1600; let w = img.naturalWidth, h = img.naturalHeight; const s = Math.min(1, M/Math.max(w,h)); w = Math.round(w*s); h = Math.round(h*s);
+    const c = document.createElement("canvas"); c.width = w; c.height = h; c.getContext("2d").drawImage(img, 0, 0, w, h);
+    const data = c.toDataURL("image/jpeg", 0.82); const t = document.createElement("canvas"); const ts = 160/Math.max(w,h); t.width = Math.round(w*ts); t.height = Math.round(h*ts); t.getContext("2d").drawImage(c, 0, 0, t.width, t.height);
+    URL.revokeObjectURL(url); ok({ b64: data.split(",")[1], thumb: t.toDataURL("image/jpeg", 0.7) }); };
+  img.onerror = ng; img.src = url; }); }
+
+// ───── 読み取った文字から日付・金額・お店を推測 ─────
+function z2h(s){ return String(s||"").replace(/[０-９]/g, c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[，、]/g, ",").replace(/[．]/g, ".").replace(/[￥]/g, "¥").replace(/[／]/g, "/").replace(/[－ー−]/g, m=>m); }
+function parseReceipt(text){
+  const t = z2h(text); const lines = t.split(/\r?\n/).map(s=>s.trim()).filter(Boolean); const out = {};
+  // 日付
+  const now = new Date(); const ok = (y,m,d)=>{ const dt = new Date(y, m-1, d); const diff = (now - dt)/86400000; return m>=1 && m<=12 && d>=1 && d<=31 && diff > -2 && diff < 200; };
+  let m;
+  for (const s of lines){
+    if ((m = s.match(/(20\d{2})\s*[年\/\.\-]\s*(\d{1,2})\s*[月\/\.\-]\s*(\d{1,2})/)) && ok(+m[1],+m[2],+m[3])) { out.date = `${m[1]}-${String(m[2]).padStart(2,"0")}-${String(m[3]).padStart(2,"0")}`; break; }
+    if ((m = s.match(/令和\s*(\d{1,2})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})/)) && ok(2018+(+m[1]),+m[2],+m[3])) { out.date = `${2018+(+m[1])}-${String(m[2]).padStart(2,"0")}-${String(m[3]).padStart(2,"0")}`; break; }
+    if ((m = s.match(/(?:^|\D)(\d{2})[\/\.](\d{1,2})[\/\.](\d{1,2})(?:\D|$)/)) && ok(2000+(+m[1]),+m[2],+m[3])) { out.date = `20${m[1]}-${String(m[2]).padStart(2,"0")}-${String(m[3]).padStart(2,"0")}`; break; }
+  }
+  // 金額：合計・お買上げ・ご請求などの行を優先（お預り・お釣りは除く）
+  const num = s => { const ms = s.replace(/\s/g,"").match(/¥?\d{1,3}(?:,\d{3})+|¥?\d+/g)||[]; return ms.map(x=>Number(x.replace(/[¥,]/g,""))).filter(n=>n>0 && n<5000000); };
+  const KEY = /(合\s*計|^金\s*額|お?買\s*上|ご?請求|領収金額|お支払|支払金額|税込合計|総額|ご利用金額)/, NG = /(預|釣|おつり|お返し|ポイント|小計|対象|内税|消費税|税率|点数|点)/;
+  let cand = [];
+  lines.forEach((s,i)=>{ if (KEY.test(s) && !NG.test(s)){ let ns = num(s); if (!ns.length && lines[i+1]) ns = num(lines[i+1]); cand = cand.concat(ns); } });
+  if (!cand.length) lines.forEach(s=>{ if (/[¥円]/.test(s) && !NG.test(s)) cand = cand.concat(num(s)); });
+  if (cand.length) out.amount = Math.max.apply(null, cand);
+  // お店
+  const hit = VENDORS.find(v=>v[0].test(t));
+  if (hit){ out.vendor = hit[1]; out.account = hit[2]; out.pay = hit[3]; }
+  else { const first = lines.find(s=>!/^\d|領収|レシート|receipt|TEL|電話|〒|http|www|^\W+$/i.test(s) && s.length>=2 && s.length<=24); if (first) out.vendor = first; }
+  // 支払い方法（レシートに書いてあれば上書き）
+  if (/AMEX|アメックス|AMERICAN\s*EXPRESS/i.test(t)) out.pay = "アメックス";
+  else if (/PayPay/i.test(t)) out.pay = "PayPay";
+  else if (/クレジット|CREDIT|AMEX|VISA|MASTER|JCB/i.test(t)) out.pay = "アメックス";
+  else if (/お預り|お預かり|現\s*金/.test(t) && (!hit || hit[3]==="アメックス")) out.pay = "現金（立替）";
+  return out;
+}
+
+async function save(force){
+  const f = F; if(!f) return;
+  const body = { id:f.id||"", date:f.date, vendor:(f.vendor||"").trim(), amount:Number(f.amount)||0, account:f.account, pay:f.pay, kind:f.kind, memo:(f.memo||"").trim(), image:f.image||"", ocr:f.ocr||"", force:!!force };
+  if(!body.date){ toast("日付を入れてください"); return; } if(!body.vendor){ toast("お店を入れてください"); return; } if(!body.amount){ toast("金額を入れてください"); return; }
+  const b = document.getElementById("saveBtn"); if(b){ b.disabled = true; b.textContent = "保存しています…"; }
+  const r = await post("rc_save", body);
+  if(b){ b.disabled = false; b.textContent = EDIT?"直して保存":"保存する"; }
+  if(r.dupes){ sheet(`<h3>同じ日・同じ金額の経費があります</h3><div class="mini" style="margin-bottom:8px">カード明細から取り込んだものと同じ買い物かもしれません。二重に入れないよう確認してください。</div>
+      ${r.dupes.map(d=>`<div class="row"><div class="l"><b>${esc(d.vendor)}</b><small>${esc(d.pay)}</small></div></div>`).join("")}
+      <div style="height:12px"></div><button class="btn" onclick="closeOv();save(true)">別の買い物なので保存する</button><div style="height:8px"></div><button class="btn sec" onclick="closeOv()">やめる</button>`); return; }
+  if(r.error){ showMsg(r.error==="auth"?"ログインし直してください":r.error); return; }
+  toast(EDIT?"直しました":"保存しました"); F = null; const wasEdit = EDIT; EDIT = false; closeOv(); await reload(); if(!wasEdit) renderAdd();
+}
+async function reload(){ const r = await get("rc_home", {ym:YM}); if(!r.error){ applyHome(r); if(PAGE==="list") renderList(); } }
+
+// ───── 一覧 ─────
+function shiftYM(n){ const [y,m] = YM.split("/").map(Number); const d = new Date(y, m-1+n, 1); YM = d.getFullYear()+"/"+String(d.getMonth()+1).padStart(2,"0"); $("pList").innerHTML = `<div class="loading">読み込み中…</div>`; reload(); }
+function renderList(){
+  const L = LIST; const tot = L.reduce((a,x)=>a+x.amount,0); const byA = {}; L.forEach(x=>{ const k = x.kind==="初期" ? "初期費用" : x.account; byA[k]=(byA[k]||0)+x.amount; });
+  const unc = L.filter(x=>x.status==="未確認").length;
+  $("pList").innerHTML = `
+    <div class="mon"><button onclick="shiftYM(-1)">◀</button><b>${YM.replace("/","年")}月</b><button onclick="shiftYM(1)">▶</button></div>
+    <div class="card"><h2>${ME.role==="admin"?"登録の合計":"自分の登録"} <small>${L.length}件${unc?`・未確認${unc}件`:""}</small></h2>
+      ${Object.entries(byA).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="sum"><span>${esc(k)}</span><b>${yen(v)}</b></div>`).join("") || `<div class="mini">まだ登録がありません</div>`}
+      ${L.length?`<div class="sum total"><span>合計</span><b>${yen(tot)}</b></div>`:""}
+      ${ME.role==="admin"?`<div class="mini" style="margin-top:6px">カード明細から取り込んだ分などは含みません（分析シートの「経費」に全部入っています）</div>`:""}
+    </div>
+    <div class="card"><h2>明細</h2>${L.map((x,i)=>`<button class="row" onclick="openItem(${i})"><div class="l"><b>${esc(x.vendor)}${x.memo?` <span class="mini">${esc(x.memo)}</span>`:""}</b><small>${x.date.slice(5).replace("/","/")}・${esc(x.kind==="初期"?"初期費用":x.account)}・${esc(x.pay)}${ME.role==="admin"?"・"+esc(x.by):""}</small></div><div class="r">${yen(x.amount)}<br>${x.status==="未確認"?`<span class="pill amber">未確認</span>`:`<span class="pill">確認済</span>`}</div></button>`).join("") || `<div class="mini">この月の登録はありません</div>`}</div>`;
+}
+function openItem(i){ const x = LIST[i]; EDIT = true; F = { id:x.id, date:x.date.replace(/\//g,"-"), vendor:x.vendor, amount:x.amount, account:x.account, pay:x.pay, kind:x.kind, memo:x.memo, url:x.url, status:x.status, image:"", thumb:"", ocr:"", reading:false };
+  sheet(formHtml(F, true)); }
+async function del(id){ if(!confirm("この登録を削除しますか？（経費シートからも消えます）")) return; const r = await post("rc_delete", {id}); if(r.error){ toast(r.error); return; } toast("削除しました"); EDIT=false; F=null; closeOv(); reload(); }
+async function check(id){ const r = await post("rc_check", {id}); if(r.error){ toast(r.error); return; } toast("確認済にしました"); EDIT=false; F=null; closeOv(); reload(); }
+
+boot();
+</script>
+</body>
+</html>
