@@ -1,5 +1,5 @@
 // ===== 経費（レシート登録）: keihi.html 用 =====
-// 使い方（レジ側GASに追記済み）:
+// 使い方（レジ側GASに追記済み・「サービス」でDrive API v3 を追加しておく）:
 //   doPost の先頭付近に   var rr = handleRcPost(d); if (rr) return rr;
 //   doGet  の先頭に       if (e && e.parameter && /^rc_/.test(String(e.parameter.mode||""))) return handleRcGet(e);
 // 認証: 在庫・発注と同じ（ORION STAFF のログイントークン）。登録は全員、修正・削除は本人か管理者。
@@ -24,19 +24,13 @@ function rcFolder_(ym){
 
 // 画像（base64 JPEG）を受け取り、Googleドキュメント変換のOCRで文字を読む
 function rcOcr_(b64){
-  var bytes = Utilities.base64Decode(b64); var token = ScriptApp.getOAuthToken(); var bd = "rcb" + Date.now();
-  var meta = JSON.stringify({ name: "ocr_tmp_" + Date.now(), mimeType: "application/vnd.google-apps.document" });
-  var head = "--" + bd + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + meta + "\r\n--" + bd + "\r\nContent-Type: image/jpeg\r\n\r\n";
-  var payload = Utilities.newBlob(head).getBytes().concat(bytes).concat(Utilities.newBlob("\r\n--" + bd + "--").getBytes());
-  var up = UrlFetchApp.fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&ocrLanguage=ja&fields=id", {
-    method: "post", contentType: "multipart/related; boundary=" + bd, payload: payload, headers: { Authorization: "Bearer " + token }, muteHttpExceptions: true });
-  if (up.getResponseCode() >= 300) throw new Error("OCRに失敗しました（" + up.getResponseCode() + "）");
-  var id = JSON.parse(up.getContentText()).id; var text = "";
-  try {
-    var ex = UrlFetchApp.fetch("https://www.googleapis.com/drive/v3/files/" + id + "/export?mimeType=text/plain", { headers: { Authorization: "Bearer " + token }, muteHttpExceptions: true });
-    text = ex.getContentText("UTF-8");
-  } finally { try { DriveApp.getFileById(id).setTrashed(true); } catch(e){} }
-  return text.replace(/﻿/g, "");
+  // Drive拡張サービス（v3）でGoogleドキュメントに変換すると、画像の文字をOCRしてくれる
+  var blob = Utilities.newBlob(Utilities.base64Decode(b64), "image/jpeg", "ocr_tmp_" + Date.now() + ".jpg");
+  var f = Drive.Files.create({ name: "ocr_tmp_" + Date.now(), mimeType: "application/vnd.google-apps.document" }, blob, { ocrLanguage: "ja", fields: "id" });
+  var text = "";
+  try { text = DocumentApp.openById(f.id).getBody().getText(); }
+  finally { try { Drive.Files.remove(f.id); } catch(e1){ try { DriveApp.getFileById(f.id).setTrashed(true); } catch(e2){} } }
+  return String(text || "").replace(/\uFEFF/g, "");
 }
 
 function handleRcGet(e){
@@ -141,4 +135,4 @@ function rcCheck_(d, me){
 }
 
 // 初回だけエディタから実行して、ドライブとURL取得の権限を承認する
-function rcAuthorize(){ DriveApp.getRootFolder(); UrlFetchApp.fetch("https://www.googleapis.com/drive/v3/about?fields=user", { headers: { Authorization: "Bearer " + ScriptApp.getOAuthToken() } }); Logger.log("ok"); }
+function rcAuthorize(){ DriveApp.getRootFolder(); var d = DocumentApp.create("ocr_check_" + Date.now()); Drive.Files.remove(d.getId()); Logger.log("ok"); }
