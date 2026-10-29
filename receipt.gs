@@ -1,6 +1,5 @@
 // ===== 経費（レシート登録）: keihi.html 用 =====
 // 使い方（レジ側GASに追記済み・「サービス」でDrive API v3 を追加しておく）:
-// 2026/10/29: 請求書のPDF・写真ファイルにも対応（OCR・保存）、一覧に未払い合計、既存経費の取り込み rcBackfill20261029
 //   doPost の先頭付近に   var rr = handleRcPost(d); if (rr) return rr;
 //   doGet  の先頭に       if (e && e.parameter && /^rc_/.test(String(e.parameter.mode||""))) return handleRcGet(e);
 // 認証: 在庫・発注と同じ（ORION STAFF のログイントークン）。登録は全員、修正・削除は本人か管理者。
@@ -24,12 +23,10 @@ function rcFolder_(ym){
 }
 
 // 画像（base64 JPEG）またはPDFを受け取り、Googleドキュメント変換のOCRで文字を読む
-var RC_MIMES = { "image/jpeg":"jpg", "application/pdf":"pdf" };
-function rcMime_(m){ return RC_MIMES[String(m||"")] ? String(m) : "image/jpeg"; }
 function rcOcr_(b64, mime){
   // Drive拡張サービス（v3）でGoogleドキュメントに変換すると、画像・PDFの文字をOCRしてくれる
-  mime = rcMime_(mime);
-  var blob = Utilities.newBlob(Utilities.base64Decode(b64), mime, "ocr_tmp_" + Date.now() + "." + RC_MIMES[mime]);
+  mime = (mime === "application/pdf") ? "application/pdf" : "image/jpeg";
+  var blob = Utilities.newBlob(Utilities.base64Decode(b64), mime, "ocr_tmp_" + Date.now() + (mime === "application/pdf" ? ".pdf" : ".jpg"));
   var f = Drive.Files.create({ name: "ocr_tmp_" + Date.now(), mimeType: "application/vnd.google-apps.document" }, blob, { ocrLanguage: "ja", fields: "id" });
   var text = "";
   try { text = DocumentApp.openById(f.id).getBody().getText(); }
@@ -47,9 +44,7 @@ function handleRcGet(e){
       var list = all.filter(function(x){ return x.date.slice(0,7) === ym; });
       if (me.role !== "admin") list = list.filter(function(x){ return x.by === me.name; });
       list.sort(function(a,b){ return a.date < b.date ? 1 : a.date > b.date ? -1 : (a.at < b.at ? 1 : -1); });
-      var unpaid = all.filter(function(x){ return x.pay === "未払い（納品書・掛け）" && (me.role === "admin" || x.by === me.name); });
-      res = { me: me, ym: ym, list: list, accounts: RC_ACCOUNTS, unchecked: me.role === "admin" ? all.filter(function(x){ return x.status === "未確認"; }).length : 0,
-        unpaid: { total: unpaid.reduce(function(a,x){ return a + x.amount; }, 0), count: unpaid.length } };
+      res = { me: me, ym: ym, list: list, accounts: RC_ACCOUNTS, unchecked: me.role === "admin" ? all.filter(function(x){ return x.status === "未確認"; }).length : 0 };
     } else res = { error: "mode" };
   } catch(err){ res = { error: String(err) }; }
   return rcOut_(res);
@@ -60,7 +55,7 @@ function handleRcPost(d){
   var res;
   try {
     var me = invAuth_(d); if (!me || me.role === "store") return rcOut_({ error: "auth" });
-    if (d.type === "rc_ocr"){ return rcOut_({ ok: true, text: rcOcr_(String(d.image || ""), d.mime) }); } // ロック不要
+    if (d.type === "rc_ocr"){ return rcOut_({ ok: true, text: rcOcr_(String(d.image || ""), String(d.mime || "")) }); } // ロック不要
     var lock = LockService.getScriptLock(); lock.waitLock(15000);
     try {
       if (d.type === "rc_save") res = rcSave_(d, me);
@@ -100,9 +95,8 @@ function rcSave_(d, me){
   // 画像の保存（新規 or 差し替え）
   var url = cur ? String(cur["画像URL"] || "") : "", fid = cur ? String(cur.file_id || "") : "";
   if (d.image){
-    var mime = rcMime_(d.mime); var bytes = Utilities.base64Decode(String(d.image));
-    if (bytes.length > 8 * 1024 * 1024) return { error: "ファイルが大きすぎます（8MBまで）" };
-    var blob = Utilities.newBlob(bytes, mime, date.replace(/\//g, "") + "_" + vendor.replace(/[\\\/:*?"<>|]/g, "") + "_" + amount + "." + RC_MIMES[mime]);
+    var isPdf = String(d.mime || "") === "application/pdf";
+    var blob = Utilities.newBlob(Utilities.base64Decode(String(d.image)), isPdf ? "application/pdf" : "image/jpeg", date.replace(/\//g, "") + "_" + vendor.replace(/[\\\/:*?"<>|]/g, "") + "_" + amount + (isPdf ? ".pdf" : ".jpg"));
     var f = rcFolder_(date.slice(0, 7).replace("/", "-")).createFile(blob); url = f.getUrl(); fid = f.getId();
   }
   if (!id) id = "RCPT-" + date.replace(/\//g, "") + "-" + Utilities.getUuid().replace(/-/g, "").slice(0, 6);
@@ -145,32 +139,22 @@ function rcCheck_(d, me){
 // 初回だけエディタから実行して、ドライブとURL取得の権限を承認する
 function rcAuthorize(){ DriveApp.getRootFolder(); var d = DocumentApp.create("ocr_check_" + Date.now()); Drive.Files.remove(d.getId()); Logger.log("ok"); }
 
-// ───────── 2026/10/29 既存の経費（ChatGPT引継ぎ・アメックス明細・開業費の実額）を「レシート」シートにも登録して、経費アプリの一覧に出す
-// IDはそのまま使うので、経費シート・開業費シートとの対応はくずれない。何度実行しても重複しない。エディタから1回実行
+// ───────── 2026/10/29 既存の経費（ChatGPT引継ぎ・アメックス明細・開業費の実額）を「レシート」シートにも登録して、経費アプリの一覧に出す。再実行しても重複しない
 function rcBackfill20261029(){
   var ss = SpreadsheetApp.getActiveSpreadsheet(); var sh = rcSheet_(); var have = {}; invRows_(sh).forEach(function(r){ have[String(r.receipt_id)] = true; });
-  var res = { exp:0, ini:0, skip:0 }; var now = invNow_(); var add = [];
-  var hdr = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(String);
-  var push = function(o){ add.push(hdr.map(function(h){ return o[h] !== undefined ? o[h] : ""; })); };
+  var res = { exp:0, ini:0, skip:0 }; var now = invNow_();
   var esh = ss.getSheetByName("経費"); var n = esh.getLastRow();
-  if (n > 1) esh.getRange(2, 1, n - 1, 7).getValues().forEach(function(r, i){
-    var id = String(r[6] || ""); if (!/^(ORION-EXP-|AMEX-)/.test(id)) return; if (have[id]){ res.skip++; return; }
-    var desc = String(r[4] || "").trim(); var vendor = desc.split(/\s+/)[0] || "（不明）"; var memo = desc.slice(vendor.length).trim();
-    var pay = String(r[3]); if (pay === "未確認（納品書）"){ pay = "未払い（納品書・掛け）"; esh.getRange(i + 2, 4).setValue(pay); res.unpaid = (res.unpaid || 0) + 1; } // 納品書の掛け払いはアプリの「未払い」に揃える
-    push({ receipt_id:id, "登録日時":now, "登録者":"松尾", "日付":"'" + dateKey_(r[0]), "店名":vendor, "金額":Number(r[2]) || 0, "科目":String(r[1]), "支払元":pay, "区分":"運用", "摘要":memo,
-      "画像URL":"", file_id:"", "OCR":"", "状態":"確認済", "確認者":"松尾", "確認日時":now, "更新日時":now }); have[id] = true; res.exp++;
+  if (n > 1) esh.getRange(2,1,n-1,7).getValues().forEach(function(r){
+    var id = String(r[6]||""); if (!/^(ORION-EXP-|AMEX-)/.test(id)) return; if (have[id]) { res.skip++; return; }
+    var desc = String(r[4]||""); var vendor = desc.split(" ")[0]; var memo = desc.slice(vendor.length).trim();
+    invAppend_(sh, { receipt_id:id, "登録日時":now, "登録者":"松尾", "日付":"'"+dateKey_(r[0]), "店名":vendor, "金額":Number(r[2])||0, "科目":String(r[1]), "支払元":String(r[3]), "区分":"運用", "摘要":memo, "画像URL":"", file_id:"", "OCR":"", "状態":"確認済", "確認者":"松尾", "確認日時":now, "更新日時":now }); have[id]=true; res.exp++;
   });
-  var ish = ss.getSheetByName("開業費"); var m = ish ? ish.getLastRow() : 0;
-  if (m > 1) ish.getRange(2, 1, m - 1, 8).getValues().forEach(function(r){
-    var mm = String(r[7] || "").match(/id:([A-Za-z0-9\-]+)/); if (!mm) return; var id = mm[1]; if (have[id]){ res.skip++; return; }
-    if (!r[0] || !(Number(r[3]) > 0)){ res.noDate = (res.noDate || []).concat([String(r[1])]); return; } // 日付のない概算行は入れない
-    var desc = String(r[1] || "").trim(); var vendor, memo; var pm = desc.match(/^([^（\s]+)（([^）\s]+)/);
-    if (pm){ vendor = pm[2]; memo = (pm[1] + " " + desc.slice(pm[0].length).trim()).replace(/[）\s]+$/, "").trim(); } // 例: 食器（ニイミ洋食器店 120枚） → 店名=ニイミ洋食器店
-    else { vendor = desc.split(/\s+/)[0] || "（不明）"; memo = desc.slice(vendor.length).trim(); }
-    var pay = (String(r[7]).match(/支払元:\s*([^）)]+)/) || [])[1] || (String(r[6]).indexOf("アメックス") >= 0 ? "アメックス" : "");
-    push({ receipt_id:id, "登録日時":now, "登録者":"松尾", "日付":"'" + dateKey_(r[0]), "店名":vendor, "金額":Number(r[3]) || 0, "科目":String(r[2]), "支払元":pay, "区分":"初期", "摘要":memo,
-      "画像URL":"", file_id:"", "OCR":"", "状態":String(r[5]) === "概算" ? "未確認" : "確認済", "確認者":"松尾", "確認日時":now, "更新日時":now }); have[id] = true; res.ini++;
+  var ish = ss.getSheetByName("開業費"); var m = ish.getLastRow();
+  if (m > 1) ish.getRange(2,1,m-1,8).getValues().forEach(function(r){
+    var mm = String(r[7]||"").match(/id:([A-Za-z0-9\-]+)/); if (!mm) return; var id = mm[1]; if (have[id]) { res.skip++; return; }
+    var desc = String(r[1]||""); var vendor = desc.replace(/[（(].*$/, "").split(" ")[0]; var memo = desc.slice(vendor.length).trim();
+    var pay = (String(r[7]).match(/支払元:\s*([^）)]+)/)||[])[1] || (String(r[6]).indexOf("アメックス")>=0 ? "アメックス" : "");
+    invAppend_(sh, { receipt_id:id, "登録日時":now, "登録者":"松尾", "日付":"'"+dateKey_(r[0]), "店名":vendor, "金額":Number(r[3])||0, "科目":String(r[2]), "支払元":pay, "区分":"初期", "摘要":memo, "画像URL":"", file_id:"", "OCR":"", "状態":String(r[5])==="概算"?"未確認":"確認済", "確認者":"松尾", "確認日時":now, "更新日時":now }); have[id]=true; res.ini++;
   });
-  if (add.length) sh.getRange(sh.getLastRow() + 1, 1, add.length, hdr.length).setValues(add);
   Logger.log(JSON.stringify(res)); return res;
 }
