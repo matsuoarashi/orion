@@ -560,10 +560,13 @@ function renderPnl(){
   const ft = p.fixed.reduce((a,x)=>a+x.amount,0);
   $("pnlFixed").innerHTML = p.fixed.map(x=>`<div class="pl"><span>${x.name}</span><b>${x.amount.toLocaleString()}円</b></div>`).join("") + `<div class="pl total"><span>合計</span><b>${ft.toLocaleString()}円</b></div>`;
   // 経費
-  const ex = p.expenses.filter(e=>e.date.slice(0,7)===curKey && !e.fixed && e.acct!=="仕入高").sort((a,b)=>a.date<b.date?1:-1);
-  const buyM = p.expenses.filter(e=>e.date.slice(0,7)===curKey && e.acct==="仕入高").reduce((a,e)=>a+e.amount,0);
+  const openD = (DATA.openDate||"2026/10/13");
+  const exAll = p.expenses.filter(e=>e.date.slice(0,7)===curKey && !e.fixed && e.acct!=="仕入高");
+  const ex = exAll.filter(e=>e.date>=openD).sort((a,b)=>a.date<b.date?1:-1);
+  const preM = exAll.filter(e=>e.date<openD).reduce((a,e)=>a+e.amount,0) + p.expenses.filter(e=>e.date.slice(0,7)===curKey && e.acct==="仕入高" && e.date<openD).reduce((a,e)=>a+e.amount,0);
+  const buyM = p.expenses.filter(e=>e.date.slice(0,7)===curKey && e.acct==="仕入高" && e.date>=openD).reduce((a,e)=>a+e.amount,0);
   const byAcct = {}; ex.forEach(e=>{ byAcct[e.acct]=(byAcct[e.acct]||0)+e.amount; });
-  $("pnlExp").innerHTML = (Object.keys(byAcct).length ? Object.entries(byAcct).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="pl"><span>${k}</span><b>${v.toLocaleString()}円</b></div>`).join("") + `<div class="pl total"><span>合計（仕入れ除く）</span><b>${ex.reduce((a,e)=>a+e.amount,0).toLocaleString()}円</b></div>` + (buyM?`<div class="pl" style="color:#6b5a40"><span>参考：仕入高（原価側で計上）</span><b>${buyM.toLocaleString()}円</b></div>`:"") : "<div class='sub'>まだ経費の登録がありません（分析シートの「経費」に入力）</div>");
+  $("pnlExp").innerHTML = (Object.keys(byAcct).length ? Object.entries(byAcct).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="pl"><span>${k}</span><b>${v.toLocaleString()}円</b></div>`).join("") + `<div class="pl total"><span>合計（仕入れ除く）</span><b>${ex.reduce((a,e)=>a+e.amount,0).toLocaleString()}円</b></div>` + (buyM?`<div class="pl" style="color:#6b5a40"><span>参考：仕入高（原価側で計上）</span><b>${buyM.toLocaleString()}円</b></div>`:"") + (preM?`<div class="pl" style="color:#6b5a40"><span>参考：開業前の仕入・消耗品（初期費用側）</span><b>${preM.toLocaleString()}円</b></div>`:"") : "<div class='sub'>まだ経費の登録がありません（分析シートの「経費」に入力）</div>");
   // 月比較
   $("pnlMonths").innerHTML = "<tr><th>月</th><th>売上</th><th>原価率</th><th>人件費</th><th>固定費</th><th>営業利益</th><th>利益率</th></tr>" + (hist.map(m=>`<tr><td>${m.key}</td><td>${m.sales.toLocaleString()}</td><td>${pct(m.costRate)}</td><td>${m.labor.toLocaleString()}</td><td>${m.fixed.toLocaleString()}</td><td>${signed(m.profit)}</td><td>${pct(m.margin)}</td></tr>`).join("") || "<tr><td colspan='7'>記録なし</td></tr>");
   renderInit(p, hist, fc);
