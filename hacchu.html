@@ -124,7 +124,7 @@ const STAFF_API = "https://script.google.com/macros/s/AKfycbwgGW6rXzAW2rHVicdoCM
 const $ = id => document.getElementById(id);
 const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let TOKEN = localStorage.getItem("os-token") || "";
-let HOME = null, ME = null, MASTER = [], CHEF = [], PAGE = "home", OWNER = "シェフ";
+let HOME = null, ME = null, MASTER = [], CHEF = [], PAGE = "home", OWNER = "シェフ", PRICES = [], MQ = "";
 function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2400); }
 function showMsg(m){ $("msg").textContent = m||""; }
 function closeOv(){ $("ov").innerHTML=""; }
@@ -154,9 +154,9 @@ async function doLogin(){
     TOKEN = r.token; localStorage.setItem("os-token", TOKEN); $("passIn").value=""; const h = await get("inv_home"); if(h.error){ $("loginMsg").textContent=h.error; return; } enterApp(h);
   }catch(e){ $("loginMsg").textContent="通信できません"; } finally{ $("loginBtn").disabled=false; }
 }
-function enterApp(h){ $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); applyHome(h); go("home"); }
+function enterApp(h){ $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); applyHome(h); go("home"); loadPrices().then(()=>{ if(PAGE==="master") renderMaster(); }); }
 function go(p){ PAGE = p; ["home","stock","order","report","master"].forEach(x=>{ $("p"+x[0].toUpperCase()+x.slice(1)).classList.toggle("hide", x!==p); $("n_"+x).classList.toggle("on", x===p); }); showMsg(""); closeOv();
-  if(p==="home") renderHome(); if(p==="stock") renderStock(); if(p==="order") renderOrder(); if(p==="report") renderReport(); if(p==="master") renderMaster(); $("main").scrollTo(0,0); }
+  if(p==="home") renderHome(); if(p==="stock") renderStock(); if(p==="order") renderOrder(); if(p==="report") renderReport(); if(p==="master"){ renderMaster(); if(!PRICES.length) loadPrices().then(renderMaster); } $("main").scrollTo(0,0); }
 async function loadHome(reload){ const r = await get("inv_home"); if(r.error){ if(r.error==="auth"){ TOKEN=""; localStorage.removeItem("os-token"); showLogin("ログインし直してください"); } else showMsg(r.error); return; } applyHome(r); if(reload) toast("更新しました"); go(PAGE); }
 function applyHome(h){ HOME = h; ME = h.me; MASTER = h.items||[]; CHEF = h.chefNames||[]; $("hName").textContent = ME.name + (ME.role==="admin"?"（管理者）":""); OWNER = CHEF.includes(ME.name) ? "シェフ" : (ME.role==="admin" ? "シェフ" : "ホール");
   const nO = (h.suggest||[]).length; $("bdOrder").textContent = nO; $("bdOrder").classList.toggle("hide", !nO);
@@ -276,12 +276,56 @@ async function reportHistory(){ const r = await get("inv_reports"); if(r.error){
 
 // ───── 品目（マスター） ─────
 const MFIELDS = [["品目","品目名"],["区分","区分（食材/飲料/資材/消耗品/調味料/備品/仕込）"],["仕入先","仕入先"],["購入方法","購入方法"],["規格(入数など)","規格・入数"],["仕入単価(税込)","仕入単価（税込）"],["発注単位","発注単位（箱・袋・ケース）"],["入力単位","入力単位（個・袋・kg）"],["担当","担当（シェフ/ホール）"],["管理頻度","管理頻度（毎日/週次/必要時）"],["最低在庫","最低在庫（数字）"],["発注方式","発注方式（数量提案/最低在庫/定期/手動/台帳）"],["配送・納期","配送・納期"],["用途(商品)","用途"],["備考","備考"]];
+const yen1 = n => (n===null||n===undefined||n==="") ? "" : (Math.round(Number(n)*10)/10).toLocaleString()+"円";
+function pricesOf(name){ return PRICES.filter(p=>p.item===name); }
+function bestPrice(name){ const ps = pricesOf(name).filter(p=>p.per!==null); if(!ps.length) return null; const base = ps[0].base; const same = ps.filter(p=>p.base===base); return same.sort((a,b)=>a.per-b.per)[0]; }
+async function loadPrices(){ const r = await get("inv_prices"); if(!r.error) PRICES = r.prices||[]; }
 function renderMaster(){
-  const groups = {}; MASTER.forEach(it=>{ (groups[it.owner||"未設定"]=groups[it.owner||"未設定"]||[]).push(it); });
-  $("pMaster").innerHTML = `<div class="mini" style="margin:0 4px 8px">${MASTER.length}品目。${ME.role==="admin"?"タップで編集。空欄（規格・単価など）は分かった時に埋めてください。":"編集は管理者のみ。"}</div>
-    ${ME.role==="admin"?`<button class="btn sec" style="margin-bottom:10px" onclick="editItem(null)">＋ 品目を追加</button>`:""}
-    ${Object.keys(groups).map(ow=>`<div class="sec">${esc(ow)}</div><div class="card">${groups[ow].map(it=>`<div class="row" ${ME.role==="admin"?`onclick="editItem('${it.id}')" style="cursor:pointer"`:""}><span class="l">${esc(it.name)}<small>${esc(it.supplier||"仕入先未設定")}・${esc(it.freq)}${it.min!==null?"・最低 "+it.min+esc(it.unit):""}${it.spec?"・"+esc(it.spec):""}${it.price?"・"+it.price.toLocaleString()+"円":""}</small></span><b>${it.stock===null?"—":it.stock+esc(it.unit)}</b></div>`).join("")}</div>`).join("")}`;
+  const q = MQ.trim();
+  const list = q ? MASTER.filter(it=>(it.name+it.supplier+it.use+it.spec).toLowerCase().includes(q.toLowerCase())) : MASTER;
+  // マスターに無いが価格表にある品目（ベーコン・バターなど）も検索で出す
+  const extra = q ? [...new Set(PRICES.map(p=>p.item))].filter(n=>!MASTER.some(it=>it.name===n) && n.toLowerCase().includes(q.toLowerCase())) : [];
+  const groups = {}; list.forEach(it=>{ (groups[it.owner||"未設定"]=groups[it.owner||"未設定"]||[]).push(it); });
+  $("pMaster").innerHTML = `
+    <input id="mq" placeholder="品目・仕入先で検索（例：デミ、ハナマサ）" value="${esc(MQ)}" oninput="MQ=this.value;renderMaster();$('mq').focus();$('mq').setSelectionRange(MQ.length,MQ.length)" style="margin-bottom:10px">
+    <div class="mini" style="margin:0 4px 8px">${MASTER.length}品目・価格${PRICES.length}件。タップで仕入先ごとの価格を見られます。${ME.role==="admin"?"":"価格の追加・編集は管理者のみ。"}</div>
+    ${ME.role==="admin"&&!q?`<button class="btn sec" style="margin-bottom:10px" onclick="editItem(null)">＋ 品目を追加</button>`:""}
+    ${Object.keys(groups).map(ow=>`<div class="sec">${esc(ow)}</div><div class="card">${groups[ow].map(it=>{ const bp = bestPrice(it.name); const n = pricesOf(it.name).length;
+      return `<button class="row" style="border-left:0;border-right:0;border-top:0;background:none;width:100%;text-align:left;font-size:15px;color:var(--ink)" onclick="openItem('${esc(it.name)}')"><span class="l">${esc(it.name)}<small>${esc(it.supplier||"仕入先未設定")}${it.spec?"・"+esc(it.spec):""}${it.lead?"・"+esc(it.lead):""}</small></span><span style="text-align:right;white-space:nowrap">${bp?`<b>${yen1(bp.per)}</b><small style="display:block;font-size:11px;color:var(--mute)">/${esc(bp.base)}・${esc(bp.supplier)}${n>1?"（他"+(n-1)+"件）":""}</small>`:`<small style="color:var(--mute)">価格未登録</small>`}</span></button>`; }).join("")}</div>`).join("")}
+    ${extra.length?`<div class="sec">価格表のみ</div><div class="card">${extra.map(n=>{ const bp = bestPrice(n); return `<button class="row" style="border-left:0;border-right:0;border-top:0;background:none;width:100%;text-align:left;font-size:15px;color:var(--ink)" onclick="openItem('${esc(n)}')"><span class="l">${esc(n)}</span><span style="text-align:right">${bp?`<b>${yen1(bp.per)}</b><small style="display:block;font-size:11px;color:var(--mute)">/${esc(bp.base)}・${esc(bp.supplier)}</small>`:""}</span></button>`; }).join("")}</div>`:""}
+    ${!list.length&&!extra.length?`<div class="card mini">「${esc(q)}」に合う品目がありません</div>`:""}`;
 }
+function openItem(name){
+  const it = MASTER.find(x=>x.name===name); const ps = pricesOf(name).slice().sort((a,b)=>(a.per===null)-(b.per===null) || a.per-b.per);
+  const best = bestPrice(name);
+  sheet(`<h3>${esc(name)}</h3>
+    ${it?`<div class="mini" style="margin-bottom:8px">発注先：${esc(it.supplier||"未設定")}${it.orderUnit?"・"+esc(it.orderUnit)+"単位":""}${it.lead?"・"+esc(it.lead):""}${it.use?"<br>用途："+esc(it.use):""}</div>`:""}
+    <div class="sec" style="margin-top:4px">仕入先ごとの価格${best?`<span class="pill" style="margin-left:6px">最安 ${esc(best.supplier)}</span>`:""}</div>
+    <div class="card">${ps.length?ps.map(p=>`<div class="row" ${ME.role==="admin"?`onclick="editPrice('${p.id}')" style="cursor:pointer"`:""}><span class="l"><b style="font-size:14px">${esc(p.supplier)}</b>${best&&p.id===best.id?` <span class="pill">最安</span>`:""}<small>${esc(p.spec)}${p.qty?"・"+p.qty+esc(p.unit):""}・${p.price.toLocaleString()}円<br>${esc(p.date)}・${esc(p.src)}${p.memo?"・"+esc(p.memo):""}</small></span><span style="text-align:right;white-space:nowrap">${p.per!==null?`<b>${yen1(p.per)}</b><small style="display:block;font-size:11px;color:var(--mute)">/${esc(p.base)}</small>`:`<small style="color:var(--mute)">容量未確認</small>`}</span></div>`).join(""):`<div class="mini">まだ価格が登録されていません</div>`}</div>
+    ${ME.role==="admin"?`<button class="btn sec" onclick="editPrice(null,'${esc(name)}')">＋ 価格を追加</button><div style="height:8px"></div>${it?`<button class="btn sec" onclick="editItem('${it.id}')">品目の設定を編集</button><div style="height:8px"></div>`:""}`:""}
+    <button class="btn sec" style="border-color:var(--line);color:var(--mute)" onclick="closeOv()">閉じる</button>`);
+}
+const UNITS = ["g","ml","kg","L","個","本","袋","缶","枚","パック","箱"];
+function editPrice(id, name){
+  const p = id ? PRICES.find(x=>x.id===id) : { item:name, supplier:"", spec:"", qty:"", unit:"g", price:"", date:"", src:ME.name, memo:"" };
+  const sup = [...new Set(PRICES.map(x=>x.supplier).concat(MASTER.map(x=>x.supplier)).filter(Boolean))];
+  sheet(`<h3>${id?"価格を編集":"価格を追加"}</h3>
+    <label>品目</label><input id="pr_item" value="${esc(p.item)}" list="prItems"><datalist id="prItems">${MASTER.map(x=>`<option value="${esc(x.name)}">`).join("")}</datalist>
+    <label>仕入先</label><input id="pr_sup" value="${esc(p.supplier)}" list="prSups"><datalist id="prSups">${sup.map(x=>`<option value="${esc(x)}">`).join("")}</datalist>
+    <label>商品名・規格</label><input id="pr_spec" value="${esc(p.spec)}" placeholder="例：徳用ウインナー 800g">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>内容量</label><input id="pr_qty" type="number" inputmode="decimal" value="${p.qty===null?"":esc(p.qty)}" placeholder="800"></div><div><label>単位</label><select id="pr_unit">${UNITS.map(u=>`<option ${p.unit===u?"selected":""}>${u}</option>`).join("")}</select></div></div>
+    <label>税込価格（円）</label><input id="pr_price" type="number" inputmode="numeric" value="${esc(p.price)}" placeholder="451">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>調査日</label><input id="pr_date" type="date" value="${esc((p.date||"").replace(/\//g,"-"))}"></div><div><label>出典</label><input id="pr_src" value="${esc(p.src)}" placeholder="実地調査・納品書など"></div></div>
+    <label>メモ</label><input id="pr_memo" value="${esc(p.memo)}">
+    <div style="height:14px"></div><button class="btn" onclick="savePrice('${id||""}')">保存</button>
+    ${id?`<button class="btn sec" style="margin-top:8px;color:var(--red);border-color:var(--red)" onclick="delPrice('${id}')">この価格を削除</button>`:""}
+    <button class="btn sec" style="margin-top:8px" onclick="closeOv();${p.item?`openItem('${esc(p.item)}')`:""}">やめる</button>`);
+}
+async function savePrice(id){
+  const body = { id:id||undefined, item:$("pr_item").value.trim(), supplier:$("pr_sup").value.trim(), spec:$("pr_spec").value.trim(), qty:$("pr_qty").value, unit:$("pr_unit").value, price:$("pr_price").value, date:$("pr_date").value, src:$("pr_src").value.trim(), memo:$("pr_memo").value.trim() };
+  const r = await post("inv_price_save", body); if(r.error){ toast(r.error); return; } toast("保存しました"); await loadPrices(); closeOv(); renderMaster(); openItem(body.item);
+}
+async function delPrice(id){ if(!confirm("この価格を削除しますか？")) return; const p = PRICES.find(x=>x.id===id); const r = await post("inv_price_delete", {id}); if(r.error){ toast(r.error); return; } toast("削除しました"); await loadPrices(); closeOv(); renderMaster(); if(p) openItem(p.item); }
 function editItem(id){
   const it = id ? MASTER.find(x=>x.id===id) : null; const raw = it ? {"品目":it.name,"区分":it.cat,"仕入先":it.supplier,"購入方法":it.method,"規格(入数など)":it.spec,"仕入単価(税込)":it.price===null?"":it.price,"発注単位":it.orderUnit,"入力単位":it.unit,"担当":it.owner,"管理頻度":it.freq,"最低在庫":it.min===null?"":it.min,"発注方式":it.mode,"配送・納期":it.lead,"用途(商品)":it.use,"備考":it.note} : {};
   sheet(`<h3>${it?"品目を編集":"品目を追加"}</h3>${MFIELDS.map(([k,l],i)=>`<label>${esc(l)}</label><input id="mf_${i}" value="${esc(raw[k]===undefined?"":raw[k])}">`).join("")}
