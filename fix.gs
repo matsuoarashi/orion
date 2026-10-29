@@ -158,7 +158,7 @@ function fxAdd_(d, me){
 
 // PayPay for Business の取引一覧（貼り付け）とレジ記録を突き合わせる
 // d: { date:"yyyy/MM/dd", txns:[{time:"HH:MM", amount:1100}, ...], apply:true }
-// 同じ金額・±6分のレジ行に対応付ける。PayPay行を優先、無ければ現金行を PayPay に訂正（apply のとき）。残りは一覧で返す
+// 同じ金額・±15分のレジ行に対応付ける（最も近い時刻）。PayPay行を優先、無ければ現金行を PayPay に訂正（apply のとき）。残りは一覧で返す
 function fxPayPay_(d, me){
   var date = String(d.date||""); var txns = (d.txns||[]).map(function(t){ return { time:String(t.time||"").slice(0,5), amount:Number(t.amount)||0 }; }).filter(function(t){ return t.amount && /^\d{1,2}:\d{2}$/.test(t.time); });
   if (!date || !txns.length) return { error: "日付と明細がありません" };
@@ -166,7 +166,7 @@ function fxPayPay_(d, me){
   var rows = fxSalesOf_(date).filter(function(r){ return r.mode !== "取消" && r.amount; }).map(function(r){ r.used = false; return r; });
   var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("売上");
   var matched = [], fixed = [], unmatched = [];
-  var pick = function(t, payWanted){ var best = null, bd = 99; rows.forEach(function(r){ if (r.used || r.amount !== t.amount) return; if (payWanted && r.pay !== payWanted) return; if (!payWanted && r.pay === "PayPay") return; var dd = Math.abs(mins(r.time)-mins(t.time)); if (dd <= 6 && dd < bd){ bd = dd; best = r; } }); return best; };
+  var pick = function(t, payWanted){ var best = null, bd = 99; rows.forEach(function(r){ if (r.used || r.amount !== t.amount) return; if (payWanted && r.pay !== payWanted) return; if (!payWanted && r.pay === "PayPay") return; var dd = Math.abs(mins(r.time)-mins(t.time)); if (dd <= 15 && dd < bd){ bd = dd; best = r; } }); return best; };
   txns.forEach(function(t){ var r = pick(t, "PayPay"); if (r){ r.used = true; matched.push({ time:t.time, amount:t.amount, row:r.row, regTime:r.time }); return; }
     r = pick(t, null); if (r){ r.used = true; if (d.apply){ sh.getRange(r.row, 26).setValue("PayPay"); fxLog_(me, "支払方法", date, "売上!行" + r.row + " " + r.items + " " + r.amount + "円", r.pay, "PayPay", "PayPay照合：画面 " + t.time + " " + t.amount + "円 に対応する会計が" + r.pay + "で記録されていた"); } fixed.push({ time:t.time, amount:t.amount, row:r.row, regTime:r.time, items:r.items, from:r.pay }); return; }
     unmatched.push(t); });
