@@ -533,17 +533,15 @@ function renderPnl(){
       ["FL率(原価+人件費)", pct(cur.fl), "目安 60%以下"],
       ["損益分岐", cur.bep?cur.bep+"食/日":"-", "固定費と人件費を賄う食数"]
     ].map(([k,v,n])=>`<div class="c"><small>${k}</small><b>${v}</b><i>${n}</i></div>`).join("");
-    // 今月の仕入れ（実績）：経費シートの「仕入高」のうち開業日以降。原価(概算)と二重にならないよう損益には足さず、参考表示のみ
-    const buy = p.expenses.filter(e=>e.date.slice(0,7)===curKey && e.acct==="仕入高" && e.date>="2026/10/13").reduce((a,e)=>a+e.amount,0);
     $("pnlLines").innerHTML = [
       ["売上", cur.sales, ""],
-      ["− 原価(概算)", -cur.cost, "原価率 "+pct(cur.costRate)+(buy?`・参考 仕入れ実績 ${buy.toLocaleString()}円（${pct(buy/Math.max(1,cur.sales))}）`:"")],
+      ["− 原価(概算)", -cur.cost, "原価率 "+pct(cur.costRate) + (()=>{ const open = (DATA.openDate||"2026/10/13"); const buy = p.expenses.filter(e=>e.date.slice(0,7)===curKey && e.acct==="仕入高" && e.date>=open).reduce((a,e)=>a+e.amount,0); return buy ? `｜仕入れ実績 ${buy.toLocaleString()}円（${cur.sales?pct(buy/cur.sales):"-"}・在庫分を含む）` : ""; })()],
       ["− 人件費", -cur.labor, `${cur.hours}h・人時売上 ${cur.salesPerHour.toLocaleString()}円`],
       ["− 変動経費", -cur.exp, ""],
       ["− 固定費(月額満額)", -cur.fixed, ""],
     ].map(([k,v,n])=>`<div class="pl"><span>${k} <small style="color:#6b5a40">${n}</small></span><b>${(v<0?"−":"")+Math.abs(Math.round(v)).toLocaleString()}円</b></div>`).join("")
       + `<div class="pl total"><span>営業利益</span>${signed(cur.profit)}</div>`;
-    $("pnlNote").textContent = cur.status + "。原価は商品原価マスター×個数の概算、固定費は固定費シートの月額。仕入れ実績は経費アプリ・経費シートの仕入高の合計で、在庫が残っている分も含むため参考値（損益には足していません）。開業前の費用（研修費・初期仕入など）はイニシャル側。";
+    $("pnlNote").textContent = cur.status + "。原価は商品原価マスター×個数の概算、固定費は固定費シートの月額。「仕入れ実績」は経費アプリ・カード明細から入った食材・ドリンクの仕入高の合計で、まだ使っていない在庫も含むため原価より大きく出ます。月末の棚卸しで実際の原価率を出します。開業前の費用（研修費・初期仕入など）はイニシャル側。";
   }
   $("pnlFc").innerHTML = fc ? [
       ["営業利益", signed(fc.profit), "利益率 "+pct(fc.margin)],
@@ -562,9 +560,10 @@ function renderPnl(){
   const ft = p.fixed.reduce((a,x)=>a+x.amount,0);
   $("pnlFixed").innerHTML = p.fixed.map(x=>`<div class="pl"><span>${x.name}</span><b>${x.amount.toLocaleString()}円</b></div>`).join("") + `<div class="pl total"><span>合計</span><b>${ft.toLocaleString()}円</b></div>`;
   // 経費
-  const ex = p.expenses.filter(e=>e.date.slice(0,7)===curKey && !e.fixed).sort((a,b)=>a.date<b.date?1:-1);
+  const ex = p.expenses.filter(e=>e.date.slice(0,7)===curKey && !e.fixed && e.acct!=="仕入高").sort((a,b)=>a.date<b.date?1:-1);
+  const buyM = p.expenses.filter(e=>e.date.slice(0,7)===curKey && e.acct==="仕入高").reduce((a,e)=>a+e.amount,0);
   const byAcct = {}; ex.forEach(e=>{ byAcct[e.acct]=(byAcct[e.acct]||0)+e.amount; });
-  $("pnlExp").innerHTML = (Object.keys(byAcct).length ? Object.entries(byAcct).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="pl"><span>${k}</span><b>${v.toLocaleString()}円</b></div>`).join("") + `<div class="pl total"><span>合計</span><b>${ex.reduce((a,e)=>a+e.amount,0).toLocaleString()}円</b></div>` : "<div class='sub'>まだ経費の登録がありません（分析シートの「経費」に入力）</div>");
+  $("pnlExp").innerHTML = (Object.keys(byAcct).length ? Object.entries(byAcct).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="pl"><span>${k}</span><b>${v.toLocaleString()}円</b></div>`).join("") + `<div class="pl total"><span>合計（仕入れ除く）</span><b>${ex.reduce((a,e)=>a+e.amount,0).toLocaleString()}円</b></div>` + (buyM?`<div class="pl" style="color:#6b5a40"><span>参考：仕入高（原価側で計上）</span><b>${buyM.toLocaleString()}円</b></div>`:"") : "<div class='sub'>まだ経費の登録がありません（分析シートの「経費」に入力）</div>");
   // 月比較
   $("pnlMonths").innerHTML = "<tr><th>月</th><th>売上</th><th>原価率</th><th>人件費</th><th>固定費</th><th>営業利益</th><th>利益率</th></tr>" + (hist.map(m=>`<tr><td>${m.key}</td><td>${m.sales.toLocaleString()}</td><td>${pct(m.costRate)}</td><td>${m.labor.toLocaleString()}</td><td>${m.fixed.toLocaleString()}</td><td>${signed(m.profit)}</td><td>${pct(m.margin)}</td></tr>`).join("") || "<tr><td colspan='7'>記録なし</td></tr>");
   renderInit(p, hist, fc);
