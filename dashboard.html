@@ -96,6 +96,31 @@
   .legend{display:flex;gap:12px;font-size:11px;color:var(--mute);flex-wrap:wrap}
   .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:3px;vertical-align:-1px}
   details summary{cursor:pointer;font-size:12px;color:var(--midori);letter-spacing:2px;font-weight:bold;padding:4px 0}
+  .who{display:flex;justify-content:flex-end;align-items:center;gap:8px;color:#e8d5ac;font-size:12px;margin-top:-6px}
+  .who button{background:none;border:1px solid #a98d5c;color:#e8d5ac;border-radius:8px;padding:4px 10px;font-size:12px}
+  .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .acts button,.bt{border:1px solid var(--wood-d);background:var(--cream-d);border-radius:6px;padding:4px 10px;font-size:12px;color:var(--ink)}
+  .acts button.p,.bt.p{background:var(--midori);color:#fff;border-color:var(--midori)}
+  .acts button.d,.bt.d{background:#fff3f0;color:var(--enji);border-color:var(--enji)}
+  .ovl{position:fixed;inset:0;background:rgba(20,30,20,.45);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+  .sheet{background:var(--cream);width:100%;max-width:600px;border-radius:18px 18px 0 0;padding:14px 16px 24px;max-height:92vh;overflow-y:auto;color:var(--ink)}
+  .sheet h3{font-size:14px;letter-spacing:2px;color:var(--midori);margin-bottom:8px}
+  .grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 10px}
+  .sheet label{display:block;font-size:12px;color:var(--mute);margin:8px 0 2px}
+  .sheet select,.sheet input,.sheet textarea{width:100%;font-size:16px;padding:8px;border:1px solid #c9b891;border-radius:8px;background:#fff;color:var(--ink)}
+  .sheet .btn{width:100%;margin-top:12px;padding:12px;border-radius:10px;border:none;background:var(--midori);color:#fff;font-size:15px;font-weight:bold}
+  .sheet .btn:disabled{opacity:.5}
+  .srow{display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px dotted var(--line);font-size:13px}
+  .srow.cx{color:#a08c6a;text-decoration:line-through}
+  .srow.hi{background:#fff3d6}
+  .srow .t{width:44px;font-variant-numeric:tabular-nums}
+  .srow .i{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .srow .a{width:62px;text-align:right;font-variant-numeric:tabular-nums}
+  .srow .pp{width:50px;font-size:11px;text-align:center;border-radius:4px;padding:2px 0;background:#6b5a40;color:#fff}
+  .srow .pp.pay{background:#d0362b}
+  .toast{position:fixed;left:50%;bottom:70px;transform:translateX(-50%);background:var(--midori);color:#fff;padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:30;white-space:nowrap}
+  .toast.show{opacity:1}
+  .msg{font-size:12px;color:var(--enji);min-height:16px;margin-top:6px}
   .pd{border-top:1px dashed #c9b891;padding:10px 0 8px}
   .pd:first-child{border-top:none;padding-top:2px}
   .pd-h{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--mute)}
@@ -124,10 +149,12 @@
     <div class="t"><small>洋食オリオン</small><b>ダッシュボード</b></div>
     <span class="store">神田淡路町店</span>
   </header>
+  <div class="who" id="who"></div>
   <div class="err" id="err"></div>
 
   <!-- ===== 要確認 ===== -->
   <div class="alerts" id="alerts"><h2>要確認 <span class="r" id="alertsSub"></span></h2><div id="alertList"></div></div>
+  <div id="ov"></div><div class="toast" id="toast"></div>
 
   <div class="tabs">
     <button id="tab-day" class="on" onclick="setTab('day')">今日</button>
@@ -333,46 +360,143 @@ function moveWeek(n){ viewWeek = dateAdd(viewWeek, 7*n); renderWeek(); if(itemPe
 function goThisWeek(){ viewWeek = mondayOf(DATA.todayKey); renderWeek(); if(itemPeriod==="week") renderItems(); }
 
 // ===== 要確認 =====
-function ops(){ return (DATA && DATA.ops) || {shime:[],dup:[],unclosed:[],reports:[],receipts:{unchecked:0,unpaid:0,unpaidList:[]},income:[],stockLow:[]}; }
+function ops(){ return (DATA && DATA.ops) || {shime:[],dup:[],unclosed:[],reports:[],receipts:{unchecked:0,unpaid:0,unpaidList:[]},income:[],stockLow:[],acks:[]}; }
+let ALERTS = [];
+function alertAct(i,j){ const a = ALERTS[i]; if(a && a.acts[j]) a.acts[j].fn(a); }
 function renderAlerts(){
   const o = ops(), p = pnlData(), today = DATA.todayKey, H = new Date().getHours();
-  const A = []; const add = (lv, title, note, tab) => A.push({lv,title,note,tab});
-  // レジ締め：昨日までの営業日で締めが無い／差異がある、本日16時以降で未締め
+  const acked = {}; (o.acks||[]).forEach(a=>{ acked[a.key] = a; });
+  const A = []; const add = (lv, title, note, tab, key, acts) => A.push({lv,title,note,tab,key,acts:acts||[]});
+  const LOGGED = !!ME;
+  const ackAct = {label:"確認済みにする", fn:a=>ackAlert(a)};
+  const salesAct = (date, focus) => ({label:"会計を見る", cls:"p", fn:()=>openSales(date, focus)});
+  const reasonAct = date => ({label:"理由を記録", cls:"p", fn:()=>shimeReason(date)});
+  // レジ締め：直近3営業日
   const shimeBy = {}; o.shime.forEach(s=>{ shimeBy[s.date] = s; });
-  const past = bizDays().filter(d=>d.date<today).slice(-5);
-  past.forEach(d=>{ if(!shimeBy[d.date]) add("w", `${d.date.slice(5)}(${youbi(d.date)}) レジ締めの記録がありません`, `売上 ${yen(d.sales)}。レジの「締め」から入力`, "pnl"); });
   const recent3 = bizDays().filter(d=>d.date<today).slice(-3).map(d=>d.date);
+  recent3.forEach(dt=>{ const d = dayByDate(dt); if(!shimeBy[dt]) add("w", `${dt.slice(5)}(${youbi(dt)}) レジ締めの記録がありません`, `売上 ${yen(d.sales)}。レジの「締め」から入力`, "pnl", "noshime:"+dt, [ackAct]); });
   Object.values(shimeBy).filter(s=>recent3.indexOf(s.date)>=0).sort((a,b)=>a.date<b.date?1:-1).forEach(s=>{
     const d = dayByDate(s.date) || {};
-    if(s.diff && Math.abs(s.diff)>=500) add("e", `${s.date.slice(5)} レジ締めの差異 ${s.diff>0?"+":"−"}${num(Math.abs(s.diff))}円`, `予定 ${yen(s.expected)} → 実際 ${yen(s.actual)}${s.vendorPay?`・業者払い ${yen(s.vendorPay)}`:""}${s.slipMatch?`・伝票 ${s.slipMatch}`:""}`, "pnl");
-    if(s.slipMatch && /不一致|NG/.test(s.slipMatch)) add("e", `${s.date.slice(5)} 伝票とレジが不一致`, "締めの入力で「不一致」になっています", "pnl");
-    if(d.salesPaypay!==undefined && s.paypay && Math.abs(s.paypay-d.salesPaypay)>=100) add("e", `${s.date.slice(5)} PayPayの差 ${num(Math.abs(s.paypay-d.salesPaypay))}円`, `PayPay画面 ${yen(s.paypay)} / レジのPayPay会計 ${yen(d.salesPaypay)}。支払方法の打ち間違いか未受取の可能性`, "day");
+    const done = s.reason ? `理由：${s.reason}（${s.reasonBy}）` : "";
+    if(s.diff && Math.abs(s.diff)>=500 && !s.reason) add("e", `${s.date.slice(5)} レジ締めの差異 ${s.diff>0?"+":"−"}${num(Math.abs(s.diff))}円`, `予定 ${yen(s.expected)} → 実際 ${yen(s.actual)}${s.vendorPay?`・業者払い ${yen(s.vendorPay)}`:""}${s.slipMatch?`・伝票 ${s.slipMatch}`:""}`, "pnl", "shime:"+s.date, [reasonAct(s.date), salesAct(s.date)]);
+    if(s.slipMatch && /不一致|NG/.test(s.slipMatch) && !s.reason) add("e", `${s.date.slice(5)} 伝票とレジが不一致`, "締めの入力で「不一致」になっています。会計の二重入力・入れ忘れを確認", "pnl", "slip:"+s.date, [salesAct(s.date), reasonAct(s.date)]);
+    if(d.salesPaypay!==undefined && s.paypay && Math.abs(s.paypay-d.salesPaypay)>=100) add("e", `${s.date.slice(5)} PayPayの差 ${num(Math.abs(s.paypay-d.salesPaypay))}円`, `PayPay画面 ${yen(s.paypay)} / レジのPayPay会計 ${yen(d.salesPaypay)}。${s.paypay>d.salesPaypay?"現金で打った会計がPayPayだった可能性":"PayPayで打った会計が未受取か現金だった可能性"}${done?"。"+done:""}`, "day", "pp:"+s.date, [salesAct(s.date), ackAct]);
   });
-  if(!shimeBy[today] && H>=16 && (dayByDate(today)||{}).count>0) add("w", "本日のレジ締めがまだです", "閉店後にレジの「締め」から入力", "pnl");
-  // 二重入力の疑い（今日・昨日のみ。同じ内訳・同じ金額が2分以内）
-  // 同じ分・同じ内訳・同じ金額・同じ支払方法のものだけ（ピーク時に同じ商品が続くのは普通なので、ここは狭く）
-  const dupRecent = o.dup.filter(x=>x.date>=dateAdd(today,-1) && x.time1===x.time2 && x.pay1===x.pay2);
-  if(dupRecent.length) add("w", `二重入力の疑い ${dupRecent.length}件（今日・昨日）`, dupRecent.slice(0,4).map(x=>`${x.date.slice(5)} ${x.time1} ${x.items} ${num(x.amount)}円 ${x.pay1}×2`).join("、") + (dupRecent.length>4?" …":"") + "。伝票の枚数と見比べて判断", "day");
+  if(!shimeBy[today] && H>=16 && (dayByDate(today)||{}).count>0) add("w", "本日のレジ締めがまだです", "閉店後にレジの「締め」から入力", "pnl", "noshime:"+today, []);
+  // 二重入力の疑い：同じ分・同じ内訳・同じ金額・同じ支払方法（今日・昨日）
+  o.dup.filter(x=>x.date>=dateAdd(today,-1) && x.time1===x.time2 && x.pay1===x.pay2).slice(0,6).forEach(x=>{
+    add("w", `${x.date.slice(5)} ${x.time1} 二重入力の疑い：${x.items} ${num(x.amount)}円 ${x.pay1}×2`, "同じ会計が同じ分に2回通っています。伝票の枚数と見比べて、重複なら片方を取消", "day", `dup:${x.date}:${x.time1}:${x.items}:${x.amount}:${x.pay1}`, [salesAct(x.date, x.time1), {label:"2件とも正しい", fn:a=>ackAlert(a, "伝票と一致（2件とも正しい）")}]);
+  });
   // 勤怠
-  o.unclosed.forEach(u=>add("e", `${u.name} ${u.date.slice(5)} 退勤の打刻がありません`, `出勤 ${u.in}。勤怠アプリの修正申請で直す`, "people"));
-  bizDays().filter(d=>d.date<today && d.date>=openDate()).slice(-7).forEach(d=>{ const l = p.laborDaily[d.date]; if(!l) add("w", `${d.date.slice(5)}(${youbi(d.date)}) 勤怠がありません`, `売上 ${yen(d.sales)} に対して人件費が0になっています`, "people"); else if(l.staff<2 && d.meals>=20) add("w", `${d.date.slice(5)}(${youbi(d.date)}) 勤怠が${l.staff}人分だけです`, `${(l.minutes/60).toFixed(1)}h・${d.meals}食。打刻漏れか修正申請が未承認の可能性`, "people"); });
+  const staffAct = {label:"勤怠アプリを開く", cls:"p", fn:()=>window.open("admin.html","_blank")};
+  o.unclosed.forEach(u=>add("e", `${u.name} ${u.date.slice(5)} 退勤の打刻がありません`, `出勤 ${u.in}。勤怠アプリの修正申請で直す`, "people", `unclosed:${u.name}:${u.date}`, [staffAct]));
+  bizDays().filter(d=>d.date<today && d.date>=openDate()).slice(-7).forEach(d=>{ const l = p.laborDaily[d.date]; if(!l) add("w", `${d.date.slice(5)}(${youbi(d.date)}) 勤怠がありません`, `売上 ${yen(d.sales)} に対して人件費が0になっています`, "people", "labor:"+d.date, [staffAct, ackAct]); else if(l.staff<2 && d.meals>=20) add("w", `${d.date.slice(5)}(${youbi(d.date)}) 勤怠が${l.staff}人分だけです`, `${(l.minutes/60).toFixed(1)}h・${d.meals}食。打刻漏れか修正申請が未承認の可能性`, "people", "labor1:"+d.date, [staffAct, ackAct]); });
   // 在庫・備品
-  if(o.stockLow.length) add("w", `在庫が下限以下 ${o.stockLow.length}品目`, o.stockLow.slice(0,5).map(s=>`${s.name} ${s.stock}${s.unit}（下限${s.min}）`).join("、")+(o.stockLow.length>5?" …":""), null);
-  if(o.reports.length) add("i", `備品・不足の報告 ${o.reports.length}件`, o.reports.slice(0,4).map(r=>`${r.name}${r.qty?" "+r.qty:""}（${r.by}）`).join("、"), null);
+  const hacAct = {label:"発注アプリを開く", cls:"p", fn:()=>window.open("hacchu.html","_blank")};
+  if(o.stockLow.length) add("w", `在庫が下限以下 ${o.stockLow.length}品目`, o.stockLow.slice(0,5).map(s=>`${s.name} ${s.stock}${s.unit}（下限${s.min}）`).join("、")+(o.stockLow.length>5?" …":""), null, "stock:"+today, [hacAct]);
+  if(o.reports.length) add("i", `備品・不足の報告 ${o.reports.length}件`, o.reports.slice(0,4).map(r=>`${r.name}${r.qty?" "+r.qty:""}（${r.by}）`).join("、"), null, "reports:"+o.reports.length, [hacAct]);
   // 経費
-  if(o.receipts.unchecked) add("i", `経費の未確認 ${o.receipts.unchecked}件`, "経費アプリで内容を確認してください", null);
-  if(o.receipts.unpaid) add("i", `未払いの経費（掛け・月末払い） ${yen(o.receipts.unpaid)}`, o.receipts.unpaidList.slice(0,4).map(r=>`${r.date.slice(5)} ${r.vendor} ${num(r.amount)}円`).join("、"), null);
-  if(p.initial && p.initial.pending) add("i", `開業費の未入力 ${p.initial.pending}件`, "分析シート「開業費」で金額を入れると投資回収が正確になります", "pnl");
-  const zero = p.fixed.filter(f=>!f.amount && !/収入/.test(f.name));
-  if(zero.length) add("i", `固定費が0円のまま ${zero.map(f=>f.name).join("・")}`, "実額が分かったら固定費シートに入力（損益が良く見えすぎています）", "pnl");
+  const keihiAct = {label:"経費アプリを開く", cls:"p", fn:()=>window.open("keihi.html","_blank")};
+  if(o.receipts.unchecked) add("i", `経費の未確認 ${o.receipts.unchecked}件`, "経費アプリで内容を確認してください", null, "rc:"+o.receipts.unchecked, [keihiAct]);
+  if(o.receipts.unpaid) add("i", `未払いの経費（掛け・月末払い） ${yen(o.receipts.unpaid)}`, o.receipts.unpaidList.slice(0,4).map(r=>`${r.date.slice(5)} ${r.vendor} ${num(r.amount)}円`).join("、"), null, "unpaid:"+o.receipts.unpaid, [keihiAct]);
+  if(p.initial && p.initial.pending) add("i", `開業費の未入力 ${p.initial.pending}件`, "分析シート「開業費」で金額を入れると投資回収が正確になります", "pnl", "init:"+p.initial.pending, [ackAct]);
+  p.fixed.filter(f=>!f.amount && !/収入/.test(f.name)).forEach(f=> add("i", `固定費が0円のまま：${f.name}`, "実額が分かったら入力（損益が良く見えすぎています）", "pnl", "fixed:"+f.name, [{label:"金額を入力", cls:"p", fn:()=>fixedInput(f.name)}, ackAct]));
   // 描画
-  const box = $("alerts"); box.classList.toggle("ok", !A.some(a=>a.lv!=="i"));
-  const rank = {e:0,w:1,i:2}; A.sort((a,b)=>rank[a.lv]-rank[b.lv]);
-  $("alertsSub").textContent = A.length ? `${A.filter(a=>a.lv==="e").length}件 要対応・${A.filter(a=>a.lv==="w").length}件 確認・${A.filter(a=>a.lv==="i").length}件 参考` : "";
-  const row = a => `<div class="al ${a.lv}"><i></i><div><b>${a.title}</b><small>${a.note}</small></div>${a.tab?`<button onclick="setTab('${a.tab}')">見る</button>`:""}</div>`;
-  const main = A.filter(a=>a.lv!=="i"), info = A.filter(a=>a.lv==="i");
-  $("alertList").innerHTML = (main.length ? main.map(row).join("") : `<div class="al i" style="border:none"><i style="background:var(--midori)"></i><div><b>いま対応が必要なことはありません</b><small>レジ締め・PayPay・勤怠・在庫・経費をチェックしました</small></div></div>`)
-    + (info.length ? `<details><summary>参考 ${info.length}件（未確認の経費・未入力など）</summary>${info.map(row).join("")}</details>` : "");
+  const vis = A.filter(a=>!acked[a.key]); const hid = A.filter(a=>acked[a.key]);
+  ALERTS = vis;
+  const box = $("alerts"); box.classList.toggle("ok", !vis.some(a=>a.lv!=="i"));
+  const rank = {e:0,w:1,i:2}; vis.sort((a,b)=>rank[a.lv]-rank[b.lv]);
+  $("alertsSub").textContent = vis.length ? `${vis.filter(a=>a.lv==="e").length}件 要対応・${vis.filter(a=>a.lv==="w").length}件 確認・${vis.filter(a=>a.lv==="i").length}件 参考` : "";
+  const row = (a,i) => `<div class="al ${a.lv}"><i></i><div style="flex:1;min-width:0"><b>${a.title}</b><small>${a.note}</small>${LOGGED&&a.acts.length?`<div class="acts">${a.acts.map((x,j)=>`<button class="${x.cls||""}" onclick="alertAct(${i},${j})">${x.label}</button>`).join("")}</div>`:""}</div>${a.tab?`<button onclick="setTab('${a.tab}')">見る</button>`:""}</div>`;
+  const main = vis.filter(a=>a.lv!=="i"), info = vis.filter(a=>a.lv==="i");
+  $("alertList").innerHTML = (main.length ? main.map(a=>row(a, vis.indexOf(a))).join("") : `<div class="al i" style="border:none"><i style="background:var(--midori)"></i><div><b>いま対応が必要なことはありません</b><small>レジ締め・PayPay・勤怠・在庫・経費をチェックしました</small></div></div>`)
+    + (info.length ? `<details><summary>参考 ${info.length}件（未確認の経費・未入力など）</summary>${info.map(a=>row(a, vis.indexOf(a))).join("")}</details>` : "")
+    + (hid.length ? `<details><summary>確認済み ${hid.length}件</summary>${hid.map(a=>{ const k = acked[a.key]; return `<div class="al i"><i style="background:#b5a07a"></i><div style="flex:1"><b style="color:var(--mute)">${a.title}</b><small>${k.by} ${k.at.slice(5,16)}${k.reason?"・"+k.reason:""}</small></div>${LOGGED?`<button onclick="unack('${a.key.replace(/'/g,"\\'")}')">戻す</button>`:""}</div>`; }).join("")}</details>` : "")
+    + (!LOGGED ? `<div class="sub" style="margin-top:6px">直す・確認済みにするには<a href="#" onclick="showLogin();return false" style="color:var(--midori)">ログイン</a>（勤怠アプリと同じ名前とパスコード）</div>` : "");
+}
+
+// ===== ログインと訂正（要確認の解消） =====
+const STAFF_API = "https://script.google.com/macros/s/AKfycbwgGW6rXzAW2rHVicdoCMdHOT_E3egrXPsaEJerX-_brZr0mYF6Qo_tRorX8PgLc7c/exec";
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let TOKEN = "", ME = null;
+function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2400); }
+function closeOv(){ $("ov").innerHTML=""; }
+function sheet(html){ $("ov").innerHTML = `<div class="ovl" onclick="if(event.target===this)closeOv()"><div class="sheet"><div class="grab"></div>${html}</div></div>`; }
+async function fxGet(mode, params){ const q = Object.assign({mode, token:TOKEN, t:Date.now()}, params||{}); const u = SHEET_URL+"?"+Object.keys(q).map(k=>k+"="+encodeURIComponent(q[k])).join("&"); try{ const r = await fetch(u, {cache:"no-store"}); return await r.json(); }catch(e){ return {error:"通信エラー"}; } }
+async function fxPost(type, body){ try{ const r = await fetch(SHEET_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(Object.assign({type, token:TOKEN}, body||{}))}); return await r.json(); }catch(e){ return {error:"通信エラー"}; } }
+async function bootAuth(){
+  const cands = []; try{ [localStorage.getItem("os-admin-token"), localStorage.getItem("os-token")].forEach(t=>{ if(t) cands.push(t); }); }catch(e){}
+  for (const tk of cands){ TOKEN = tk; const r = await fxGet("fx_me"); if(!r.error){ ME = r.me; renderWho(); if(DATA) renderAlerts(); return; } }
+  TOKEN = ""; ME = null; renderWho();
+}
+function renderWho(){ $("who").innerHTML = ME ? `<span>${esc(ME.name)}${ME.role==="admin"?"（管理者）":""}</span><button onclick="logout()">ログアウト</button>` : `<button onclick="showLogin()">ログイン</button>`; }
+async function showLogin(){
+  sheet(`<h3>ログイン</h3><div class="sub">勤怠アプリと同じ名前・パスコード。訂正や確認済みの記録に名前が残ります</div><label>名前</label><select id="staffSel"><option value="">読み込み中…</option></select><label>パスコード</label><input type="password" inputmode="numeric" id="passIn" autocomplete="off"><div class="msg" id="loginMsg"></div><button class="btn" id="loginBtn" onclick="doLogin()">ログイン</button>`);
+  try{ const r = await (await fetch(STAFF_API+"?action=staff_list")).json(); $("staffSel").innerHTML = `<option value="">名前を選んでください</option>` + (r.staff||[]).map(s=>`<option value="${s.staff_id}">${esc(s.name)}</option>`).join(""); }catch(e){ $("loginMsg").textContent="通信できません"; }
+}
+async function doLogin(){
+  const id = $("staffSel").value, pass = $("passIn").value; if(!id||!pass){ $("loginMsg").textContent="名前とパスコードを入れてください"; return; }
+  $("loginBtn").disabled = true;
+  try{ const r = await (await fetch(STAFF_API,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({action:"login",staff_id:id,passcode:pass})})).json();
+    if(!r.ok){ $("loginMsg").textContent = r.error||"ログインできません"; return; }
+    TOKEN = r.token; try{ localStorage.setItem("os-token", TOKEN); }catch(e){} const m = await fxGet("fx_me"); if(m.error){ $("loginMsg").textContent = m.error; return; } ME = m.me; closeOv(); renderWho(); renderAlerts(); toast(`${ME.name} でログイン`);
+  }catch(e){ $("loginMsg").textContent="通信できません"; } finally{ $("loginBtn").disabled=false; }
+}
+function logout(){ TOKEN=""; ME=null; try{ localStorage.removeItem("os-token"); }catch(e){} renderWho(); renderAlerts(); }
+function needFix(){ if(!ME) { showLogin(); return false; } if(ME.role!=="admin" && ME.role!=="store"){ toast("管理者のみ操作できます"); return false; } return true; }
+// 理由を聞く共通シート
+function askReason(title, choices, note){
+  return new Promise(res=>{
+    sheet(`<h3>${esc(title)}</h3>${note?`<div class="sub">${esc(note)}</div>`:""}<label>理由</label><select id="rsSel">${choices.map(c=>`<option>${esc(c)}</option>`).join("")}<option value="">その他（下に書く）</option></select><label>メモ（任意）</label><input id="rsMemo" placeholder="例：釣銭を数え直したら合った"><button class="btn" id="rsOk">記録する</button>`);
+    $("rsOk").onclick = ()=>{ const r = [$("rsSel").value, $("rsMemo").value.trim()].filter(Boolean).join("："); closeOv(); res(r || "（理由なし）"); };
+  });
+}
+async function ackAlert(a, fixedReason){
+  if(!needFix()) return;
+  const reason = fixedReason || await askReason("確認済みにする", ["確認した・問題なし","対応済み","誤検知"], a.title);
+  const r = await fxPost("fx_ack", {key:a.key, title:a.title, reason}); if(r.error){ toast(r.error); return; }
+  toast("確認済みにしました"); load(true);
+}
+async function unack(key){ if(!needFix()) return; const r = await fxPost("fx_unack", {key}); if(r.error){ toast(r.error); return; } load(true); }
+async function shimeReason(date){
+  if(!needFix()) return;
+  const reason = await askReason(`${date.slice(5)} 締め差異の理由`, ["釣銭の数え間違い","業者払いの記入漏れ","PayPay未受取（現金で打った）","打ち間違い（会計を訂正済み）","両替・小銭の入れ忘れ","原因不明"], "理由はレジ締めシートに残り、要確認から消えます");
+  const r = await fxPost("fx_shime_reason", {date, reason}); if(r.error){ toast(r.error); return; }
+  toast("理由を記録しました"); load(true);
+}
+async function fixedInput(name){
+  if(!needFix()) return;
+  sheet(`<h3>固定費：${esc(name)}</h3><div class="sub">月額（税込）を入力。固定費シートに書き込まれ、損益に反映されます</div><label>月額</label><input id="fxAmt" type="number" inputmode="numeric" placeholder="例：35000"><button class="btn" id="fxOk">保存</button>`);
+  $("fxOk").onclick = async ()=>{ const amt = Number($("fxAmt").value); if(!amt){ toast("金額を入れてください"); return; } $("fxOk").disabled=true; const r = await fxPost("fx_fixed", {name, amount:amt, reason:"分析ページから入力"}); if(r.error){ toast(r.error); $("fxOk").disabled=false; return; } closeOv(); toast("保存しました"); load(true); };
+}
+// その日の会計一覧：支払方法の訂正・取消
+async function openSales(date, focus){
+  if(!needFix()) return;
+  sheet(`<h3>${date}（${youbi(date)}）の会計</h3><div class="sub">読み込み中…</div>`);
+  const r = await fxGet("fx_sales", {date}); if(r.error){ sheet(`<h3>${date}</h3><div class="msg">${esc(r.error)}</div>`); return; }
+  const mins = t => { const m = String(t).match(/(\d{1,2}):(\d{2})/); return m ? Number(m[1])*60+Number(m[2]) : -999; };
+  const list = r.list || []; const tot = list.filter(x=>x.mode!=="取消").reduce((a,x)=>a+x.amount,0); const pp = list.filter(x=>x.mode!=="取消"&&x.pay==="PayPay").reduce((a,x)=>a+x.amount,0);
+  const d = dayByDate(date) || {}; const sh = ops().shime.find(s=>s.date===date);
+  sheet(`<h3>${date}（${youbi(date)}）の会計 ${list.length}件</h3>
+    <div class="sub">合計 ${yen(tot)}・PayPay ${yen(pp)}・現金 ${yen(tot-pp)}${sh?`｜レジ締め：PayPay画面 ${yen(sh.paypay)}${Math.abs(sh.paypay-pp)>=100?` <span class="neg">（差 ${num(Math.abs(sh.paypay-pp))}円）</span>`:" ✓"}`:""}</div>
+    <div class="sub">支払方法のボタンで 現金⇄PayPay を切り替え。「取消」は金額を0にして集計から外します（元に戻せます）。すべて訂正ログに残ります</div>
+    <div style="margin-top:8px">${list.map(x=>{ const cx = x.mode==="取消"; const hi = focus && Math.abs(mins(x.time)-mins(focus))<=1; return `<div class="srow ${cx?"cx":""} ${hi?"hi":""}"><span class="t">${x.time}</span><span class="i">${esc(x.items)}${x.mode==="持ち帰り"?" <small>TG</small>":""}</span><span class="a">${cx?"取消":num(x.amount)+"円"}</span>${cx?`<button class="bt" onclick="fxRestore('${date}',${x.row})">戻す</button>`:`<button class="pp ${x.pay==="PayPay"?"pay":""}" onclick="fxTogglePay('${date}',${x.row},'${x.pay==="PayPay"?"現金":"PayPay"}')">${esc(x.pay||"現金")}</button><button class="bt d" onclick="fxCancel('${date}',${x.row})">取消</button>`}</div>`; }).join("") || "<div class='sub'>会計がありません</div>"}</div>`);
+  if(focus){ const el = document.querySelector(".srow.hi"); if(el) el.scrollIntoView({block:"center"}); }
+}
+async function fxTogglePay(date, row, pay){
+  if(!confirm(`この会計の支払方法を「${pay}」に直しますか？`)) return;
+  const r = await fxPost("fx_pay", {date, row, pay, reason:"分析ページで訂正"}); if(r.error){ toast(r.error); return; }
+  toast(`${pay} に直しました`); await openSales(date); load(true);
+}
+async function fxCancel(date, row){
+  const reason = await askReason("この会計を取り消す", ["二重入力","テスト・練習","打ち直した"], "金額と個数を0にして集計から外します。元に戻せます");
+  const r = await fxPost("fx_cancel", {date, row, reason}); if(r.error){ toast(r.error); return; }
+  toast("取り消しました"); await openSales(date); load(true);
+}
+async function fxRestore(date, row){
+  if(!confirm("取消を元に戻しますか？")) return;
+  const r = await fxPost("fx_restore", {date, row}); if(r.error){ toast(r.error); return; }
+  toast("元に戻しました"); await openSales(date); load(true);
 }
 
 // ===== 今日 =====
@@ -843,6 +967,7 @@ async function load(keep){
 }
 
 try{ const t = localStorage.getItem("dash-tab"); if(t && $("tab-"+t)) setTab(t); }catch(e){}
+renderWho(); bootAuth();
 load();
 setInterval(()=>{ if(!document.hidden) load(true); }, 60000);
 document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) load(true); });
