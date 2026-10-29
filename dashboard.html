@@ -533,15 +533,17 @@ function renderPnl(){
       ["FL率(原価+人件費)", pct(cur.fl), "目安 60%以下"],
       ["損益分岐", cur.bep?cur.bep+"食/日":"-", "固定費と人件費を賄う食数"]
     ].map(([k,v,n])=>`<div class="c"><small>${k}</small><b>${v}</b><i>${n}</i></div>`).join("");
+    // 今月の仕入れ（実績）：経費シートの「仕入高」のうち開業日以降。原価(概算)と二重にならないよう損益には足さず、参考表示のみ
+    const buy = p.expenses.filter(e=>e.date.slice(0,7)===curKey && e.acct==="仕入高" && e.date>="2026/10/13").reduce((a,e)=>a+e.amount,0);
     $("pnlLines").innerHTML = [
       ["売上", cur.sales, ""],
-      ["− 原価(概算)", -cur.cost, "原価率 "+pct(cur.costRate)],
+      ["− 原価(概算)", -cur.cost, "原価率 "+pct(cur.costRate)+(buy?`・参考 仕入れ実績 ${buy.toLocaleString()}円（${pct(buy/Math.max(1,cur.sales))}）`:"")],
       ["− 人件費", -cur.labor, `${cur.hours}h・人時売上 ${cur.salesPerHour.toLocaleString()}円`],
       ["− 変動経費", -cur.exp, ""],
       ["− 固定費(月額満額)", -cur.fixed, ""],
     ].map(([k,v,n])=>`<div class="pl"><span>${k} <small style="color:#6b5a40">${n}</small></span><b>${(v<0?"−":"")+Math.abs(Math.round(v)).toLocaleString()}円</b></div>`).join("")
       + `<div class="pl total"><span>営業利益</span>${signed(cur.profit)}</div>`;
-    $("pnlNote").textContent = cur.status + "。原価は商品原価マスター×個数の概算、固定費は固定費シートの月額。開業前の費用（研修費・初期仕入など）はイニシャル側。";
+    $("pnlNote").textContent = cur.status + "。原価は商品原価マスター×個数の概算、固定費は固定費シートの月額。仕入れ実績は経費アプリ・経費シートの仕入高の合計で、在庫が残っている分も含むため参考値（損益には足していません）。開業前の費用（研修費・初期仕入など）はイニシャル側。";
   }
   $("pnlFc").innerHTML = fc ? [
       ["営業利益", signed(fc.profit), "利益率 "+pct(fc.margin)],

@@ -78,6 +78,9 @@ nav .bd{position:absolute;top:4px;right:calc(50% - 20px);background:var(--red);c
 .reading{display:flex;align-items:center;gap:8px;color:var(--g);font-size:13px;font-weight:bold}
 .spin{width:16px;height:16px;border:3px solid var(--g-l);border-top-color:var(--g);border-radius:50%;animation:sp 1s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
 .loading{text-align:center;color:var(--mute);padding:30px 0}
+.pdfic{width:76px;height:96px;border-radius:10px;border:1px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;color:var(--red);font-size:16px;letter-spacing:1px;flex:none}
+.unpaid{display:flex;justify-content:space-between;align-items:center;background:var(--amber-l);color:var(--amber);border-radius:var(--r);padding:12px 14px;margin-bottom:12px;font-weight:bold}
+.unpaid small{display:block;font-weight:normal;font-size:11px}
 </style>
 </head>
 <body>
@@ -108,6 +111,7 @@ nav .bd{position:absolute;top:4px;right:calc(50% - 20px);background:var(--red);c
   </div>
 </div>
 <input type="file" id="fileIn" accept="image/*" capture="environment" class="hide" onchange="onPhoto(this)">
+<input type="file" id="docIn" accept="image/*,application/pdf" class="hide" onchange="onPhoto(this)">
 <div id="ov"></div>
 <div class="toast" id="toast"></div>
 <script>
@@ -171,32 +175,36 @@ async function doLogin(){
 }
 function logout(){ if(!confirm("ログアウトしますか？")) return; localStorage.removeItem("os-token"); TOKEN=""; showLogin(); }
 function enterApp(h){ $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); applyHome(h); go("add"); }
-function applyHome(h){ ME = h.me; YM = h.ym; LIST = h.list||[]; if(h.accounts) ACCOUNTS = h.accounts; $("hName").textContent = ME.name + (ME.role==="admin"?"（管理者）":"");
+let UNPAID = {total:0,count:0};
+function applyHome(h){ ME = h.me; YM = h.ym; LIST = h.list||[]; UNPAID = h.unpaid||{total:0,count:0}; if(h.accounts) ACCOUNTS = h.accounts; $("hName").textContent = ME.name + (ME.role==="admin"?"（管理者）":"");
   const n = h.unchecked||0; $("bdList").textContent = n; $("bdList").classList.toggle("hide", !n); }
 function go(p){ PAGE = p; $("pAdd").classList.toggle("hide", p!=="add"); $("pList").classList.toggle("hide", p!=="list"); $("n_add").classList.toggle("on", p==="add"); $("n_list").classList.toggle("on", p==="list"); showMsg(""); closeOv();
   if(p==="add") renderAdd(); else renderList(); $("main").scrollTo(0,0); }
 
 // ───── 登録 ─────
-function blank(){ return { id:"", date:today(), vendor:"", amount:"", account:"消耗品費", pay:"アメックス", kind:"運用", memo:"", image:"", thumb:"", ocr:"", reading:false }; }
+function blank(){ return { id:"", date:today(), vendor:"", amount:"", account:"消耗品費", pay:"アメックス", kind:"運用", memo:"", image:"", mime:"", fname:"", thumb:"", ocr:"", reading:false }; }
 function renderAdd(){
   if(!F){
     $("pAdd").innerHTML = `
       <div class="card"><h2>レシート・納品書を登録</h2>
-        <button class="shot" onclick="$('fileIn').click()"><i>📷</i>撮影する／写真を選ぶ<small>日付・お店・金額を読み取って下に入れます</small></button>
+        <button class="shot" onclick="$('fileIn').click()"><i>📷</i>レシートを撮影する<small>日付・お店・金額を読み取って下に入れます</small></button>
+        <div style="height:10px"></div>
+        <button class="shot" style="padding:16px 12px;font-size:15px" onclick="$('docIn').click()"><i style="font-size:26px">📄</i>請求書のPDF・写真ファイルを選ぶ<small>メールで届いた請求書やスクショもOK（8MBまで）</small></button>
         <div style="height:10px"></div>
         <button class="btn sec" onclick="F=blank();renderAdd()">写真なしで入力する</button>
       </div>
       <div class="card"><h2>使い方</h2><div class="mini">
         ・お店の買い出し、トーホー・カクヤスの納品書、修理代の領収書などを登録します。<br>
         ・読み取った内容は必ず目で確かめてから保存してください。<br>
-        ・登録した写真はドライブに保存されるので、紙のレシートは月ごとにまとめて保管でOKです。</div></div>`;
+        ・登録した写真・PDFはドライブに保存されるので、紙のレシートは月ごとにまとめて保管でOKです。<br>・納品書や請求書で後払いのものは、支払い方法を「未払い（納品書・掛け）」に。払ったら一覧から開いて「振込」などに変えます。</div></div>`;
     return;
   }
   $("pAdd").innerHTML = formHtml(F, false);
 }
 function formHtml(f, edit){
   return `<div class="card"><h2>${edit?"登録内容を直す":"内容を確認して保存"}${f.thumb||f.url?"":""}</h2>
-    ${f.thumb ? `<div class="prev"><img src="${f.thumb}"><div class="mini">${f.reading?`<div class="reading"><span class="spin"></span>文字を読み取っています…</div>`:(f.ocr?"読み取りました。違うところは直してください":"読み取れませんでした。手で入れてください")}<br><button class="btn sm sec" style="margin-top:6px" onclick="$('fileIn').click()">撮り直す</button></div></div>` : (f.url?`<div class="mini"><a href="${esc(f.url)}" target="_blank">登録した写真を見る</a></div>`:"")}
+    ${f.thumb ? `<div class="prev">${f.thumb==="pdf"?`<div class="pdfic">PDF</div>`:`<img src="${f.thumb}">`}<div class="mini">${f.fname?esc(f.fname)+"<br>":""}${f.reading?`<div class="reading"><span class="spin"></span>文字を読み取っています…</div>`:(edit?(f.url?"保存するとファイルが差し替わります":"保存するとファイルが付きます"):(f.ocr?"読み取りました。違うところは直してください":"読み取れませんでした。手で入れてください"))}<br><button class="btn sm sec" style="margin-top:6px" onclick="$('fileIn').click()">撮り直す</button> <button class="btn sm sec" style="margin-top:6px" onclick="$('docIn').click()">ファイルを選ぶ</button></div></div>`
+      : (edit ? `<div class="mini" style="margin-bottom:6px">${f.url?`<a href="${esc(f.url)}" target="_blank">登録した写真・ファイルを見る</a>`:"写真・ファイルなし"}</div><div style="display:flex;gap:8px;margin-bottom:4px"><button class="btn sm sec" onclick="$('fileIn').click()">📷 ${f.url?"撮り直す":"撮影して追加"}</button><button class="btn sm sec" onclick="$('docIn').click()">📄 ${f.url?"ファイルを差し替え":"ファイルを追加"}</button></div>` : "")}
     <label>日付</label><input type="date" id="fDate" value="${esc(f.date)}" onchange="F.date=this.value">
     <label>お店</label><input id="fVendor" list="vendList" value="${esc(f.vendor)}" placeholder="例：業務スーパー" oninput="F.vendor=this.value" onchange="vendorPick(this.value)">
     <datalist id="vendList">${VENDORS.map(v=>`<option value="${v[1]}">`).join("")}</datalist>
@@ -219,14 +227,24 @@ function vendorPick(v){ F.vendor = v; const hit = VENDORS.find(x=>x[1]===v); if(
 async function onPhoto(inp){
   const file = inp.files && inp.files[0]; inp.value = ""; if(!file) return;
   if(!F || EDIT){ if(!EDIT) F = blank(); }
-  try{ const {b64, thumb} = await shrink(file); F.image = b64; F.thumb = thumb; }catch(e){ toast("写真を読み込めませんでした"); return; }
+  const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name||"");
+  if(isPdf){
+    if(file.size > 8*1024*1024){ toast("PDFが大きすぎます（8MBまで）"); return; }
+    try{ F.image = await toB64(file); F.mime = "application/pdf"; F.thumb = "pdf"; F.fname = file.name||""; }catch(e){ toast("ファイルを読み込めませんでした"); return; }
+  } else {
+    try{ const {b64, thumb} = await shrink(file); F.image = b64; F.mime = "image/jpeg"; F.thumb = thumb; F.fname = ""; }catch(e){ toast("写真を読み込めませんでした（PDFかJPEG・PNGにしてください）"); return; }
+  }
   F.reading = true; refreshForm();
-  const r = await post("rc_ocr", {image: F.image}); F.reading = false;
+  const r = await post("rc_ocr", {image: F.image, mime: F.mime}); F.reading = false;
   if(r.error){ F.ocr = ""; refreshForm(); showMsg(r.error==="auth"?"ログインし直してください":"読み取りに失敗しました："+r.error); return; }
   F.ocr = r.text||""; const p = parseReceipt(F.ocr);
+  // 登録済みのものにファイルを足すときは、入力済みの内容を上書きしない
+  if(EDIT){ refreshForm(); return; }
   if(p.date) F.date = p.date; if(p.amount) F.amount = p.amount; if(p.vendor) F.vendor = p.vendor; if(p.account) F.account = p.account; if(p.pay) F.pay = p.pay;
+  if(F.mime==="application/pdf" && /請求書|納品書/.test(F.ocr) && !/領収/.test(F.ocr)) F.pay = "未払い（納品書・掛け）";
   refreshForm();
 }
+function toB64(file){ return new Promise((ok, ng)=>{ const fr = new FileReader(); fr.onload = ()=>ok(String(fr.result).split(",")[1]); fr.onerror = ng; fr.readAsDataURL(file); }); }
 // 写真を長辺1600pxのJPEGに縮める（通信量を減らすため）
 function shrink(file){ return new Promise((ok, ng)=>{ const url = URL.createObjectURL(file); const img = new Image();
   img.onload = ()=>{ const M = 1600; let w = img.naturalWidth, h = img.naturalHeight; const s = Math.min(1, M/Math.max(w,h)); w = Math.round(w*s); h = Math.round(h*s);
@@ -268,7 +286,7 @@ function parseReceipt(text){
 
 async function save(force){
   const f = F; if(!f) return;
-  const body = { id:f.id||"", date:f.date, vendor:(f.vendor||"").trim(), amount:Number(f.amount)||0, account:f.account, pay:f.pay, kind:f.kind, memo:(f.memo||"").trim(), image:f.image||"", ocr:f.ocr||"", force:!!force };
+  const body = { id:f.id||"", date:f.date, vendor:(f.vendor||"").trim(), amount:Number(f.amount)||0, account:f.account, pay:f.pay, kind:f.kind, memo:(f.memo||"").trim(), image:f.image||"", mime:f.mime||"", ocr:f.ocr||"", force:!!force };
   if(!body.date){ toast("日付を入れてください"); return; } if(!body.vendor){ toast("お店を入れてください"); return; } if(!body.amount){ toast("金額を入れてください"); return; }
   const b = document.getElementById("saveBtn"); if(b){ b.disabled = true; b.textContent = "保存しています…"; }
   const r = await post("rc_save", body);
@@ -287,15 +305,16 @@ function renderList(){
   const L = LIST; const tot = L.reduce((a,x)=>a+x.amount,0); const byA = {}; L.forEach(x=>{ const k = x.kind==="初期" ? "初期費用" : x.account; byA[k]=(byA[k]||0)+x.amount; });
   const unc = L.filter(x=>x.status==="未確認").length;
   $("pList").innerHTML = `
+    ${UNPAID.count?`<div class="unpaid"><span>未払い（納品書・掛け）<small>全期間・${UNPAID.count}件。払ったら開いて支払い方法を変えてください</small></span><span>${yen(UNPAID.total)}</span></div>`:""}
     <div class="mon"><button onclick="shiftYM(-1)">◀</button><b>${YM.replace("/","年")}月</b><button onclick="shiftYM(1)">▶</button></div>
     <div class="card"><h2>${ME.role==="admin"?"登録の合計":"自分の登録"} <small>${L.length}件${unc?`・未確認${unc}件`:""}</small></h2>
       ${Object.entries(byA).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="sum"><span>${esc(k)}</span><b>${yen(v)}</b></div>`).join("") || `<div class="mini">まだ登録がありません</div>`}
       ${L.length?`<div class="sum total"><span>合計</span><b>${yen(tot)}</b></div>`:""}
-      ${ME.role==="admin"?`<div class="mini" style="margin-top:6px">カード明細から取り込んだ分などは含みません（分析シートの「経費」に全部入っています）</div>`:""}
+      ${ME.role==="admin"?`<div class="mini" style="margin-top:6px">ChatGPT経由・カード明細から取り込んだ分も含みます（開業費の「見積」「未入力」の行は除く）</div>`:""}
     </div>
-    <div class="card"><h2>明細</h2>${L.map((x,i)=>`<button class="row" onclick="openItem(${i})"><div class="l"><b>${esc(x.vendor)}${x.memo?` <span class="mini">${esc(x.memo)}</span>`:""}</b><small>${x.date.slice(5).replace("/","/")}・${esc(x.kind==="初期"?"初期費用":x.account)}・${esc(x.pay)}${ME.role==="admin"?"・"+esc(x.by):""}</small></div><div class="r">${yen(x.amount)}<br>${x.status==="未確認"?`<span class="pill amber">未確認</span>`:`<span class="pill">確認済</span>`}</div></button>`).join("") || `<div class="mini">この月の登録はありません</div>`}</div>`;
+    <div class="card"><h2>明細</h2>${L.map((x,i)=>`<button class="row" onclick="openItem(${i})"><div class="l"><b>${esc(x.vendor)}${x.memo?` <span class="mini">${esc(x.memo)}</span>`:""}</b><small>${x.date.slice(5)}・${esc(x.kind==="初期"?"初期費用":x.account)}・${esc(x.pay)}${ME.role==="admin"?"・"+esc(x.by):""}${x.url?" 📎":""}</small></div><div class="r">${yen(x.amount)}<br>${x.status==="未確認"?`<span class="pill amber">未確認</span>`:`<span class="pill">確認済</span>`}</div></button>`).join("") || `<div class="mini">この月の登録はありません</div>`}</div>`;
 }
-function openItem(i){ const x = LIST[i]; EDIT = true; F = { id:x.id, date:x.date.replace(/\//g,"-"), vendor:x.vendor, amount:x.amount, account:x.account, pay:x.pay, kind:x.kind, memo:x.memo, url:x.url, status:x.status, image:"", thumb:"", ocr:"", reading:false };
+function openItem(i){ const x = LIST[i]; EDIT = true; F = { id:x.id, date:x.date.replace(/\//g,"-"), vendor:x.vendor, amount:x.amount, account:x.account, pay:x.pay, kind:x.kind, memo:x.memo, url:x.url, status:x.status, image:"", mime:"", fname:"", thumb:"", ocr:"", reading:false };
   sheet(formHtml(F, true)); }
 async function del(id){ if(!confirm("この登録を削除しますか？（経費シートからも消えます）")) return; const r = await post("rc_delete", {id}); if(r.error){ toast(r.error); return; } toast("削除しました"); EDIT=false; F=null; closeOv(); reload(); }
 async function check(id){ const r = await post("rc_check", {id}); if(r.error){ toast(r.error); return; } toast("確認済にしました"); EDIT=false; F=null; closeOv(); reload(); }
