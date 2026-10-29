@@ -276,15 +276,18 @@ async function reportHistory(){ const r = await get("inv_reports"); if(r.error){
 
 // ───── 品目（マスター） ─────
 const MFIELDS = [["品目","品目名"],["区分","区分（食材/飲料/資材/消耗品/調味料/備品/仕込）"],["仕入先","仕入先"],["購入方法","購入方法"],["規格(入数など)","規格・入数"],["仕入単価(税込)","仕入単価（税込）"],["発注単位","発注単位（箱・袋・ケース）"],["入力単位","入力単位（個・袋・kg）"],["担当","担当（シェフ/ホール）"],["管理頻度","管理頻度（毎日/週次/必要時）"],["最低在庫","最低在庫（数字）"],["発注方式","発注方式（数量提案/最低在庫/定期/手動/台帳）"],["配送・納期","配送・納期"],["用途(商品)","用途"],["備考","備考"]];
+// 検索用：ひらがな→カタカナ、小さい文字→大きい文字、全角英数→半角、小文字化
+function norm(t){ return String(t||"").replace(/[ぁ-ん]/g,c=>String.fromCharCode(c.charCodeAt(0)+0x60)).replace(/[ァィゥェォッャュョヮ]/g,c=>({ァ:"ア",ィ:"イ",ゥ:"ウ",ェ:"エ",ォ:"オ",ッ:"ツ",ャ:"ヤ",ュ:"ユ",ョ:"ヨ",ヮ:"ワ"}[c])).replace(/[Ａ-Ｚａ-ｚ０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/ー/g,"").toLowerCase(); }
 const yen1 = n => (n===null||n===undefined||n==="") ? "" : (Math.round(Number(n)*10)/10).toLocaleString()+"円";
 function pricesOf(name){ return PRICES.filter(p=>p.item===name); }
 function bestPrice(name){ const ps = pricesOf(name).filter(p=>p.per!==null); if(!ps.length) return null; const base = ps[0].base; const same = ps.filter(p=>p.base===base); return same.sort((a,b)=>a.per-b.per)[0]; }
 async function loadPrices(){ const r = await get("inv_prices"); if(!r.error) PRICES = r.prices||[]; }
 function renderMaster(){
-  const q = MQ.trim();
-  const list = q ? MASTER.filter(it=>(it.name+it.supplier+it.use+it.spec).toLowerCase().includes(q.toLowerCase())) : MASTER;
+  const q = norm(MQ.trim());
+  const hit = (it)=> norm(it.name+it.supplier+it.use+it.spec+pricesOf(it.name).map(p=>p.supplier+p.spec).join("")).includes(q);
+  const list = q ? MASTER.filter(hit) : MASTER;
   // マスターに無いが価格表にある品目（ベーコン・バターなど）も検索で出す
-  const extra = q ? [...new Set(PRICES.map(p=>p.item))].filter(n=>!MASTER.some(it=>it.name===n) && n.toLowerCase().includes(q.toLowerCase())) : [];
+  const extra = q ? [...new Set(PRICES.map(p=>p.item))].filter(n=>!MASTER.some(it=>it.name===n) && norm(n+pricesOf(n).map(p=>p.supplier+p.spec).join("")).includes(q)) : [];
   const groups = {}; list.forEach(it=>{ (groups[it.owner||"未設定"]=groups[it.owner||"未設定"]||[]).push(it); });
   $("pMaster").innerHTML = `
     <input id="mq" placeholder="品目・仕入先で検索（例：デミ、ハナマサ）" value="${esc(MQ)}" oninput="MQ=this.value;renderMaster();$('mq').focus();$('mq').setSelectionRange(MQ.length,MQ.length)" style="margin-bottom:10px">
