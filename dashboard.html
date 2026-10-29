@@ -341,7 +341,8 @@ function renderAlerts(){
   const shimeBy = {}; o.shime.forEach(s=>{ shimeBy[s.date] = s; });
   const past = bizDays().filter(d=>d.date<today).slice(-5);
   past.forEach(d=>{ if(!shimeBy[d.date]) add("w", `${d.date.slice(5)}(${youbi(d.date)}) レジ締めの記録がありません`, `売上 ${yen(d.sales)}。レジの「締め」から入力`, "pnl"); });
-  Object.values(shimeBy).filter(s=>s.date>=dateAdd(today,-7)).sort((a,b)=>a.date<b.date?1:-1).forEach(s=>{
+  const recent3 = bizDays().filter(d=>d.date<today).slice(-3).map(d=>d.date);
+  Object.values(shimeBy).filter(s=>recent3.indexOf(s.date)>=0).sort((a,b)=>a.date<b.date?1:-1).forEach(s=>{
     const d = dayByDate(s.date) || {};
     if(s.diff && Math.abs(s.diff)>=500) add("e", `${s.date.slice(5)} レジ締めの差異 ${s.diff>0?"+":"−"}${num(Math.abs(s.diff))}円`, `予定 ${yen(s.expected)} → 実際 ${yen(s.actual)}${s.vendorPay?`・業者払い ${yen(s.vendorPay)}`:""}${s.slipMatch?`・伝票 ${s.slipMatch}`:""}`, "pnl");
     if(s.slipMatch && /不一致|NG/.test(s.slipMatch)) add("e", `${s.date.slice(5)} 伝票とレジが不一致`, "締めの入力で「不一致」になっています", "pnl");
@@ -349,17 +350,18 @@ function renderAlerts(){
   });
   if(!shimeBy[today] && H>=16 && (dayByDate(today)||{}).count>0) add("w", "本日のレジ締めがまだです", "閉店後にレジの「締め」から入力", "pnl");
   // 二重入力の疑い（今日・昨日のみ。同じ内訳・同じ金額が2分以内）
-  const dupRecent = o.dup.filter(x=>x.date>=dateAdd(today,-1));
-  if(dupRecent.length) add("w", `二重入力の疑い ${dupRecent.length}件（今日・昨日）`, dupRecent.slice(0,4).map(x=>`${x.date.slice(5)} ${x.time1}→${x.time2} ${x.items} ${num(x.amount)}円（${x.pay1}/${x.pay2}）`).join("、") + (dupRecent.length>4?" …":"") + "。同じ商品が続けて通るのはピーク時には普通にあるので、伝票と見比べて判断", "day");
+  // 同じ分・同じ内訳・同じ金額・同じ支払方法のものだけ（ピーク時に同じ商品が続くのは普通なので、ここは狭く）
+  const dupRecent = o.dup.filter(x=>x.date>=dateAdd(today,-1) && x.time1===x.time2 && x.pay1===x.pay2);
+  if(dupRecent.length) add("w", `二重入力の疑い ${dupRecent.length}件（今日・昨日）`, dupRecent.slice(0,4).map(x=>`${x.date.slice(5)} ${x.time1} ${x.items} ${num(x.amount)}円 ${x.pay1}×2`).join("、") + (dupRecent.length>4?" …":"") + "。伝票の枚数と見比べて判断", "day");
   // 勤怠
   o.unclosed.forEach(u=>add("e", `${u.name} ${u.date.slice(5)} 退勤の打刻がありません`, `出勤 ${u.in}。勤怠アプリの修正申請で直す`, "people"));
-  bizDays().filter(d=>d.date<today && d.date>=openDate()).slice(-7).forEach(d=>{ if(!p.laborDaily[d.date]) add("w", `${d.date.slice(5)}(${youbi(d.date)}) 勤怠がありません`, `売上 ${yen(d.sales)} に対して人件費が0になっています`, "people"); });
+  bizDays().filter(d=>d.date<today && d.date>=openDate()).slice(-7).forEach(d=>{ const l = p.laborDaily[d.date]; if(!l) add("w", `${d.date.slice(5)}(${youbi(d.date)}) 勤怠がありません`, `売上 ${yen(d.sales)} に対して人件費が0になっています`, "people"); else if(l.staff<2 && d.meals>=20) add("w", `${d.date.slice(5)}(${youbi(d.date)}) 勤怠が${l.staff}人分だけです`, `${(l.minutes/60).toFixed(1)}h・${d.meals}食。打刻漏れか修正申請が未承認の可能性`, "people"); });
   // 在庫・備品
   if(o.stockLow.length) add("w", `在庫が下限以下 ${o.stockLow.length}品目`, o.stockLow.slice(0,5).map(s=>`${s.name} ${s.stock}${s.unit}（下限${s.min}）`).join("、")+(o.stockLow.length>5?" …":""), null);
   if(o.reports.length) add("i", `備品・不足の報告 ${o.reports.length}件`, o.reports.slice(0,4).map(r=>`${r.name}${r.qty?" "+r.qty:""}（${r.by}）`).join("、"), null);
   // 経費
   if(o.receipts.unchecked) add("i", `経費の未確認 ${o.receipts.unchecked}件`, "経費アプリで内容を確認してください", null);
-  if(o.receipts.unpaid) add("w", `未払いの経費 ${yen(o.receipts.unpaid)}`, o.receipts.unpaidList.slice(0,4).map(r=>`${r.date.slice(5)} ${r.vendor} ${num(r.amount)}円`).join("、"), null);
+  if(o.receipts.unpaid) add("i", `未払いの経費（掛け・月末払い） ${yen(o.receipts.unpaid)}`, o.receipts.unpaidList.slice(0,4).map(r=>`${r.date.slice(5)} ${r.vendor} ${num(r.amount)}円`).join("、"), null);
   if(p.initial && p.initial.pending) add("i", `開業費の未入力 ${p.initial.pending}件`, "分析シート「開業費」で金額を入れると投資回収が正確になります", "pnl");
   const zero = p.fixed.filter(f=>!f.amount && !/収入/.test(f.name));
   if(zero.length) add("i", `固定費が0円のまま ${zero.map(f=>f.name).join("・")}`, "実額が分かったら固定費シートに入力（損益が良く見えすぎています）", "pnl");
@@ -367,7 +369,10 @@ function renderAlerts(){
   const box = $("alerts"); box.classList.toggle("ok", !A.some(a=>a.lv!=="i"));
   const rank = {e:0,w:1,i:2}; A.sort((a,b)=>rank[a.lv]-rank[b.lv]);
   $("alertsSub").textContent = A.length ? `${A.filter(a=>a.lv==="e").length}件 要対応・${A.filter(a=>a.lv==="w").length}件 確認・${A.filter(a=>a.lv==="i").length}件 参考` : "";
-  $("alertList").innerHTML = A.length ? A.map(a=>`<div class="al ${a.lv}"><i></i><div><b>${a.title}</b><small>${a.note}</small></div>${a.tab?`<button onclick="setTab('${a.tab}')">見る</button>`:""}</div>`).join("") : `<div class="al i" style="border:none"><i style="background:var(--midori)"></i><div><b>いま確認が必要なことはありません</b><small>レジ締め・PayPay・勤怠・在庫・経費をチェックしました</small></div></div>`;
+  const row = a => `<div class="al ${a.lv}"><i></i><div><b>${a.title}</b><small>${a.note}</small></div>${a.tab?`<button onclick="setTab('${a.tab}')">見る</button>`:""}</div>`;
+  const main = A.filter(a=>a.lv!=="i"), info = A.filter(a=>a.lv==="i");
+  $("alertList").innerHTML = (main.length ? main.map(row).join("") : `<div class="al i" style="border:none"><i style="background:var(--midori)"></i><div><b>いま対応が必要なことはありません</b><small>レジ締め・PayPay・勤怠・在庫・経費をチェックしました</small></div></div>`)
+    + (info.length ? `<details><summary>参考 ${info.length}件（未確認の経費・未入力など）</summary>${info.map(row).join("")}</details>` : "");
 }
 
 // ===== 今日 =====
@@ -592,7 +597,7 @@ function renderWeek(){
   $("wkSub").textContent = `営業 ${w.days}日・${w.count}会計`;
   $("wkTop").innerHTML = [
     ["食数/日", avgM===null?"-":avgM.toFixed(1)+"食" + (pAvgM!==null?` ${delta(avgM,pAvgM,"",1)}`:""), `週合計 ${w.meals}食（前週 ${pw.meals}食）`],
-    ["売上", yen(w.sales) + (pw.sales?` ${delta(Math.round(w.sales/1000),Math.round(pw.sales/1000),"千")}`:""), `日平均 ${w.days?yen(Math.round(w.sales/w.days)):"-"}`],
+    ["売上", yen(w.sales), `日平均 ${w.days?yen(Math.round(w.sales/w.days)):"-"}${w.days&&pw.days?` ${delta(Math.round(w.sales/w.days/1000),Math.round(pw.sales/pw.days/1000),"千")}`:""}`],
     ["客単価", w.meals?yen(Math.round(w.sales/w.meals)):"-", `前週 ${pw.meals?yen(Math.round(pw.sales/pw.meals)):"-"}`],
     ["粗利 <em class='tag g'>概算</em>", w.sales?signed(w.sales-w.cost-w.labor):"-", `原価 ${pctOf(w.cost,w.sales)}・人件費 ${pctOf(w.labor,w.sales)}${w.laborDays<w.days?`（勤怠 ${w.laborDays}/${w.days}日）`:""}`]
   ].map(a=>cell(...a)).join("");
