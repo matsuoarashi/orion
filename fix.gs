@@ -44,6 +44,8 @@ function handleFxPost(d){
       else if (d.type === "fx_ack") res = fxAck_(d, me);
       else if (d.type === "fx_unack") res = fxUnack_(d, me);
       else if (d.type === "fx_fixed") res = fxFixed_(d, me);
+      else if (d.type === "fx_item") res = fxItem_(d, me);
+      else if (d.type === "fx_add") res = fxAdd_(d, me);
       else res = { error: "unknown type" };
     } finally { lock.releaseLock(); }
   } catch(e){ res = { error: String(e) }; }
@@ -114,4 +116,41 @@ function fxFixed_(d, me){
   var before = Number(v[at-2][1])||0; sh.getRange(at, 2).setValue(amount);
   fxLog_(me, "固定費", invToday_(), name, before, amount, d.reason);
   return { ok: true };
+}
+
+// 商品の差替え（例：オリオン ハーフ → オリオン）。個数列・内訳・合計を直し、食数は変えない
+function fxItem_(d, me){
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("売上"); var row = Number(d.row)||0; if (row < 2) return { error: "行が不正" };
+  var from = String(d.from||""), to = String(d.to||""); if (ITEM_ORDER.indexOf(from) < 0 || ITEM_ORDER.indexOf(to) < 0) return { error: "商品名が不正" };
+  var v = sh.getRange(row, 1, 1, 26).getValues()[0]; var date = dateKey_(v[0]); if (d.date && date !== String(d.date)) return { error: "日付が一致しません" };
+  if (String(v[3]) === "取消") return { error: "取消された行です" };
+  var cf = 9 + ITEM_ORDER.indexOf(from), ct = 9 + ITEM_ORDER.indexOf(to); // I列=9
+  var qf = Number(v[cf-1])||0; if (qf < 1) return { error: "この会計に " + from + " はありません" };
+  var qt = Number(v[ct-1])||0; try { orderCfg_(); } catch(e){} var prices = PRICES;
+  var before = { items: String(v[7]||""), amount: Number(v[4])||0 };
+  var counts = {}; ITEM_ORDER.forEach(function(n, i){ var q = Number(v[8+i])||0; if (q) counts[n] = q; });
+  counts[from] = qf - 1; if (!counts[from]) delete counts[from]; counts[to] = (counts[to]||0) + 1;
+  var items = ITEM_ORDER.filter(function(n){ return counts[n]; }).map(function(n){ return n + "×" + counts[n]; }).join("　");
+  var amount = before.amount - (Number(prices[from])||0) + (Number(prices[to])||0);
+  sh.getRange(row, cf).setValue(qf - 1); sh.getRange(row, ct).setValue(qt + 1); sh.getRange(row, 8).setValue(items); sh.getRange(row, 5).setValue(amount);
+  if (Number(v[23])) sh.getRange(row, 25).setValue(Math.max(0, Number(v[23]) - amount)); // お釣り
+  fxLog_(me, "商品差替え", date, "売上!行" + row + " " + before.items + " " + before.amount + "円", before, { items: items, amount: amount }, d.reason);
+  return { ok: true, amount: amount };
+}
+// 打ち忘れた会計を追加（伝票から）。items: {"オリオン":1,...}
+function fxAdd_(d, me){
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("売上");
+  var date = String(d.date||""); if (!/^\d{4}\/\d{2}\/\d{2}$/.test(date)) return { error: "日付は yyyy/MM/dd" };
+  var time = String(d.time||"12:00"); if (/^\d{1,2}:\d{2}$/.test(time)) time += ":00";
+  var mode = String(d.mode||"店内"); var pay = String(d.pay||"現金"); var counts = d.items || {}; try { orderCfg_(); } catch(e){} var prices = PRICES;
+  var total = 0, meals = 0, drinks = 0, parts = [];
+  ITEM_ORDER.forEach(function(n){ var q = Number(counts[n])||0; if (!q) return; total += q * (Number(prices[n])||0); if (MEAL_ITEMS.indexOf(n) >= 0) meals += q; if (/コーラ|ジンジャー|ラガー/.test(n)) drinks += q; parts.push(n + "×" + q); });
+  if (!parts.length) return { error: "商品がありません" };
+  var y = date.split("/").map(Number); var youbi = ["日","月","火","水","木","金","土"][new Date(y[0], y[1]-1, y[2]).getDay()];
+  var row = [date, time, youbi, mode, total, meals, drinks, parts.join("　")];
+  ITEM_ORDER.forEach(function(n){ row.push(Number(counts[n])||0); });
+  row.push(total, 0, pay);
+  sh.appendRow(row); var at = sh.getLastRow();
+  fxLog_(me, "会計追加", date, "売上!行" + at + " " + parts.join("　") + " " + total + "円 " + pay, "", { time: time, mode: mode, items: parts.join("　"), amount: total, pay: pay }, d.reason);
+  return { ok: true, row: at, amount: total };
 }
