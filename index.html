@@ -753,7 +753,7 @@ async function saveShime(){
   if(!s || s.cash === 0){ alert("金種を入力してください"); return; }
   if(s.diff !== 0 && !confirm(`差異が ${s.diff>0?"+":""}${s.diff.toLocaleString()}円 あります。このまま記録しますか?`)) return;
   if(s.slipOk === null && !confirm("伝票の品数が未入力です。このまま記録しますか?")) return;
-  if(s.slipOk === false && !confirm("伝票の品数とレジの記録が合っていません。記録後に分析ページの「要確認」から会計を直してください。このまま記録しますか?")) return;
+  if(s.slipOk === false && !confirm("伝票の品数とレジの記録が合っていません。このまま記録すると管理者に「要確認」として届きます。記録しますか?")) return;
   const now = new Date();
   const pad = n => String(n).padStart(2,"0");
   const rec = {
@@ -766,7 +766,7 @@ async function saveShime(){
   enqueueRec(rec);
   $("shimeOv").classList.remove("show");
   if(s.slipOk === false || s.diff !== 0){
-    if(confirm("レジ締めを記録しました。\n" + (s.diff!==0 ? `現金差異 ${s.diff>0?"+":""}${s.diff.toLocaleString()}円\n` : "") + (s.slipOk===false ? "伝票とレジの品数に差があります\n" : "") + "\n分析ページを開いて、今日の会計を確認・訂正しますか？")) window.open("dashboard.html?fix=" + rec.date, "_blank");
+    alert("レジ締めを記録しました。\n" + (s.diff!==0 ? `現金差異 ${s.diff>0?"+":""}${s.diff.toLocaleString()}円\n` : "") + (s.slipOk===false ? "伝票とレジの品数に差があります\n" : "") + "\n差異は記録されました。管理者が分析ページの「要確認」で確認・訂正します。伝票はそのまま保管してください。");
   } else alert("レジ締めを記録しました(差異なし)");
 }
 

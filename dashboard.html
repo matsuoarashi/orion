@@ -501,7 +501,7 @@ function addSale(date){
 // PayPay for Business の取引一覧を貼り付けて照合
 function openPayPay(date){
   if(!needFix()) return;
-  sheet(`<h3>PayPay画面と照合（${date.slice(5)}）</h3><div class="sub">PayPay for Business の「取引」ページで、その日の一覧を範囲選択してコピーし、ここに貼り付けてください（時刻と金額だけ読み取ります）。同じ金額・±6分のレジ会計に対応付け、現金で打っていた会計は PayPay に訂正します</div><label>貼り付け</label><textarea id="ppText" rows="6" placeholder="13:55 ... 600 円 取引完了 ..."></textarea><div class="msg" id="ppMsg"></div><button class="btn" id="ppOk">照合して訂正する</button><div id="ppRes"></div>`);
+  sheet(`<h3>PayPay画面と照合（${date.slice(5)}）</h3><div class="sub">PayPay for Business の「取引」ページで、その日の一覧を範囲選択してコピーし、ここに貼り付けてください（時刻と金額だけ読み取ります）。同じ金額・±15分のレジ会計に対応付け、現金で打っていた会計は PayPay に訂正します</div><label>貼り付け</label><textarea id="ppText" rows="6" placeholder="13:55 ... 600 円 取引完了 ..."></textarea><div class="msg" id="ppMsg"></div><button class="btn" id="ppOk">照合して訂正する</button><div id="ppRes"></div>`);
   $("ppOk").onclick = async ()=>{ const t = $("ppText").value.replace(/\s+/g," "); const txns = [...t.matchAll(/(\d{1,2}:\d{2})[^0-9]{0,80}?([\d,]{3,7}) ?円/g)].map(m=>({time:m[1].padStart(5,"0"), amount:Number(m[2].replace(/,/g,""))})).filter(x=>x.amount>0);
     if(!txns.length){ $("ppMsg").textContent="時刻と金額が読み取れませんでした"; return; } $("ppOk").disabled=true; $("ppMsg").textContent=`${txns.length}件・${num(txns.reduce((a,x)=>a+x.amount,0))}円 を照合中…`;
     const r = await fxPost("fx_paypay", {date, txns, apply:true}); $("ppOk").disabled=false; if(r.error){ $("ppMsg").textContent=r.error; return; }
