@@ -46,6 +46,7 @@ function handleFxPost(d){
       else if (d.type === "fx_fixed") res = fxFixed_(d, me);
       else if (d.type === "fx_item") res = fxItem_(d, me);
       else if (d.type === "fx_add") res = fxAdd_(d, me);
+      else if (d.type === "fx_paypay") res = fxPayPay_(d, me);
       else res = { error: "unknown type" };
     } finally { lock.releaseLock(); }
   } catch(e){ res = { error: String(e) }; }
@@ -153,4 +154,29 @@ function fxAdd_(d, me){
   sh.appendRow(row); var at = sh.getLastRow();
   fxLog_(me, "会計追加", date, "売上!行" + at + " " + parts.join("　") + " " + total + "円 " + pay, "", { time: time, mode: mode, items: parts.join("　"), amount: total, pay: pay }, d.reason);
   return { ok: true, row: at, amount: total };
+}
+
+// PayPay for Business の取引一覧（貼り付け）とレジ記録を突き合わせる
+// d: { date:"yyyy/MM/dd", txns:[{time:"HH:MM", amount:1100}, ...], apply:true }
+// 同じ金額・±6分のレジ行に対応付ける。PayPay行を優先、無ければ現金行を PayPay に訂正（apply のとき）。残りは一覧で返す
+function fxPayPay_(d, me){
+  var date = String(d.date||""); var txns = (d.txns||[]).map(function(t){ return { time:String(t.time||"").slice(0,5), amount:Number(t.amount)||0 }; }).filter(function(t){ return t.amount && /^\d{1,2}:\d{2}$/.test(t.time); });
+  if (!date || !txns.length) return { error: "日付と明細がありません" };
+  var mins = function(t){ var m = String(t).match(/(\d{1,2}):(\d{2})/); return m ? Number(m[1])*60+Number(m[2]) : -999; };
+  var rows = fxSalesOf_(date).filter(function(r){ return r.mode !== "取消" && r.amount; }).map(function(r){ r.used = false; return r; });
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("売上");
+  var matched = [], fixed = [], unmatched = [];
+  var pick = function(t, payWanted){ var best = null, bd = 99; rows.forEach(function(r){ if (r.used || r.amount !== t.amount) return; if (payWanted && r.pay !== payWanted) return; if (!payWanted && r.pay === "PayPay") return; var dd = Math.abs(mins(r.time)-mins(t.time)); if (dd <= 6 && dd < bd){ bd = dd; best = r; } }); return best; };
+  txns.forEach(function(t){ var r = pick(t, "PayPay"); if (r){ r.used = true; matched.push({ time:t.time, amount:t.amount, row:r.row, regTime:r.time }); return; }
+    r = pick(t, null); if (r){ r.used = true; if (d.apply){ sh.getRange(r.row, 26).setValue("PayPay"); fxLog_(me, "支払方法", date, "売上!行" + r.row + " " + r.items + " " + r.amount + "円", r.pay, "PayPay", "PayPay照合：画面 " + t.time + " " + t.amount + "円 に対応する会計が" + r.pay + "で記録されていた"); } fixed.push({ time:t.time, amount:t.amount, row:r.row, regTime:r.time, items:r.items, from:r.pay }); return; }
+    unmatched.push(t); });
+  var extra = rows.filter(function(r){ return !r.used && r.pay === "PayPay"; }).map(function(r){ return { time:r.time, amount:r.amount, row:r.row, items:r.items }; });
+  // ログ
+  try { var lg = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("PayPay突合ログ"); if (lg){ var now = invNow_(); var L = [];
+    fixed.forEach(function(x){ L.push([now, d.apply ? "現金→PayPayに訂正" : "訂正候補", date, x.time, x.amount, x.row, x.items]); });
+    unmatched.forEach(function(x){ L.push([now, "レジに該当なし", date, x.time, x.amount, "", "PayPay画面にあるがレジに同額の会計がない（打ち忘れ／金額違い）"]); });
+    extra.forEach(function(x){ L.push([now, "PayPay画面に該当なし", date, x.time, x.amount, x.row, x.items + "（レジはPayPayだが画面に無い→未受取か現金の可能性）"]); });
+    if (!L.length) L.push([now, "一致", date, "", txns.reduce(function(a,t){ return a+t.amount; },0), "", txns.length + "件すべて一致"]);
+    lg.getRange(lg.getLastRow()+1, 1, L.length, 7).setValues(L); } } catch(e){}
+  return { ok:true, date:date, total: txns.reduce(function(a,t){ return a+t.amount; },0), count: txns.length, matched: matched.length, fixed: fixed, unmatched: unmatched, extra: extra };
 }

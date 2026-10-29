@@ -379,8 +379,9 @@ function renderAlerts(){
     const d = dayByDate(s.date) || {};
     const done = s.reason ? `理由：${s.reason}（${s.reasonBy}）` : "";
     if(s.diff && Math.abs(s.diff)>=500 && !s.reason) add("e", `${s.date.slice(5)} レジ締めの差異 ${s.diff>0?"+":"−"}${num(Math.abs(s.diff))}円`, `予定 ${yen(s.expected)} → 実際 ${yen(s.actual)}${s.vendorPay?`・業者払い ${yen(s.vendorPay)}`:""}${s.slipMatch?`・伝票 ${s.slipMatch}`:""}`, "pnl", "shime:"+s.date, [reasonAct(s.date), salesAct(s.date)]);
-    if(s.slipMatch && /不一致|NG/.test(s.slipMatch) && !s.reason) add("e", `${s.date.slice(5)} 伝票とレジが不一致`, "締めの入力で「不一致」になっています。会計の二重入力・入れ忘れを確認", "pnl", "slip:"+s.date, [salesAct(s.date), reasonAct(s.date)]);
-    if(d.salesPaypay!==undefined && s.paypay && Math.abs(s.paypay-d.salesPaypay)>=100) add("e", `${s.date.slice(5)} PayPayの差 ${num(Math.abs(s.paypay-d.salesPaypay))}円`, `PayPay画面 ${yen(s.paypay)} / レジのPayPay会計 ${yen(d.salesPaypay)}。${s.paypay>d.salesPaypay?"現金で打った会計がPayPayだった可能性":"PayPayで打った会計が未受取か現金だった可能性"}${done?"。"+done:""}`, "day", "pp:"+s.date, [salesAct(s.date), ackAct]);
+    if(s.slipMatch && /不一致|NG/.test(s.slipMatch) && !s.reason){ const sd = s.slipDetail; const diffs = sd && sd.slips ? Object.keys(sd.slips).filter(k=>Number(sd.slips[k])!==Number((sd.app||{})[k]||0)).map(k=>`${k.replace(/^TG/,"持帰")} 伝票${sd.slips[k]}/レジ${(sd.app||{})[k]||0}`) : [];
+      add("e", `${s.date.slice(5)} 伝票とレジが不一致`, diffs.length ? diffs.join("、") + "。「会計を見る」から差替え・追加・取消で直す" : "締めの入力で「不一致」になっています。会計の二重入力・入れ忘れを確認", "pnl", "slip:"+s.date, [salesAct(s.date), reasonAct(s.date)]); }
+    if(d.salesPaypay!==undefined && s.paypay && Math.abs(s.paypay-d.salesPaypay)>=100) add("e", `${s.date.slice(5)} PayPayの差 ${num(Math.abs(s.paypay-d.salesPaypay))}円`, `PayPay画面 ${yen(s.paypay)} / レジのPayPay会計 ${yen(d.salesPaypay)}。${s.paypay>d.salesPaypay?"現金で打った会計がPayPayだった可能性":"PayPayで打った会計が未受取か現金だった可能性"}${done?"。"+done:""}`, "day", "pp:"+s.date, [{label:"PayPay画面と照合", cls:"p", fn:()=>openPayPay(s.date)}, salesAct(s.date), ackAct]);
   });
   if(!shimeBy[today] && H>=16 && (dayByDate(today)||{}).count>0) add("w", "本日のレジ締めがまだです", "閉店後にレジの「締め」から入力", "pnl", "noshime:"+today, []);
   // 二重入力の疑い：同じ分・同じ内訳・同じ金額・同じ支払方法（今日・昨日）
@@ -479,9 +480,33 @@ async function openSales(date, focus){
   const d = dayByDate(date) || {}; const sh = ops().shime.find(s=>s.date===date);
   sheet(`<h3>${date}（${youbi(date)}）の会計 ${list.length}件</h3>
     <div class="sub">合計 ${yen(tot)}・PayPay ${yen(pp)}・現金 ${yen(tot-pp)}${sh?`｜レジ締め：PayPay画面 ${yen(sh.paypay)}${Math.abs(sh.paypay-pp)>=100?` <span class="neg">（差 ${num(Math.abs(sh.paypay-pp))}円）</span>`:" ✓"}`:""}</div>
-    <div class="sub">支払方法のボタンで 現金⇄PayPay を切り替え。「取消」は金額を0にして集計から外します（元に戻せます）。すべて訂正ログに残ります</div>
-    <div style="margin-top:8px">${list.map(x=>{ const cx = x.mode==="取消"; const hi = focus && Math.abs(mins(x.time)-mins(focus))<=1; return `<div class="srow ${cx?"cx":""} ${hi?"hi":""}"><span class="t">${x.time}</span><span class="i">${esc(x.items)}${x.mode==="持ち帰り"?" <small>TG</small>":""}</span><span class="a">${cx?"取消":num(x.amount)+"円"}</span>${cx?`<button class="bt" onclick="fxRestore('${date}',${x.row})">戻す</button>`:`<button class="pp ${x.pay==="PayPay"?"pay":""}" onclick="fxTogglePay('${date}',${x.row},'${x.pay==="PayPay"?"現金":"PayPay"}')">${esc(x.pay||"現金")}</button><button class="bt d" onclick="fxCancel('${date}',${x.row})">取消</button>`}</div>`; }).join("") || "<div class='sub'>会計がありません</div>"}</div>`);
+    <div class="sub">支払方法のボタンで 現金⇄PayPay を切り替え。「取消」は金額を0にして集計から外します（元に戻せます）。商品名を押すと差替え。すべて訂正ログに残ります</div>
+    <div class="acts"><button class="p" onclick="addSale('${date}')">＋ 打ち忘れの会計を追加</button><button onclick="openPayPay('${date}')">PayPay画面と照合</button></div>
+    <div style="margin-top:8px">${list.map(x=>{ const cx = x.mode==="取消"; const hi = focus && Math.abs(mins(x.time)-mins(focus))<=1; return `<div class="srow ${cx?"cx":""} ${hi?"hi":""}"><span class="t">${x.time}</span><span class="i" ${cx?"":`onclick="swapItem('${date}',${x.row},'${esc(x.items).replace(/'/g,"\\'")}')"`}>${esc(x.items)}${x.mode==="持ち帰り"?" <small>TG</small>":""}</span><span class="a">${cx?"取消":num(x.amount)+"円"}</span>${cx?`<button class="bt" onclick="fxRestore('${date}',${x.row})">戻す</button>`:`<button class="pp ${x.pay==="PayPay"?"pay":""}" onclick="fxTogglePay('${date}',${x.row},'${x.pay==="PayPay"?"現金":"PayPay"}')">${esc(x.pay||"現金")}</button><button class="bt d" onclick="fxCancel('${date}',${x.row})">取消</button>`}</div>`; }).join("") || "<div class='sub'>会計がありません</div>"}</div>`);
   if(focus){ const el = document.querySelector(".srow.hi"); if(el) el.scrollIntoView({block:"center"}); }
+}
+const ALL_ITEMS = ["オリオン","オリオン ハーフ","ナシナシ","ナシナシ ハーフ","TGオリオン","TGオリオン ハーフ","TGナシナシ","TGナシナシ ハーフ","副菜追加","副菜値引き","コカ・コーラ","コカ・コーラ ゼロ","ジンジャーエール","キリンラガー 小瓶","折箱"];
+// 商品の差替え（1会計の中の1品を別の商品に）
+function swapItem(date, row, itemsStr){
+  const names = itemsStr.split(/　/).map(x=>x.replace(/×\d+$/,"").trim()).filter(Boolean);
+  sheet(`<h3>商品の差替え</h3><div class="sub">${esc(itemsStr)}</div><label>この商品を</label><select id="swFrom">${names.map(n=>`<option>${esc(n)}</option>`).join("")}</select><label>こちらに</label><select id="swTo">${ALL_ITEMS.map(n=>`<option>${esc(n)}</option>`).join("")}</select><label>理由</label><input id="swWhy" placeholder="例：伝票では持ち帰りオリオン"><button class="btn" id="swOk">差し替える</button>`);
+  $("swOk").onclick = async ()=>{ const from=$("swFrom").value, to=$("swTo").value; if(from===to){ toast("同じ商品です"); return; } $("swOk").disabled=true; const r = await fxPost("fx_item", {date, row, from, to, reason:$("swWhy").value||"分析ページで差替え"}); if(r.error){ toast(r.error); $("swOk").disabled=false; return; } toast(`${to} に差し替えました（${num(r.amount)}円）`); await openSales(date); load(true); };
+}
+// 打ち忘れの会計を追加
+function addSale(date){
+  sheet(`<h3>会計を追加（${date.slice(5)}）</h3><div class="sub">伝票にあってレジに無い会計。金額は商品の定価で計算します</div><label>商品</label><select id="adItem">${ALL_ITEMS.map(n=>`<option>${esc(n)}</option>`).join("")}</select><label>個数</label><input id="adQty" type="number" inputmode="numeric" value="1"><label>副菜追加の数（任意）</label><input id="adFk" type="number" inputmode="numeric" value="0"><label>支払方法</label><select id="adPay"><option>現金</option><option>PayPay</option></select><label>時刻（分からなければそのまま）</label><input id="adTime" value="13:00"><label>理由</label><input id="adWhy" placeholder="例：伝票との突き合わせで打ち忘れ"><button class="btn" id="adOk">追加する</button>`);
+  $("adOk").onclick = async ()=>{ const it = $("adItem").value, q = Number($("adQty").value)||1, fk = Number($("adFk").value)||0; const items = {}; items[it] = q; if(fk) items["副菜追加"] = (items["副菜追加"]||0) + fk; $("adOk").disabled=true;
+    const r = await fxPost("fx_add", {date, time:$("adTime").value||"13:00", mode:/^TG/.test(it)?"持ち帰り":"店内", items, pay:$("adPay").value, reason:$("adWhy").value||"分析ページで追加"}); if(r.error){ toast(r.error); $("adOk").disabled=false; return; } toast(`追加しました（${num(r.amount)}円）`); await openSales(date); load(true); };
+}
+// PayPay for Business の取引一覧を貼り付けて照合
+function openPayPay(date){
+  if(!needFix()) return;
+  sheet(`<h3>PayPay画面と照合（${date.slice(5)}）</h3><div class="sub">PayPay for Business の「取引」ページで、その日の一覧を範囲選択してコピーし、ここに貼り付けてください（時刻と金額だけ読み取ります）。同じ金額・±6分のレジ会計に対応付け、現金で打っていた会計は PayPay に訂正します</div><label>貼り付け</label><textarea id="ppText" rows="6" placeholder="13:55 ... 600 円 取引完了 ..."></textarea><div class="msg" id="ppMsg"></div><button class="btn" id="ppOk">照合して訂正する</button><div id="ppRes"></div>`);
+  $("ppOk").onclick = async ()=>{ const t = $("ppText").value.replace(/\s+/g," "); const txns = [...t.matchAll(/(\d{1,2}:\d{2})[^0-9]{0,80}?([\d,]{3,7}) ?円/g)].map(m=>({time:m[1].padStart(5,"0"), amount:Number(m[2].replace(/,/g,""))})).filter(x=>x.amount>0);
+    if(!txns.length){ $("ppMsg").textContent="時刻と金額が読み取れませんでした"; return; } $("ppOk").disabled=true; $("ppMsg").textContent=`${txns.length}件・${num(txns.reduce((a,x)=>a+x.amount,0))}円 を照合中…`;
+    const r = await fxPost("fx_paypay", {date, txns, apply:true}); $("ppOk").disabled=false; if(r.error){ $("ppMsg").textContent=r.error; return; }
+    $("ppMsg").textContent = ""; $("ppRes").innerHTML = `<div class="pl"><span>PayPay画面</span><b>${r.count}件・${num(r.total)}円</b></div><div class="pl"><span>一致</span><b>${r.matched}件</b></div><div class="pl"><span>現金→PayPayに訂正</span><b>${r.fixed.length}件</b></div>` + r.fixed.map(x=>`<div class="sub">・${x.time}（レジ ${x.regTime}）${esc(x.items)} ${num(x.amount)}円</div>`).join("") + (r.unmatched.length?`<div class="pl neg"><span>レジに該当なし（打ち忘れ・金額違い）</span><b>${r.unmatched.length}件</b></div>`+r.unmatched.map(x=>`<div class="sub">・${x.time} ${num(x.amount)}円</div>`).join(""):"") + (r.extra.length?`<div class="pl neg"><span>レジはPayPayだが画面に無い（未受取？）</span><b>${r.extra.length}件</b></div>`+r.extra.map(x=>`<div class="sub">・${x.time} ${esc(x.items)} ${num(x.amount)}円</div>`).join(""):"") + `<div class="acts" style="margin-top:8px"><button class="p" onclick="openSales('${date}')">会計を見る</button></div>`;
+    load(true); };
 }
 async function fxTogglePay(date, row, pay){
   if(!confirm(`この会計の支払方法を「${pay}」に直しますか？`)) return;
@@ -967,7 +992,7 @@ async function load(keep){
 }
 
 try{ const t = localStorage.getItem("dash-tab"); if(t && $("tab-"+t)) setTab(t); }catch(e){}
-renderWho(); bootAuth();
+renderWho(); bootAuth().then(()=>{ try{ const fx = new URLSearchParams(location.search).get("fix"); if(fx && ME){ const go = ()=>{ if(!DATA){ setTimeout(go,500); return; } setTab("day"); viewDate = fx; renderDay(); openSales(fx); }; go(); } }catch(e){} });
 load();
 setInterval(()=>{ if(!document.hidden) load(true); }, 60000);
 document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) load(true); });
