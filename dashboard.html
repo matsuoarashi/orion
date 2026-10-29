@@ -6,21 +6,22 @@
 <title>分析 | 洋食オリオン</title>
 <style>
   :root{ --wood:#6b3f1c; --wood-d:#4e2d12; --cream:#fdf6e8; --cream-d:#e8dcc2;
-         --enji:#93332a; --midori:#2c4f39; --ink:#3a2a18; }
+         --enji:#93332a; --midori:#2c4f39; --ink:#3a2a18; --mute:#6b5a40; --line:#d9ccb0; --gold:#b8862b; }
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:'Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif;
        background:linear-gradient(#7a4b22,#5c3413);min-height:100vh;color:var(--ink);
        display:flex;justify-content:center;padding:14px}
-  .app{width:100%;max-width:640px;display:flex;flex-direction:column;gap:12px}
+  .app{width:100%;max-width:680px;display:flex;flex-direction:column;gap:12px}
   header{display:flex;justify-content:space-between;align-items:center;color:#f3ddb0;padding:2px 2px}
   header .t small{display:block;font-size:10px;letter-spacing:4px;color:#c8a866}
   header .t b{font-size:22px;letter-spacing:6px}
   .store{background:var(--cream);color:var(--ink);border:2px solid var(--wood-d);
        border-radius:10px;padding:6px 12px;font-weight:bold;font-size:14px;letter-spacing:2px}
-  .tabs{display:flex;gap:8px}
-  .tabs button{flex:1;padding:10px;border-radius:10px;border:2px solid var(--wood-d);
+  .tabs{display:flex;gap:6px}
+  .tabs button{flex:1;padding:10px 4px;border-radius:10px;border:2px solid var(--wood-d);
        background:var(--cream-d);font-size:14px;font-weight:bold;color:var(--ink)}
   .tabs button.on{background:var(--midori);color:#fff;border-color:var(--midori)}
+  .tabs.sub button{padding:7px 4px;font-size:12px;border-width:1px}
   .datebar{display:flex;align-items:center;gap:8px;background:var(--cream);border-radius:12px;
        border:3px solid var(--wood-d);padding:8px 10px;justify-content:space-between}
   .datebar button{border:2px solid var(--wood-d);background:var(--cream-d);border-radius:8px;
@@ -28,11 +29,12 @@
   .datebar .d{font-size:15px;font-weight:bold;letter-spacing:1px}
   .datebar .today-btn{font-size:12px;padding:6px 8px}
   .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-  .card{background:var(--cream);border-radius:14px;padding:12px 14px;border:3px solid var(--wood-d)}
-  .card h2{font-size:12px;letter-spacing:3px;color:var(--midori);margin-bottom:6px}
+  .card{background:var(--cream);border-radius:14px;padding:12px 14px;border:3px solid var(--wood-d);min-width:0}
+  .card h2{font-size:12px;letter-spacing:3px;color:var(--midori);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+  .card h2 .r{font-weight:normal;letter-spacing:0;font-size:11px;color:var(--mute)}
   .big{font-size:30px;font-weight:bold;font-variant-numeric:tabular-nums;line-height:1.1}
   .big small{font-size:13px;font-weight:normal}
-  .sub{font-size:12px;color:#6b5a40;margin-top:4px;line-height:1.6}
+  .sub{font-size:12px;color:var(--mute);margin-top:4px;line-height:1.6}
   .wide{grid-column:1/-1}
   .goal{height:14px;background:var(--cream-d);border-radius:7px;overflow:hidden;margin-top:8px;border:1px solid #c9b891}
   .goal i{display:block;height:100%;background:var(--midori)}
@@ -40,44 +42,73 @@
   td,th{padding:5px 3px;border-bottom:1px dashed #c9b891;text-align:right;white-space:nowrap}
   td:first-child,th:first-child{text-align:left}
   th{color:var(--midori);font-size:11px}
+  tr.cur td{font-weight:bold;background:#f3e9d2}
   .bar{display:flex;align-items:flex-end;gap:3px;height:110px;margin-top:8px}
   .bar div{flex:1;background:var(--enji);border-radius:3px 3px 0 0;position:relative;min-height:2px}
   .bar div.today{background:var(--midori)}
-  .bar span{position:absolute;bottom:-16px;left:0;right:0;font-size:8px;text-align:center;color:#6b5a40}
+  .bar div.off{background:#c9b891}
+  .bar span{position:absolute;bottom:-16px;left:0;right:0;font-size:8px;text-align:center;color:var(--mute)}
+  .bar b{position:absolute;top:-13px;left:0;right:0;font-size:9px;text-align:center;font-weight:normal;color:var(--ink)}
   .camGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px}
   .camGrid .c{background:var(--cream-d);border-radius:10px;padding:8px 4px;text-align:center}
   .camGrid .c b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
-  .camGrid .c span{font-size:10px;color:#6b5a40}
+  .camGrid .c span{font-size:10px;color:var(--mute)}
+  .camGrid .c em{display:block;font-style:normal;font-size:10px}
   .err{background:#fff3f0;border-radius:12px;padding:14px;color:#8d2f26;display:none;font-size:13px;line-height:1.7}
   footer{text-align:center;color:#c8a866;font-size:11px;padding-bottom:8px}
   footer button{background:none;border:1px solid #a98d5c;color:#e8d5ac;border-radius:8px;padding:6px 14px;font-size:12px;margin:6px 4px 0}
+  .hide{display:none}
+  .pnlGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+  .pnlGrid .c{background:var(--cream-d);border-radius:10px;padding:8px 10px;min-width:0}
+  .pnlGrid .c small{display:block;font-size:10px;letter-spacing:2px;color:var(--midori)}
+  .pnlGrid .c b{display:block;font-size:20px;font-variant-numeric:tabular-nums;line-height:1.2;overflow-wrap:anywhere}
+  .pnlGrid .c i{font-style:normal;font-size:11px;color:var(--mute)}
+  .pos{color:var(--midori)} .neg{color:var(--enji)}
+  .pl{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px dotted var(--line);padding:4px 0;font-size:13px;gap:8px}
+  .pl span{min-width:0}
+  .pl b{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .pl.total{border-bottom:none;border-top:2px solid var(--wood-d);margin-top:4px;padding-top:6px;font-size:15px}
+  .pl.sumline{font-weight:bold;border-bottom:1px solid var(--wood-d)}
+  .pl .n{font-size:11px;color:var(--mute);font-weight:normal}
+  .daygrid{font-size:12px}
+  .daygrid td,.daygrid th{padding:4px 2px}
+  .scroll{overflow-x:auto}
+  .tag{font-style:normal;font-size:9px;letter-spacing:1px;padding:1px 5px;border-radius:4px;margin-left:4px;vertical-align:middle;font-weight:normal;white-space:nowrap}
+  .tag.j{background:var(--midori);color:#fff} .tag.g{background:var(--gold);color:#fff} .tag.k{background:#b5a07a;color:#fff}
+  /* 要確認 */
+  .alerts{background:var(--cream);border:3px solid var(--enji);border-radius:14px;padding:10px 14px}
+  .alerts.ok{border-color:var(--midori)}
+  .alerts h2{font-size:12px;letter-spacing:3px;color:var(--enji);margin-bottom:4px;display:flex;justify-content:space-between}
+  .alerts.ok h2{color:var(--midori)}
+  .alerts h2 .r{font-weight:normal;letter-spacing:0;font-size:11px;color:var(--mute)}
+  .al{display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px dotted var(--line);font-size:13px;line-height:1.5}
+  .al:last-child{border-bottom:none}
+  .al i{flex:none;width:8px;height:8px;border-radius:50%;margin-top:7px;background:var(--enji)}
+  .al.w i{background:var(--gold)} .al.i i{background:#7c93b8}
+  .al b{display:block}
+  .al small{color:var(--mute);font-size:12px}
+  .al button{border:1px solid var(--wood-d);background:var(--cream-d);border-radius:6px;padding:2px 8px;font-size:11px;margin-left:auto;flex:none}
+  .seg{display:inline-flex;border:1px solid var(--wood-d);border-radius:8px;overflow:hidden}
+  .seg button{border:none;background:var(--cream-d);padding:4px 10px;font-size:12px;color:var(--ink)}
+  .seg button.on{background:var(--midori);color:#fff}
+  .split{display:flex;height:16px;border-radius:8px;overflow:hidden;margin:6px 0 2px;border:1px solid #c9b891}
+  .split i{display:block;height:100%}
+  .legend{display:flex;gap:12px;font-size:11px;color:var(--mute);flex-wrap:wrap}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:3px;vertical-align:-1px}
+  details summary{cursor:pointer;font-size:12px;color:var(--midori);letter-spacing:2px;font-weight:bold;padding:4px 0}
   .pd{border-top:1px dashed #c9b891;padding:10px 0 8px}
-.pd:first-child{border-top:none;padding-top:2px}
-.pd-h{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:#6b5a40}
-.pd-h b{font-size:15px;color:var(--ink);letter-spacing:1px}
-.pd-h span{white-space:nowrap}
-.pd-main{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;margin:6px 0 6px}
-.pd-main div small{display:block;font-size:10px;letter-spacing:2px;color:var(--midori)}
-.pd-main div b{font-size:24px;font-variant-numeric:tabular-nums;line-height:1.1}
-.pd-main div i{font-style:normal;font-size:12px;margin-left:2px}
-.pd-sub{display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;font-size:12px;color:#6b5a40;line-height:1.6}
-.pd-sub span{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px dotted #d9ccb0;padding:2px 0;min-width:0}
-.pd-sub b{color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
-.pd-sub b small{font-weight:normal;color:#6b5a40;font-size:11px}
-.pd-sub em{font-style:normal;font-size:11px;margin-left:3px;font-weight:normal}
-.pd-sub em.up{color:var(--midori)} .pd-sub em.dn{color:var(--enji)}
-.hide{display:none}
-.pnlGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
-.pnlGrid .c{background:var(--cream-d);border-radius:10px;padding:8px 10px}
-.pnlGrid .c small{display:block;font-size:10px;letter-spacing:2px;color:var(--midori)}
-.pnlGrid .c b{display:block;font-size:20px;font-variant-numeric:tabular-nums;line-height:1.2}
-.pnlGrid .c i{font-style:normal;font-size:11px;color:#6b5a40}
-.pos{color:var(--midori)} .neg{color:var(--enji)}
-.pl{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px dotted #d9ccb0;padding:4px 0;font-size:13px}
-.pl b{font-variant-numeric:tabular-nums}
-.pl.total{border-bottom:none;border-top:2px solid var(--wood-d);margin-top:4px;padding-top:6px;font-size:15px}
-.daygrid{font-size:12px}
-.daygrid td,.daygrid th{padding:4px 2px}
+  .pd:first-child{border-top:none;padding-top:2px}
+  .pd-h{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--mute)}
+  .pd-h b{font-size:15px;color:var(--ink);letter-spacing:1px}
+  .pd-main{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;margin:6px 0 6px}
+  .pd-main div small{display:block;font-size:10px;letter-spacing:2px;color:var(--midori)}
+  .pd-main div b{font-size:24px;font-variant-numeric:tabular-nums;line-height:1.1}
+  .pd-main div i{font-style:normal;font-size:12px;margin-left:2px}
+  .pd-sub{display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;font-size:12px;color:var(--mute);line-height:1.6}
+  .pd-sub span{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px dotted var(--line);padding:2px 0;min-width:0}
+  .pd-sub b{color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .pd-sub b small{font-weight:normal;color:var(--mute);font-size:11px}
+  em.up{color:var(--midori);font-style:normal;font-size:11px;margin-left:3px} em.dn{color:var(--enji);font-style:normal;font-size:11px;margin-left:3px}
 </style>
 <meta name="theme-color" content="#2c4f39">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -95,14 +126,18 @@
   </header>
   <div class="err" id="err"></div>
 
+  <!-- ===== 要確認 ===== -->
+  <div class="alerts" id="alerts"><h2>要確認 <span class="r" id="alertsSub"></span></h2><div id="alertList"></div></div>
+
   <div class="tabs">
-    <button id="tab-day" class="on" onclick="setTab('day')">日次</button>
-    <button id="tab-week" onclick="setTab('week')">週次</button>
-    <button id="tab-month" onclick="setTab('month')">月次</button>
+    <button id="tab-day" class="on" onclick="setTab('day')">今日</button>
+    <button id="tab-week" onclick="setTab('week')">週</button>
+    <button id="tab-items" onclick="setTab('items')">商品</button>
     <button id="tab-pnl" onclick="setTab('pnl')">収支</button>
+    <button id="tab-people" onclick="setTab('people')">人</button>
   </div>
 
-  <!-- ===== 日次 ===== -->
+  <!-- ===== 今日 ===== -->
   <div id="view-day">
     <div class="datebar">
       <button onclick="moveDate(-1)">◀</button>
@@ -117,70 +152,103 @@
       <div class="card"><h2>食数</h2><div class="big" id="dMeals">-</div>
         <div class="sub" id="dGoal"></div>
         <div class="goal"><i id="goalBar" style="width:0%"></i></div></div>
-      <div class="card"><h2>売上</h2><div class="big" id="dSales">-</div>
+      <div class="card"><h2>売上 <em class="tag j">実績</em></h2><div class="big" id="dSales">-</div>
         <div class="sub" id="dCount"></div></div>
-      <div class="card"><h2 id="dInsideTitle">いま店内にいる人（推定）</h2><div class="big" id="dInside">-</div>
-        <div class="sub" id="dInsideNote"></div></div>
-      <div class="card"><h2>滞在時間（中央値）</h2><div class="big" id="dStay">-</div>
-        <div class="sub" id="dStayNote"></div></div>
 
       <div class="card wide"><h2 id="paceTitle">今日のペース</h2>
         <div class="pnlGrid" id="paceGrid"></div>
         <table id="paceTable" style="margin-top:8px"></table>
         <div class="sub" id="paceNote"></div></div>
 
-      <div class="card wide"><h2>来店と滞在時間（入口カウンター）</h2>
-        <div class="pnlGrid" id="visGrid"></div>
-        <div id="visChart" style="margin-top:8px"></div>
-        <div id="visDist" style="margin-top:8px"></div>
-        <table id="visTable" style="margin-top:8px"></table>
-        <div class="sub" id="visNote"></div></div>
+      <div class="card wide"><h2>売上の内訳 <span class="r" id="splitSub"></span></h2>
+        <div id="splitBox"></div></div>
 
       <div class="card wide"><h2>15分ごとの食数（ばらけ具合）</h2>
         <div id="slotChart"></div>
         <div class="pnlGrid" id="slotGrid" style="margin-top:8px"></div>
         <div class="sub" id="slotNote"></div></div>
 
-      <div class="card wide"><h2>商品ミックス</h2>
+      <div class="card wide"><h2>商品ミックス <span class="r">（ ）内は過去平均との差</span></h2>
         <div class="camGrid" id="mixGrid"></div>
         <div class="sub" id="mixNote"></div></div>
 
-      <div class="card wide"><h2>直近14日の食数(緑=表示中の日)</h2>
+      <div class="card wide"><h2>直近14日の食数<span class="r">緑=表示中の日・灰=休み</span></h2>
         <div class="bar" id="chart"></div><div style="height:16px"></div></div>
 
-      <div class="card wide"><h2>持ち帰りの推移（直近7営業日）</h2>
-        <table id="togoTable"></table></div>
+      <div class="card wide hide" id="visCard"><h2>来店と滞在時間（入口カウンター）</h2>
+        <div class="pnlGrid" id="visGrid"></div>
+        <div id="visChart" style="margin-top:8px"></div>
+        <div id="visDist" style="margin-top:8px"></div>
+        <table id="visTable" style="margin-top:8px"></table>
+        <div class="sub" id="visNote"></div></div>
 
-      <div class="card wide" id="dPnlCard"><h2>この日の粗利（概算）</h2>
+      <div class="card wide" id="dPnlCard"><h2>この日の粗利 <em class="tag g">概算</em></h2>
         <div class="pnlGrid" id="dPnl"></div>
         <div class="sub">売上 − 原価（商品原価マスター×個数） − 人件費（勤怠から）。固定費は含まない</div></div>
 
-      <div class="card wide"><h2>商品別 売れ数(この日・全品)</h2><table id="dItems"></table></div>
+      <div class="card wide"><details><summary>商品別 売れ数（この日・全品）</summary><table id="dItems"></table></details></div>
     </div>
   </div>
 
-  <!-- ===== 週次 ===== -->
+  <!-- ===== 週 ===== -->
   <div id="view-week" class="hide">
-    <div class="cards"><div class="card wide"><h2>週次集計(月曜始まり・直近12週)</h2>
-      <div id="weekTable"></div></div></div>
+    <div class="datebar">
+      <button onclick="moveWeek(-1)">◀</button>
+      <span class="d" id="weekLabel">-</span>
+      <span>
+        <button class="today-btn" onclick="goThisWeek()">今週へ</button>
+        <button onclick="moveWeek(1)">▶</button>
+      </span>
+    </div>
+    <div style="height:10px"></div>
+    <div class="cards">
+      <div class="card wide"><h2>この週 <span class="r" id="wkSub"></span></h2>
+        <div class="pnlGrid" id="wkTop"></div>
+        <div class="sub" id="wkNote"></div></div>
+      <div class="card wide"><h2>曜日別の食数 <span class="r">濃い=この週・薄い=過去4週平均</span></h2>
+        <div id="dowChart"></div></div>
+      <div class="card wide"><h2>ピークの変化 <span class="r">15分枠の食数・実線=この週 点線=前週</span></h2>
+        <div id="wkSlot"></div>
+        <div class="pnlGrid" id="wkSlotGrid" style="margin-top:8px"></div></div>
+      <div class="card wide"><h2>週ごとの推移（直近8週）</h2>
+        <div class="scroll"><table class="daygrid" id="weekTable"></table></div>
+        <div class="sub">食数/日は営業日あたり。括弧は前週との差</div></div>
+      <div class="card wide"><h2>月ごとの集計</h2><div id="monthTable"></div>
+        <div class="sub">※営業日=会計が1件以上あった日</div></div>
+    </div>
+  </div>
+
+  <!-- ===== 商品 ===== -->
+  <div id="view-items" class="hide">
+    <div class="cards">
+      <div class="card wide"><h2>期間 <span class="seg" id="itemSeg"><button class="on" onclick="setItemPeriod('day')">この日</button><button onclick="setItemPeriod('week')">この週</button><button onclick="setItemPeriod('month')">今月</button><button onclick="setItemPeriod('all')">全期間</button></span></h2>
+        <div class="camGrid" id="itemMix"></div>
+        <div class="sub" id="itemNote"></div></div>
+      <div class="card wide"><h2>売れ数ランキング <span class="r">括弧は前の同じ期間との差</span></h2>
+        <div id="itemRank"></div></div>
+      <div class="card wide"><h2>比率の推移（週ごと）</h2>
+        <div class="scroll"><table class="daygrid" id="itemTrend"></table></div>
+        <div class="sub">計画はオリオン:ナシナシ=50:50、ドリンク率30%、ハーフ比率は客単価に効く</div></div>
+    </div>
   </div>
 
   <!-- ===== 収支 ===== -->
   <div id="view-pnl" class="hide">
-    <div class="tabs" style="margin-bottom:8px"><button id="ptab-run" class="on" onclick="pnlMode('run')">ランニング（毎月）</button><button id="ptab-init" onclick="pnlMode('init')">イニシャル（開業投資）</button></div>
+    <div class="tabs sub" style="margin-bottom:8px"><button id="ptab-run" class="on" onclick="pnlMode('run')">ランニング（毎月）</button><button id="ptab-init" onclick="pnlMode('init')">イニシャル（開業投資）</button></div>
     <div id="pnlRun" class="cards">
-      <div class="card wide"><h2 id="pnlTitle">今月の収支（暫定）</h2>
+      <div class="card wide"><h2 id="pnlTitle">今月の収支（暫定）<span class="r"><em class="tag j">実績</em>=確定 <em class="tag g">概算</em>=推計 <em class="tag k">仮</em>=未確定</span></h2>
         <div class="pnlGrid" id="pnlTop"></div>
         <div id="pnlLines" style="margin-top:8px"></div>
         <div class="sub" id="pnlNote"></div></div>
-      <div class="card wide"><h2>着地予測（今のペースで月末まで営業した場合）</h2>
-        <div class="pnlGrid" id="pnlFc"></div></div>
+      <div class="card wide"><h2>着地予測 <span class="r">今のペースで月末まで営業した場合</span></h2>
+        <div class="pnlGrid" id="pnlFc"></div>
+        <div id="pnlFcLines" style="margin-top:8px"></div></div>
       <div class="card wide"><h2>日別の粗利（今月）</h2>
-        <div style="overflow-x:auto"><table class="daygrid" id="pnlDays"></table></div>
-        <div class="sub">粗利 = 売上 − 原価(概算) − 人件費。人件費率 = 人件費 ÷ 売上</div></div>
+        <div class="scroll"><table class="daygrid" id="pnlDays"></table></div>
+        <div class="sub">粗利 = 売上 − 原価(概算) − 人件費。人件費「-」は勤怠が未確定の日</div></div>
       <div class="card"><h2>固定費（月額）</h2><div id="pnlFixed"></div></div>
-      <div class="card"><h2>今月の経費（変動）</h2><div id="pnlExp"></div></div>
-      <div class="card wide"><h2>前月との比較</h2><div style="overflow-x:auto"><table id="pnlMonths"></table></div></div>
+      <div class="card"><h2>今月の経費（変動）<em class="tag j">実績</em></h2><div id="pnlExp"></div></div>
+      <div class="card wide"><h2>月ごとの比較</h2><div class="scroll"><table id="pnlMonths"></table></div></div>
     </div>
     <div id="pnlInit" class="cards hide">
       <div class="card wide"><h2>開業投資と回収</h2>
@@ -189,16 +257,24 @@
       <div class="card"><h2>投資の内訳</h2><div id="initCat"></div></div>
       <div class="card"><h2>資金調達</h2><div id="initFund"></div>
         <div class="sub">公庫返済は営業利益から返す「財務」のお金。ランニングの損益には入れていません。</div></div>
-      <div class="card wide"><h2>開業費の明細</h2><div style="overflow-x:auto"><table class="daygrid" id="initItems"></table></div>
+      <div class="card wide"><h2>開業費の明細</h2><div class="scroll"><table class="daygrid" id="initItems"></table></div>
         <div class="sub">分析シート「開業費」で編集。「見積」は実額が出たら差し替え、「未入力」は金額を入れてください。研修費と開業日前の仕入は自動加算。</div></div>
     </div>
   </div>
 
-  <!-- ===== 月次 ===== -->
-  <div id="view-month" class="hide">
-    <div class="cards"><div class="card wide"><h2>月次集計</h2>
-      <div id="monthTable"></div>
-      <div class="sub">※営業日=会計が1件以上あった日</div></div></div>
+  <!-- ===== 人 ===== -->
+  <div id="view-people" class="hide">
+    <div class="cards">
+      <div class="card wide"><h2>今月の人件費 <em class="tag g">概算</em></h2>
+        <div class="pnlGrid" id="ppTop"></div>
+        <div class="sub">勤怠アプリの打刻×時給。退勤が未確定の日は入っていません</div></div>
+      <div class="card wide"><h2>日別の労働時間と生産性</h2>
+        <div class="scroll"><table class="daygrid" id="ppDays"></table></div>
+        <div class="sub">人時売上 = 売上 ÷ 労働時間（目安 3,500円/h）。人時食数 = 食数 ÷ 労働時間</div></div>
+      <div class="card wide"><h2>週ごとの人件費率</h2>
+        <div class="scroll"><table class="daygrid" id="ppWeeks"></table></div></div>
+      <div class="card wide"><h2>勤怠の確認</h2><div id="ppOps"></div></div>
+    </div>
   </div>
 
   <footer>
@@ -210,16 +286,20 @@
 <script>
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbzFNl4UM3fkoANru-agWmuOox-h3cS1yJmx4UZxpGFemEBnAUv45Gdp1VOvtCqOVUg/exec";
 const GOAL_MEALS = 60;
+const SEATS = 9;
 
 const $ = id => document.getElementById(id);
 const yen = n => (n||0).toLocaleString() + "円";
-let DATA = null, viewDate = null;
+const num = n => (n||0).toLocaleString();
+let DATA = null, viewDate = null, viewWeek = null, itemPeriod = "day", curTab = "day";
 
 function setTab(t){
-  ["day","week","month","pnl"].forEach(x=>{
+  curTab = t;
+  ["day","week","items","pnl","people"].forEach(x=>{
     $("view-"+x).classList.toggle("hide", x!==t);
     $("tab-"+x).classList.toggle("on", x===t);
   });
+  try{ localStorage.setItem("dash-tab", t); }catch(e){}
 }
 function dayByDate(dt){ return DATA.daily.find(d=>d.date===dt) || null; }
 function dateAdd(dt, n){
@@ -232,62 +312,114 @@ function youbi(dt){
   const [y,m,d] = dt.split("/").map(Number);
   return ["日","月","火","水","木","金","土"][new Date(y,m-1,d).getDay()];
 }
-function fmtWait(sec){
-  if(!sec) return "-";
-  return Math.floor(sec/60) + "分" + String(sec%60).padStart(2,"0") + "秒";
+function dow(dt){ const [y,m,d] = dt.split("/").map(Number); return new Date(y,m-1,d).getDay(); }
+function mondayOf(dt){
+  const [y,m,d] = dt.split("/").map(Number);
+  const dd = new Date(y,m-1,d);
+  dd.setDate(dd.getDate()-((dd.getDay()+6)%7));
+  const p = x => String(x).padStart(2,"0");
+  return dd.getFullYear()+"/"+p(dd.getMonth()+1)+"/"+p(dd.getDate());
 }
-function moveDate(n){ viewDate = dateAdd(viewDate, n); renderDay(); }
-function goToday(){ viewDate = DATA.todayKey; renderDay(); }
+function pct(n){ return (n===null||n===undefined||isNaN(n)||!isFinite(n)) ? "-" : Math.round(n*1000)/10 + "%"; }
+function pctOf(a,b){ return b ? Math.round(100*a/b)+"%" : "-"; }
+function signed(n){ return `<span class="${n>=0?"pos":"neg"}">${n>=0?"":"−"}${Math.abs(Math.round(n)).toLocaleString()}円</span>`; }
+function delta(a,b,unit,digits){ if(b===null||b===undefined||a===null||a===undefined) return ""; const df=a-b; if(!df) return `<em class="up">±0</em>`; return `<em class="${df>0?"up":"dn"}">${df>0?"+":"−"}${Math.abs(df).toFixed(digits||0)}${unit||""}</em>`; }
+function cell(k,v,n){ return `<div class="c"><small>${k}</small><b>${v}</b><i>${n||""}</i></div>`; }
+function openDate(){ return DATA.openDate || "2026/10/13"; }
+function bizDays(){ return DATA.daily.filter(x=>x.count>0); }
+function moveDate(n){ viewDate = dateAdd(viewDate, n); renderDay(); if(itemPeriod==="day") renderItems(); }
+function goToday(){ viewDate = DATA.todayKey; renderDay(); if(itemPeriod==="day") renderItems(); }
+function moveWeek(n){ viewWeek = dateAdd(viewWeek, 7*n); renderWeek(); if(itemPeriod==="week") renderItems(); }
+function goThisWeek(){ viewWeek = mondayOf(DATA.todayKey); renderWeek(); if(itemPeriod==="week") renderItems(); }
 
+// ===== 要確認 =====
+function ops(){ return (DATA && DATA.ops) || {shime:[],dup:[],unclosed:[],reports:[],receipts:{unchecked:0,unpaid:0,unpaidList:[]},income:[],stockLow:[]}; }
+function renderAlerts(){
+  const o = ops(), p = pnlData(), today = DATA.todayKey, H = new Date().getHours();
+  const A = []; const add = (lv, title, note, tab) => A.push({lv,title,note,tab});
+  // レジ締め：昨日までの営業日で締めが無い／差異がある、本日16時以降で未締め
+  const shimeBy = {}; o.shime.forEach(s=>{ shimeBy[s.date] = s; });
+  const past = bizDays().filter(d=>d.date<today).slice(-5);
+  past.forEach(d=>{ if(!shimeBy[d.date]) add("w", `${d.date.slice(5)}(${youbi(d.date)}) レジ締めの記録がありません`, `売上 ${yen(d.sales)}。レジの「締め」から入力`, "pnl"); });
+  Object.values(shimeBy).filter(s=>s.date>=dateAdd(today,-7)).sort((a,b)=>a.date<b.date?1:-1).forEach(s=>{
+    const d = dayByDate(s.date) || {};
+    if(s.diff && Math.abs(s.diff)>=500) add("e", `${s.date.slice(5)} レジ締めの差異 ${s.diff>0?"+":"−"}${num(Math.abs(s.diff))}円`, `予定 ${yen(s.expected)} → 実際 ${yen(s.actual)}${s.vendorPay?`・業者払い ${yen(s.vendorPay)}`:""}${s.slipMatch?`・伝票 ${s.slipMatch}`:""}`, "pnl");
+    if(s.slipMatch && /不一致|NG/.test(s.slipMatch)) add("e", `${s.date.slice(5)} 伝票とレジが不一致`, "締めの入力で「不一致」になっています", "pnl");
+    if(d.salesPaypay!==undefined && s.paypay && Math.abs(s.paypay-d.salesPaypay)>=100) add("e", `${s.date.slice(5)} PayPayの差 ${num(Math.abs(s.paypay-d.salesPaypay))}円`, `PayPay画面 ${yen(s.paypay)} / レジのPayPay会計 ${yen(d.salesPaypay)}。支払方法の打ち間違いか未受取の可能性`, "day");
+  });
+  if(!shimeBy[today] && H>=16 && (dayByDate(today)||{}).count>0) add("w", "本日のレジ締めがまだです", "閉店後にレジの「締め」から入力", "pnl");
+  // 二重入力の疑い（今日・昨日のみ。同じ内訳・同じ金額が2分以内）
+  const dupRecent = o.dup.filter(x=>x.date>=dateAdd(today,-1));
+  if(dupRecent.length) add("w", `二重入力の疑い ${dupRecent.length}件（今日・昨日）`, dupRecent.slice(0,4).map(x=>`${x.date.slice(5)} ${x.time1}→${x.time2} ${x.items} ${num(x.amount)}円（${x.pay1}/${x.pay2}）`).join("、") + (dupRecent.length>4?" …":"") + "。同じ商品が続けて通るのはピーク時には普通にあるので、伝票と見比べて判断", "day");
+  // 勤怠
+  o.unclosed.forEach(u=>add("e", `${u.name} ${u.date.slice(5)} 退勤の打刻がありません`, `出勤 ${u.in}。勤怠アプリの修正申請で直す`, "people"));
+  bizDays().filter(d=>d.date<today && d.date>=openDate()).slice(-7).forEach(d=>{ if(!p.laborDaily[d.date]) add("w", `${d.date.slice(5)}(${youbi(d.date)}) 勤怠がありません`, `売上 ${yen(d.sales)} に対して人件費が0になっています`, "people"); });
+  // 在庫・備品
+  if(o.stockLow.length) add("w", `在庫が下限以下 ${o.stockLow.length}品目`, o.stockLow.slice(0,5).map(s=>`${s.name} ${s.stock}${s.unit}（下限${s.min}）`).join("、")+(o.stockLow.length>5?" …":""), null);
+  if(o.reports.length) add("i", `備品・不足の報告 ${o.reports.length}件`, o.reports.slice(0,4).map(r=>`${r.name}${r.qty?" "+r.qty:""}（${r.by}）`).join("、"), null);
+  // 経費
+  if(o.receipts.unchecked) add("i", `経費の未確認 ${o.receipts.unchecked}件`, "経費アプリで内容を確認してください", null);
+  if(o.receipts.unpaid) add("w", `未払いの経費 ${yen(o.receipts.unpaid)}`, o.receipts.unpaidList.slice(0,4).map(r=>`${r.date.slice(5)} ${r.vendor} ${num(r.amount)}円`).join("、"), null);
+  if(p.initial && p.initial.pending) add("i", `開業費の未入力 ${p.initial.pending}件`, "分析シート「開業費」で金額を入れると投資回収が正確になります", "pnl");
+  const zero = p.fixed.filter(f=>!f.amount && !/収入/.test(f.name));
+  if(zero.length) add("i", `固定費が0円のまま ${zero.map(f=>f.name).join("・")}`, "実額が分かったら固定費シートに入力（損益が良く見えすぎています）", "pnl");
+  // 描画
+  const box = $("alerts"); box.classList.toggle("ok", !A.some(a=>a.lv!=="i"));
+  const rank = {e:0,w:1,i:2}; A.sort((a,b)=>rank[a.lv]-rank[b.lv]);
+  $("alertsSub").textContent = A.length ? `${A.filter(a=>a.lv==="e").length}件 要対応・${A.filter(a=>a.lv==="w").length}件 確認・${A.filter(a=>a.lv==="i").length}件 参考` : "";
+  $("alertList").innerHTML = A.length ? A.map(a=>`<div class="al ${a.lv}"><i></i><div><b>${a.title}</b><small>${a.note}</small></div>${a.tab?`<button onclick="setTab('${a.tab}')">見る</button>`:""}</div>`).join("") : `<div class="al i" style="border:none"><i style="background:var(--midori)"></i><div><b>いま確認が必要なことはありません</b><small>レジ締め・PayPay・勤怠・在庫・経費をチェックしました</small></div></div>`;
+}
+
+// ===== 今日 =====
 function renderDay(){
   const d = dayByDate(viewDate) || {count:0,meals:0,drinks:0,sales:0,eatin:0,togo:0,
     salesEatin:0,salesTogo:0,mealsEatin:0,mealsTogo:0,items:{},hours:{},camera:null};
-  $("dateLabel").textContent = `${viewDate}(${youbi(viewDate)})${viewDate===DATA.todayKey?" 本日":""}`;
+  const isToday = viewDate===DATA.todayKey;
+  $("dateLabel").textContent = `${viewDate}(${youbi(viewDate)})${isToday?" 本日":""}`;
   $("dMeals").innerHTML = d.meals + '<small> 食</small>';
   $("dSales").textContent = yen(d.sales);
-  $("dCount").textContent = `${d.count}会計 / 持ち帰り ${d.mealsTogo||0}食 / 客単価 ${d.meals?yen(Math.round(d.sales/d.meals)):"-"}`;
-  // いま店内にいる人 ＝ 入店（男女ボタン） − 店内の会計食数（1食＝1人）。過去日は来店人数
-  const v = d.visits || null; const isTodayView = viewDate === DATA.todayKey;
-  if(isTodayView){
-    $("dInsideTitle").textContent = "いま店内にいる人（推定）";
-    const inside = v ? Math.max(0, v.total - (d.mealsEatin||0)) : null;
-    $("dInside").innerHTML = inside===null ? "-" : inside + '<small> 人</small>';
-    $("dInsideNote").textContent = v ? `入店 ${v.total}（男${v.m}・女${v.f}）− 店内会計 ${d.mealsEatin||0}食・席9` : "入口ボタンの記録なし";
-  } else {
-    $("dInsideTitle").textContent = "来店（入口カウンター）";
-    $("dInside").innerHTML = v ? v.total + '<small> 人</small>' : "-";
-    $("dInsideNote").textContent = v ? `男${v.m}・女${v.f}（女性 ${pct(v.f/v.total)}）・店内会計 ${d.mealsEatin||0}食` : "入口ボタンの記録なし";
-  }
-  $("dStay").innerHTML = (v && v.stayMed!=null) ? v.stayMed + '<small> 分</small>' : "-";
-  $("dStayNote").textContent = (v && v.stayMed!=null) ? `平均 ${v.stayAvg}分・最長 ${v.stayMax}分（${v.stayN}組）` : "店内の会計がたまると出ます";
+  $("dCount").textContent = `${d.count}会計 / 客単価 ${d.meals?yen(Math.round(d.sales/d.meals)):"-"} / 会計あたり ${d.count?(d.meals/d.count).toFixed(2):"-"}食`;
   $("dGoal").textContent = `目標 ${GOAL_MEALS}食まであと ${Math.max(0, GOAL_MEALS - d.meals)}食`;
-  $("dPnlCard").classList.toggle("hide", viewDate===DATA.todayKey);   // 当日は勤怠が未確定なので営業終了後（翌日）に表示
-  renderDayPnl(d);
   $("goalBar").style.width = Math.min(100, 100*d.meals/GOAL_MEALS) + "%";
+  $("dPnlCard").classList.toggle("hide", isToday);
+  renderDayPnl(d);
 
   // 14日チャート
   const days = [];
   for (let i=13;i>=0;i--) days.push(dateAdd(viewDate,-i));
-  const rows = days.map(dt=>({dt, meals:(dayByDate(dt)||{meals:0}).meals}));
+  const rows = days.map(dt=>({dt, meals:(dayByDate(dt)||{meals:0}).meals, off: dow(dt)===0||dow(dt)===6}));
   const max = Math.max(1, ...rows.map(r=>r.meals));
   $("chart").innerHTML = rows.map(r=>{
     const h = Math.max(2, Math.round(100*r.meals/max));
-    return `<div class="${r.dt===viewDate?"today":""}" style="height:${h}%" title="${r.dt}: ${r.meals}食"><span>${r.dt.slice(5)}</span></div>`;
+    return `<div class="${r.dt===viewDate?"today":(r.off&&!r.meals?"off":"")}" style="height:${h}%" title="${r.dt}: ${r.meals}食">${r.meals?`<b>${r.meals}</b>`:""}<span>${r.dt.slice(5)}</span></div>`;
   }).join("");
 
   renderPace(d);
+  renderSplit(d);
   renderSlots(d);
   renderVisits(d);
   renderMix(d);
-  renderTogoTrend();
 
   const items = Object.entries(d.items||{}).sort((a,b)=>b[1]-a[1]);
   $("dItems").innerHTML = "<tr><th>商品</th><th>個数</th></tr>" +
     (items.map(([n,q])=>`<tr><td>${n}</td><td>${q}</td></tr>`).join("") || "<tr><td>記録なし</td><td></td></tr>");
 }
+// 売上の内訳：店内/持ち帰り、PayPay/現金
+function renderSplit(d){
+  if(!d.sales){ $("splitBox").innerHTML = "<div class='sub'>この日の会計はありません</div>"; $("splitSub").textContent=""; return; }
+  const pp = d.salesPaypay||0, cash = d.sales-pp;
+  const shime = ops().shime.find(s=>s.date===viewDate);
+  const bar = (a,b,ca,cb,la,lb) => `<div class="split"><i style="width:${Math.round(100*a/(a+b))}%;background:${ca}"></i><i style="flex:1;background:${cb}"></i></div><div class="legend"><span><i style="background:${ca}"></i>${la} ${yen(a)}（${pctOf(a,a+b)}）</span><span><i style="background:${cb}"></i>${lb} ${yen(b)}（${pctOf(b,a+b)}）</span></div>`;
+  $("splitBox").innerHTML =
+    bar(d.salesEatin||0, d.salesTogo||0, "#2c4f39", "#b8862b", `店内 ${d.mealsEatin||0}食`, `持ち帰り ${d.mealsTogo||0}食`) +
+    `<div style="height:8px"></div>` +
+    bar(pp, cash, "#d0362b", "#6b5a40", "PayPay", "現金") +
+    (shime ? `<div class="sub">レジ締め：PayPay画面 ${yen(shime.paypay)}${Math.abs(shime.paypay-pp)>=100?` <span class="neg">（レジと ${num(Math.abs(shime.paypay-pp))}円の差）</span>`:" ✓一致"}・現金差異 ${shime.diff?(shime.diff>0?"+":"−")+num(Math.abs(shime.diff))+"円":"なし"}・伝票 ${shime.slipMatch||"-"}</div>` : `<div class="sub">${viewDate<DATA.todayKey?"この日のレジ締めの記録はありません":"レジ締め後に照合結果が出ます"}</div>`);
+  $("splitSub").textContent = `客単価 店内 ${d.mealsEatin?yen(Math.round((d.salesEatin||0)/d.mealsEatin)):"-"} / 持ち帰り ${d.mealsTogo?yen(Math.round((d.salesTogo||0)/d.mealsTogo)):"-"}`;
+}
 
-// ===== 今日のペース（時間帯別の累計を過去の営業日と比較し、着地を見込む） =====
-function cumByHour(day){ // 食数の累計 {10:..,11:..,..,15:..}（食数の時間帯データが無い古い形式なら会計件数）
+// ===== 今日のペース =====
+function cumByHour(day){
   const src = day.hoursMeals || day.hours || {};
   const out = {}; let acc = 0;
   for (let h=10; h<=15; h++){ acc += Number(src[String(h)]||0); out[h] = acc; }
@@ -298,7 +430,6 @@ function renderPace(d){
   const past = DATA.daily.filter(x=>x.count>0 && x.date!==viewDate && x.date<viewDate);
   $("paceTitle").textContent = isToday ? "今日のペース" : "この日の時間帯の進み方";
   if(!past.length){ $("paceGrid").innerHTML=""; $("paceTable").innerHTML=""; $("paceNote").textContent="比較できる過去の営業日がまだありません"; return; }
-  // 過去日の「各時刻までの会計件数の割合」の平均
   const cums = past.map(x=>({date:x.date, cum:cumByHour(x), total:(x.hoursMeals?x.meals:x.count)||0, meals:x.meals}));
   const share = {}; for (let h=10; h<=15; h++) share[h] = cums.reduce((a,c)=>a+(c.total?c.cum[h]/c.total:0),0)/cums.length;
   const mine = cumByHour(d);
@@ -306,33 +437,33 @@ function renderPace(d){
   let proj = null, pos = null;
   if(isToday && H>=11 && H<=15 && d.count>0){
     const prev = H-1>=10 ? share[H-1] : 0; const cur = share[Math.min(H,15)];
-    const f = Math.min(0.999, prev + (M/60)*(cur-prev));   // 現在時刻までに出ているはずの割合
+    const f = Math.min(0.999, prev + (M/60)*(cur-prev));
     const nowCum = d.hoursMeals ? d.meals : d.count; const mealsPerUnit = d.hoursMeals ? 1 : d.meals/d.count;
     proj = Math.round(nowCum/f*mealsPerUnit);
-    // 同時刻の過去平均（食数換算）
     const avgAt = cums.reduce((a,c)=>{ const pv = H-1>=10 ? c.cum[H-1] : 0; const cv = c.cum[Math.min(H,15)]; return a + (pv + (M/60)*(cv-pv))*(c.total?c.meals/c.total:1); },0)/cums.length;
     const rank = cums.filter(c=>{ const pv = H-1>=10 ? c.cum[H-1] : 0; const cv = c.cum[Math.min(H,15)]; return (pv + (M/60)*(cv-pv))*(c.total?c.meals/c.total:1) > d.meals; }).length + 1;
     pos = {avgAt: Math.round(avgAt*10)/10, rank, n: cums.length+1};
   }
   const avgTotal = cums.reduce((a,c)=>a+c.meals,0)/cums.length;
+  const sameDow = past.filter(x=>dow(x.date)===dow(viewDate));
+  const avgDow = sameDow.length ? sameDow.reduce((a,x)=>a+x.meals,0)/sameDow.length : null;
   $("paceGrid").innerHTML = (isToday ? [
       ["現在の食数", d.meals+"食", pos?`同時刻の平均 ${pos.avgAt}食`:""],
-      ["着地見込み", proj!==null ? "約"+proj+"食" : "—", proj!==null ? `目標${GOAL_MEALS}食まで ${proj>=GOAL_MEALS?"届く見込み":"あと"+(GOAL_MEALS-proj)+"食"}` : (H<11?"11時以降に表示":"営業時間外")],
-      ["過去の平均", Math.round(avgTotal)+"食/日", `営業${cums.length}日の平均`],
+      ["着地見込み", proj!==null ? "約"+proj+"食" : (H>15&&d.count?d.meals+"食（終了）":"—"), proj!==null ? `目標${GOAL_MEALS}食まで ${proj>=GOAL_MEALS?"届く見込み":"あと"+(GOAL_MEALS-proj)+"食"}` : (H<11?"11時以降に表示":"営業時間外")],
+      ["過去の平均", Math.round(avgTotal)+"食/日", `営業${cums.length}日${avgDow!==null?`・${youbi(viewDate)}曜は ${Math.round(avgDow)}食`:""}`],
       ["今日の位置", pos?`${pos.n}日中 ${pos.rank}位`:"—", "同時刻の食数で比較"]
     ] : (()=>{
-      const all = DATA.daily.filter(x=>x.count>0 && x.date<=DATA.todayKey && x.date!==DATA.todayKey);
+      const all = DATA.daily.filter(x=>x.count>0 && x.date<DATA.todayKey);
       const rank = all.filter(x=>x.meals>d.meals).length + 1;
       const best = all.slice().sort((a,b)=>b.meals-a.meals)[0];
       const avgAll = all.length ? all.reduce((a,x)=>a+x.meals,0)/all.length : 0;
       return [
-        ["この日の食数", d.meals+"食", `${d.count}会計・持ち帰り${d.mealsTogo||0}食`],
-        ["全営業日の平均", Math.round(avgAll)+"食/日", `営業${all.length}日（当日除く）`],
+        ["この日の食数", d.meals+"食", `平均との差 ${d.meals-Math.round(avgAll)>=0?"+":""}${d.meals-Math.round(avgAll)}食`],
+        ["全営業日の平均", Math.round(avgAll)+"食/日", `営業${all.length}日${avgDow!==null?`・${youbi(viewDate)}曜は ${Math.round(avgDow)}食`:""}`],
         ["この日の順位", `${all.length}日中 ${rank}位`, "食数で比較"],
         ["最高の日", best?`${best.meals}食`:"-", best?`${best.date.slice(5)}(${youbi(best.date)})`:""]
       ];
-    })()).map(([k,v,n])=>`<div class="c"><small>${k}</small><b>${v}</b><i>${n}</i></div>`).join("");
-  // 時刻別の累計テーブル（この日 vs 平均）
+    })()).map(a=>cell(...a)).join("");
   const hs = [11,12,13,14];
   const avgCum = {}; hs.forEach(h=>{ avgCum[h] = cums.reduce((a,c)=>a+c.cum[h],0)/cums.length; });
   const best = {}; hs.forEach(h=>{ best[h] = Math.max(...cums.map(c=>c.cum[h])); });
@@ -342,271 +473,351 @@ function renderPace(d){
     + `<tr><td>最高</td>` + hs.map(h=>`<td>${best[h]}</td>`).join("") + "</tr>";
   $("paceNote").textContent = "数字は食数の累計。着地見込み = 現在の食数 ÷ 過去の営業日の同時刻までの平均構成比";
 }
-// ===== 15分ごとの食数（この日 vs 過去平均） =====
+// ===== 15分ごとの食数 =====
 function slotKeys(){ const ks=[]; for(let h=10;h<=14;h++) for(let m=0;m<60;m+=15) ks.push(String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")); ks.push("15:00"); return ks; }
+function slotSvg(ks, vals, lines, opts){ // vals: 棒, lines: [{v:[], color, dash}]
+  const W=600, H=150, padL=22, padB=22, bw=(W-padL)/ks.length;
+  const max = Math.max(opts&&opts.min||4, ...vals, ...lines.flatMap(l=>l.v));
+  const y = v => H-padB - (H-padB-8)*v/max;
+  const bars = ks.map((k,i)=>{ const v=vals[i]; const x=padL+i*bw+1; return `<rect x="${x.toFixed(1)}" y="${y(v).toFixed(1)}" width="${(bw-2).toFixed(1)}" height="${(H-padB-y(v)).toFixed(1)}" rx="2" fill="${v>=SEATS?'#93332a':'#2c4f39'}" opacity="0.9"/>` + (v&&opts&&opts.labels?`<text x="${(x+(bw-2)/2).toFixed(1)}" y="${(y(v)-3).toFixed(1)}" font-size="9" text-anchor="middle" fill="#3a2a18">${Math.round(v*10)/10}</text>`:""); }).join("");
+  const ln = lines.map(l=>`<polyline fill="none" stroke="${l.color}" stroke-width="2" ${l.dash?'stroke-dasharray="3 2"':''} points="${ks.map((k,i)=>`${(padL+i*bw+bw/2).toFixed(1)},${y(l.v[i]).toFixed(1)}`).join(" ")}"/>`).join("");
+  const xl = ks.map((k,i)=> k.endsWith(":00") ? `<text x="${(padL+i*bw+1).toFixed(1)}" y="${H-6}" font-size="9" fill="#6b5a40">${k.slice(0,2)}時</text>` : "").join("");
+  const gl = [0,Math.round(max/2),Math.round(max)].map(v=>`<text x="2" y="${(y(v)+3).toFixed(1)}" font-size="8" fill="#6b5a40">${v}</text><line x1="${padL}" x2="${W}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="#d9ccb0" stroke-width="0.5"/>`).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${gl}${bars}${ln}${xl}</svg>`;
+}
 function renderSlots(d){
   const ks = slotKeys(); const mine = d.slots || null;
-  if(!mine){ $("slotChart").innerHTML=""; $("slotGrid").innerHTML=""; $("slotNote").textContent="15分刻みのデータは分析GAS v19以降で記録されます"; return; }
+  if(!mine){ $("slotChart").innerHTML=""; $("slotGrid").innerHTML=""; $("slotNote").textContent= d.count?"この日は15分刻みのデータがありません":"この日の会計はありません"; return; }
   const past = DATA.daily.filter(x=>x.count>0 && x.date!==viewDate && x.slots);
-  const avg = {}; ks.forEach(k=>{ avg[k] = past.length ? past.reduce((a,x)=>a+Number((x.slots||{})[k]||0),0)/past.length : 0; });
-  const vals = ks.map(k=>Number(mine[k]||0)); const max = Math.max(4, ...vals, ...ks.map(k=>avg[k]));
-  // SVG: 棒=この日, 折れ線=過去平均
-  const W=600, H=150, padL=22, padB=22, bw=(W-padL)/ks.length;
-  const y = v => H-padB - (H-padB-8)*v/max;
-  const bars = ks.map((k,i)=>{ const v=vals[i]; const x=padL+i*bw+1; return `<rect x="${x.toFixed(1)}" y="${y(v).toFixed(1)}" width="${(bw-2).toFixed(1)}" height="${(H-padB-y(v)).toFixed(1)}" rx="2" fill="${v>=9?'#93332a':'#2c4f39'}" opacity="0.9"/>` + (v?`<text x="${(x+(bw-2)/2).toFixed(1)}" y="${(y(v)-3).toFixed(1)}" font-size="9" text-anchor="middle" fill="#3a2a18">${v}</text>`:""); }).join("");
-  const line = past.length ? `<polyline fill="none" stroke="#b8862b" stroke-width="2" stroke-dasharray="3 2" points="${ks.map((k,i)=>`${(padL+i*bw+bw/2).toFixed(1)},${y(avg[k]).toFixed(1)}`).join(" ")}"/>` : "";
-  const xl = ks.map((k,i)=> k.endsWith(":00") ? `<text x="${(padL+i*bw+1).toFixed(1)}" y="${H-6}" font-size="9" fill="#6b5a40">${k.slice(0,2)}時</text>` : "").join("");
-  const gl = [0,Math.round(max/2),max].map(v=>`<text x="2" y="${(y(v)+3).toFixed(1)}" font-size="8" fill="#6b5a40">${v}</text><line x1="${padL}" x2="${W}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="#d9ccb0" stroke-width="0.5"/>`).join("");
-  $("slotChart").innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${gl}${bars}${line}${xl}</svg>`;
-  // 指標
+  const avg = ks.map(k=> past.length ? past.reduce((a,x)=>a+Number((x.slots||{})[k]||0),0)/past.length : 0);
+  const vals = ks.map(k=>Number(mine[k]||0));
+  $("slotChart").innerHTML = slotSvg(ks, vals, past.length?[{v:avg,color:"#b8862b",dash:true}]:[], {labels:true});
   const total = vals.reduce((a,b)=>a+b,0);
   const peakI = vals.indexOf(Math.max(...vals)); const peak = vals[peakI]||0;
   const top3 = vals.slice().sort((a,b)=>b-a).slice(0,3).reduce((a,b)=>a+b,0);
-  const busy = vals.filter(v=>v>=9).length;            // 席数(9)以上が15分に集中した枠＝待ちが出やすい
+  const busy = vals.filter(v=>v>=SEATS).length;
   const idle = ks.filter((k,i)=>k>="11:30"&&k<"13:30"&&vals[i]===0).length;
   const noon = ks.reduce((a,k,i)=>a+((k>="12:00"&&k<"13:00")?vals[i]:0),0);
   $("slotGrid").innerHTML = [
     ["ピーク15分", peak?`${ks[peakI]}〜 ${peak}食`:"-", "最も集中した枠"],
     ["上位3枠の集中度", total?pct(top3/total):"-", "45分に何割入ったか（高いほど山型）"],
-    ["待ちが出やすい枠", `${busy}枠`, "15分に9食以上（席数相当）"],
+    ["待ちが出やすい枠", `${busy}枠`, `15分に${SEATS}食以上（席数相当）`],
     ["12時台の比率", total?pct(noon/total):"-", `11:30〜13:30で空白の枠 ${idle}`]
-  ].map(([k,v,n])=>`<div class="c"><small>${k}</small><b>${v}</b><i>${n}</i></div>`).join("");
-  $("slotNote").textContent = `緑の棒＝この日の食数（赤は9食以上）、点線＝過去${past.length}営業日の平均。上位3枠の集中度が低いほど客が時間に散らばっている＝回転に余裕がある。`;
+  ].map(a=>cell(...a)).join("");
+  $("slotNote").textContent = `緑の棒＝この日の食数（赤は${SEATS}食以上）、点線＝過去${past.length}営業日の平均。上位3枠の集中度が低いほど客が時間に散らばっている＝回転に余裕がある。`;
 }
-// ===== 来店と滞在（入口の男女ボタン） =====
+// ===== 来店と滞在（入口ボタン） データがある日だけ表示 =====
 function renderVisits(d){
   const v = d.visits || null; const ks = slotKeys();
-  if(!v || !v.total){ $("visGrid").innerHTML=""; $("visChart").innerHTML=""; $("visDist").innerHTML=""; $("visTable").innerHTML=""; $("visNote").textContent="この日は入口カウンター（レジの男・女ボタン）の記録がありません。"; return; }
+  $("visCard").classList.toggle("hide", !(v && v.total));
+  if(!v || !v.total) return;
   const fr = v.total ? v.f/v.total : 0;
   const stay = v.stayAvg==null ? "-" : `${v.stayAvg}分`;
-  // 入店 vs 会計 の15分推移と、店内にいる人数（GASで入店〜会計の区間の重なりを1分刻みで数えた15分枠ごとの最大）
   const ent = ks.map(k=>Number((v.slots||{})[k]||0)); const out = ks.map(k=>Number((d.slots||{})[k]||0));
   const inside = ks.map(k=>Number((v.occ||{})[k]||0)); const maxIn = v.maxIn||0, maxAt = v.maxAt||"";
-  const over = ks.filter((k,i)=>inside[i]>9).length;
+  const over = ks.filter((k,i)=>inside[i]>SEATS).length;
   $("visGrid").innerHTML = [
     ["来店", `${v.total}人`, `男 ${v.m}・女 ${v.f}（女性 ${pct(fr)}）`],
     ["平均滞在", stay, v.stayMed==null?"":`中央値 ${v.stayMed}分・75%の人は${v.stayP75}分以内`],
     ["最長滞在", v.stayMax==null?"-":`${v.stayMax}分`, `突き合わせ ${v.stayN}組`],
-    ["店内の最大人数(推定)", `${maxIn}人`, maxAt?`${maxAt}ごろ・席数9を超えた枠 ${over}`:""],
-  ].map(([k,x,n])=>`<div class="c"><small>${k}</small><b>${x}</b><i>${n}</i></div>`).join("");
+    ["店内の最大人数(推定)", `${maxIn}人`, maxAt?`${maxAt}ごろ・席数${SEATS}を超えた枠 ${over}`:""],
+  ].map(a=>cell(...a)).join("");
   const W=600, H=150, padL=22, padB=22, bw=(W-padL)/ks.length; const max=Math.max(4,...ent,...out,...inside);
   const y = x => H-padB - (H-padB-8)*x/max;
   const bars = ks.map((k,i)=>{ const a=ent[i], b=out[i]; const x=padL+i*bw+1; const w=(bw-2)/2;
     return `<rect x="${x.toFixed(1)}" y="${y(a).toFixed(1)}" width="${w.toFixed(1)}" height="${(H-padB-y(a)).toFixed(1)}" fill="#3f6fb0" opacity=".85"/><rect x="${(x+w).toFixed(1)}" y="${y(b).toFixed(1)}" width="${w.toFixed(1)}" height="${(H-padB-y(b)).toFixed(1)}" fill="#2c4f39" opacity=".85"/>`; }).join("");
   const line = `<polyline fill="none" stroke="#93332a" stroke-width="2" points="${ks.map((k,i)=>`${(padL+i*bw+bw/2).toFixed(1)},${y(inside[i]).toFixed(1)}`).join(" ")}"/>`;
-  const seat = `<line x1="${padL}" x2="${W}" y1="${y(9).toFixed(1)}" y2="${y(9).toFixed(1)}" stroke="#93332a" stroke-width="0.8" stroke-dasharray="4 3"/><text x="${W-4}" y="${(y(9)-3).toFixed(1)}" font-size="8" text-anchor="end" fill="#93332a">席数9</text>`;
+  const seat = `<line x1="${padL}" x2="${W}" y1="${y(SEATS).toFixed(1)}" y2="${y(SEATS).toFixed(1)}" stroke="#93332a" stroke-width="0.8" stroke-dasharray="4 3"/><text x="${W-4}" y="${(y(SEATS)-3).toFixed(1)}" font-size="8" text-anchor="end" fill="#93332a">席数${SEATS}</text>`;
   const xl = ks.map((k,i)=> k.endsWith(":00") ? `<text x="${(padL+i*bw+1).toFixed(1)}" y="${H-6}" font-size="9" fill="#6b5a40">${k.slice(0,2)}時</text>` : "").join("");
   const gl = [0,Math.round(max/2),max].map(x=>`<text x="2" y="${(y(x)+3).toFixed(1)}" font-size="8" fill="#6b5a40">${x}</text><line x1="${padL}" x2="${W}" y1="${y(x).toFixed(1)}" y2="${y(x).toFixed(1)}" stroke="#d9ccb0" stroke-width="0.5"/>`).join("");
-  $("visChart").innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${gl}${seat}${bars}${line}${xl}</svg><div class="sub">青＝入店（人）、緑＝会計（食数）、赤線＝店内にいる人数の推定（各15分枠での最大）。赤線が席数9を超える時間は待ちが出ている目安。</div>`;
-  // 滞在の分布
+  $("visChart").innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${gl}${seat}${bars}${line}${xl}</svg><div class="sub">青＝入店（人）、緑＝会計（食数）、赤線＝店内にいる人数の推定。赤線が席数を超える時間は待ちが出ている目安。</div>`;
   const dist = v.stayDist||{}; const dk = ["~10","11-20","21-30","31-45","46~"]; const dl = {"~10":"10分以内","11-20":"11〜20分","21-30":"21〜30分","31-45":"31〜45分","46~":"46分以上"};
   const dn = dk.reduce((a,k)=>a+Number(dist[k]||0),0);
-  $("visDist").innerHTML = dn ? `<table>${dk.map(k=>{ const n=Number(dist[k]||0); return `<tr><td style="width:80px">${dl[k]}</td><td><div style="background:#2c4f39;height:12px;border-radius:3px;width:${Math.round(n/dn*100)}%;min-width:${n?2:0}px"></div></td><td class="r" style="width:70px">${n}組 ${pct(n/dn)}</td></tr>`; }).join("")}</table>` : "";
-  // 日別の推移
+  $("visDist").innerHTML = dn ? `<table>${dk.map(k=>{ const n=Number(dist[k]||0); return `<tr><td style="width:80px">${dl[k]}</td><td><div style="background:#2c4f39;height:12px;border-radius:3px;width:${Math.round(n/dn*100)}%;min-width:${n?2:0}px"></div></td><td style="width:70px">${n}組 ${pct(n/dn)}</td></tr>`; }).join("")}</table>` : "";
   const rows = DATA.daily.filter(x=>x.visits&&x.visits.total).slice(-10);
-  $("visTable").innerHTML = rows.length>1 ? `<tr><th>日</th><th class="r">来店</th><th class="r">女性</th><th class="r">平均滞在</th><th class="r">中央値</th><th class="r">食数</th></tr>` + rows.map(x=>`<tr class="${x.date===viewDate?'cur':''}"><td>${x.date.slice(5)}</td><td class="r">${x.visits.total}</td><td class="r">${pct(x.visits.f/x.visits.total)}</td><td class="r">${x.visits.stayAvg==null?"-":x.visits.stayAvg+"分"}</td><td class="r">${x.visits.stayMed==null?"-":x.visits.stayMed+"分"}</td><td class="r">${x.mealsEatin||0}</td></tr>`).join("") : "";
-  $("visNote").textContent = `滞在時間は「入店ボタンの時刻」と「店内の会計時刻」を先着順で突き合わせた推定（入店から3分未満の会計は別の客とみなし、150分超は除外）。来店人数と店内食数の差 ${v.total-(d.mealsEatin||0)} が大きい日は押し忘れ・同伴の目安。`;
+  $("visTable").innerHTML = rows.length>1 ? `<tr><th>日</th><th>来店</th><th>女性</th><th>平均滞在</th><th>中央値</th><th>食数</th></tr>` + rows.map(x=>`<tr class="${x.date===viewDate?'cur':''}"><td>${x.date.slice(5)}</td><td>${x.visits.total}</td><td>${pct(x.visits.f/x.visits.total)}</td><td>${x.visits.stayAvg==null?"-":x.visits.stayAvg+"分"}</td><td>${x.visits.stayMed==null?"-":x.visits.stayMed+"分"}</td><td>${x.mealsEatin||0}</td></tr>`).join("") : "";
+  $("visNote").textContent = `滞在時間は「入店ボタンの時刻」と「店内の会計時刻」を先着順で突き合わせた推定。来店人数と店内食数の差 ${v.total-(d.mealsEatin||0)} が大きい日は押し忘れ・同伴の目安。`;
 }
-// ===== 商品ミックス =====
-function renderMix(d){
-  const it = d.items||{}; const g = n=>Number(it[n]||0);
+// ===== 商品ミックス（共通の集計） =====
+function mixOf(items, meals, drinks, mealsTogo, sales, salesPaypay, count){
+  const g = n=>Number((items||{})[n]||0);
   const full = g("オリオン")+g("ナシナシ")+g("TGオリオン")+g("TGナシナシ");
   const half = g("オリオン ハーフ")+g("ナシナシ ハーフ")+g("TGオリオン ハーフ")+g("TGナシナシ ハーフ");
   const orion = g("オリオン")+g("オリオン ハーフ")+g("TGオリオン")+g("TGオリオン ハーフ");
   const nashi = g("ナシナシ")+g("ナシナシ ハーフ")+g("TGナシナシ")+g("TGナシナシ ハーフ");
-  const meals = full+half; const fk = g("副菜追加");
-  const cells = [
-    ["フル比率", meals?Math.round(100*full/meals)+"%":"-"],
-    ["ハーフ比率", meals?Math.round(100*half/meals)+"%":"-"],
-    ["オリオン比率", meals?Math.round(100*orion/meals)+"%":"-"],
-    ["持ち帰り比率", d.meals?Math.round(100*(d.mealsTogo||0)/d.meals)+"%":"-"],
-    ["副菜追加率", d.meals?Math.round(100*fk/d.meals)+"%":"-"],
-    ["ドリンク率", d.meals?Math.round(100*d.drinks/d.meals)+"%":"-"],
-    ["PayPay比率", d.salesPaypay!==undefined&&d.sales?Math.round(100*d.salesPaypay/d.sales)+"%":"-"],
-    ["会計あたり食数", d.count?(d.meals/d.count).toFixed(2):"-"]
-  ];
-  $("mixGrid").innerHTML = cells.map(([k,v])=>`<div class="c"><b>${v}</b><span>${k}</span></div>`).join("");
-  $("mixNote").textContent = `フル ${full}・ハーフ ${half}／オリオン系 ${orion}・ナシナシ系 ${nashi}。計画はオリオン:ナシナシ=50:50、ドリンク率30%`;
+  const m = full+half || meals || 0;
+  return { full, half, orion, nashi, fk:g("副菜追加"), meals:meals||0,
+    rFull: m?full/m:null, rHalf: m?half/m:null, rOrion: m?orion/m:null, rTogo: meals?(mealsTogo||0)/meals:null,
+    rFk: meals?g("副菜追加")/meals:null, rDrink: meals?(drinks||0)/meals:null, rPP: sales?(salesPaypay||0)/sales:null, perCount: count?meals/count:null };
 }
-// ===== 持ち帰りの推移 =====
-function renderTogoTrend(){
-  const days = DATA.daily.filter(x=>x.count>0 && x.date<=viewDate).slice(-7).reverse();
-  $("togoTable").innerHTML = "<tr><th>日</th><th>食数</th><th>持ち帰り</th><th>比率</th><th>TO売上</th></tr>" +
-    (days.map(x=>`<tr${x.date===viewDate?' style="font-weight:bold"':''}><td>${x.date.slice(5)}(${youbi(x.date)})</td><td>${x.meals}</td><td>${x.mealsTogo||0}</td><td>${x.meals?Math.round(100*(x.mealsTogo||0)/x.meals)+"%":"-"}</td><td>${yen(x.salesTogo||0)}</td></tr>`).join("") || "<tr><td colspan='5'>記録なし</td></tr>");
+function mixCells(cur, base){
+  const f = (v, isPct) => v===null||v===undefined ? "-" : (isPct ? Math.round(100*v)+"%" : v.toFixed(2));
+  const dlt = (a,b,isPct) => (a===null||b===null||a===undefined||b===undefined) ? "" : (isPct ? delta(Math.round(100*a),Math.round(100*b),"pt") : delta(a,b,"",2));
+  return [
+    ["フル比率","rFull",1],["ハーフ比率","rHalf",1],["オリオン比率","rOrion",1],["持ち帰り比率","rTogo",1],
+    ["副菜追加率","rFk",1],["ドリンク率","rDrink",1],["PayPay比率","rPP",1],["会計あたり食数","perCount",0]
+  ].map(([k,key,isPct])=>`<div class="c"><b>${f(cur[key],isPct)}</b><em>${base?dlt(cur[key],base[key],isPct):""}</em><span>${k}</span></div>`).join("");
+}
+function sumMix(list){ // 日のリスト → 合算ミックス
+  const it = {}; let meals=0, drinks=0, togo=0, sales=0, pp=0, count=0;
+  list.forEach(d=>{ Object.entries(d.items||{}).forEach(([k,v])=>{ it[k]=(it[k]||0)+v; }); meals+=d.meals; drinks+=d.drinks||0; togo+=d.mealsTogo||0; sales+=d.sales; pp+=d.salesPaypay||0; count+=d.count; });
+  return mixOf(it, meals, drinks, togo, sales, pp, count);
+}
+function renderMix(d){
+  const cur = mixOf(d.items, d.meals, d.drinks, d.mealsTogo, d.sales, d.salesPaypay, d.count);
+  const base = sumMix(bizDays().filter(x=>x.date!==viewDate));
+  $("mixGrid").innerHTML = mixCells(cur, base);
+  $("mixNote").textContent = `フル ${cur.full}・ハーフ ${cur.half}／オリオン系 ${cur.orion}・ナシナシ系 ${cur.nashi}・副菜 ${cur.fk}。計画はオリオン:ナシナシ=50:50、ドリンク率30%`;
 }
 
-function mondayOf(dt){
-  const [y,m,d] = dt.split("/").map(Number);
-  const dd = new Date(y,m-1,d);
-  dd.setDate(dd.getDate()-((dd.getDay()+6)%7));
-  const p = x => String(x).padStart(2,"0");
-  return dd.getFullYear()+"/"+p(dd.getMonth()+1)+"/"+p(dd.getDate());
-}
-function sumDays(list, pick){
-  const g = {};
-  DATA.daily.forEach(d=>{
-    const k = pick(d);
-    if(!g[k]) g[k] = {days:0,meals:0,sales:0,count:0,eatin:0,togo:0,mealsTogo:0,drinks:0,salesEatin:0,salesTogo:0,fk:0};
-    const x = g[k];
+// ===== 週 =====
+function sumDays(list){
+  const x = {days:0,meals:0,sales:0,count:0,mealsTogo:0,mealsEatin:0,drinks:0,salesEatin:0,salesTogo:0,salesPaypay:0,fk:0,labor:0,minutes:0,cost:0,laborDays:0};
+  const p = pnlData();
+  list.forEach(d=>{
     if(d.count>0) x.days++;
-    x.meals+=d.meals; x.sales+=d.sales; x.count+=d.count; x.eatin+=d.eatin; x.togo+=d.togo;
-    x.mealsTogo+=(d.mealsTogo||0); x.drinks+=(d.drinks||0);
-    x.salesEatin+=(d.salesEatin||0); x.salesTogo+=(d.salesTogo||0);
-    x.fk+=((d.items||{})["副菜追加"]||0);
+    x.meals+=d.meals; x.sales+=d.sales; x.count+=d.count; x.mealsTogo+=(d.mealsTogo||0); x.mealsEatin+=(d.mealsEatin||0); x.drinks+=(d.drinks||0);
+    x.salesEatin+=(d.salesEatin||0); x.salesTogo+=(d.salesTogo||0); x.salesPaypay+=(d.salesPaypay||0); x.fk+=((d.items||{})["副菜追加"]||0);
+    const l = p.laborDaily[d.date]; if(l){ x.labor+=l.cost; x.minutes+=l.minutes; x.laborDays++; }
+    x.cost += p.costDaily[d.date]||0;
   });
-  return g;
+  return x;
 }
-function pctOf(a,b){ return b ? Math.round(100*a/b)+"%" : "-"; }
+function weekDays(mon){ return DATA.daily.filter(d=>d.date>=mon && d.date<=dateAdd(mon,6)); }
+function renderWeek(){
+  const mon = viewWeek; const end = dateAdd(mon,6);
+  $("weekLabel").textContent = `${mon.slice(5)}（月）〜 ${end.slice(5)}（${youbi(end)}）${mon===mondayOf(DATA.todayKey)?" 今週":""}`;
+  const w = sumDays(weekDays(mon)); const pw = sumDays(weekDays(dateAdd(mon,-7)));
+  const avgM = w.days?w.meals/w.days:null, pAvgM = pw.days?pw.meals/pw.days:null;
+  $("wkSub").textContent = `営業 ${w.days}日・${w.count}会計`;
+  $("wkTop").innerHTML = [
+    ["食数/日", avgM===null?"-":avgM.toFixed(1)+"食" + (pAvgM!==null?` ${delta(avgM,pAvgM,"",1)}`:""), `週合計 ${w.meals}食（前週 ${pw.meals}食）`],
+    ["売上", yen(w.sales) + (pw.sales?` ${delta(Math.round(w.sales/1000),Math.round(pw.sales/1000),"千")}`:""), `日平均 ${w.days?yen(Math.round(w.sales/w.days)):"-"}`],
+    ["客単価", w.meals?yen(Math.round(w.sales/w.meals)):"-", `前週 ${pw.meals?yen(Math.round(pw.sales/pw.meals)):"-"}`],
+    ["粗利 <em class='tag g'>概算</em>", w.sales?signed(w.sales-w.cost-w.labor):"-", `原価 ${pctOf(w.cost,w.sales)}・人件費 ${pctOf(w.labor,w.sales)}${w.laborDays<w.days?`（勤怠 ${w.laborDays}/${w.days}日）`:""}`]
+  ].map(a=>cell(...a)).join("");
+  $("wkNote").textContent = `持ち帰り ${w.mealsTogo}食（${pctOf(w.mealsTogo,w.meals)}）・ドリンク ${w.drinks}本（${pctOf(w.drinks,w.meals)}）・副菜追加 ${w.fk}個（${pctOf(w.fk,w.meals)}）・PayPay ${pctOf(w.salesPaypay,w.sales)}`;
+  // 曜日別：この週 vs 過去4週の平均（営業した日のみ）
+  const names = ["月","火","水","木","金"];
+  const cur = names.map((n,i)=>{ const d = dayByDate(dateAdd(mon,i)); return d?d.meals:0; });
+  const hist = names.map((n,i)=>{ const vs=[]; for(let k=1;k<=4;k++){ const d = dayByDate(dateAdd(mon,i-7*k)); if(d&&d.count>0) vs.push(d.meals); } return vs.length?vs.reduce((a,b)=>a+b,0)/vs.length:0; });
+  const max = Math.max(1,...cur,...hist);
+  $("dowChart").innerHTML = `<div class="bar" style="height:120px;gap:10px">` + names.map((n,i)=>`<div style="background:none;display:flex;gap:2px;align-items:flex-end;height:100%"><div style="height:${Math.max(2,Math.round(100*cur[i]/max))}%;flex:1;background:${cur[i]>=GOAL_MEALS?'#93332a':'#2c4f39'}">${cur[i]?`<b>${cur[i]}</b>`:""}</div><div style="height:${Math.max(2,Math.round(100*hist[i]/max))}%;flex:1;background:#c9b891">${hist[i]?`<b>${Math.round(hist[i])}</b>`:""}</div><span>${n}</span></div>`).join("") + `</div><div style="height:16px"></div>`;
+  // ピーク：この週の15分平均 vs 前週
+  const ks = slotKeys();
+  const slotAvg = list => { const l = list.filter(d=>d.count>0&&d.slots); return { n:l.length, v: ks.map(k=> l.length ? l.reduce((a,d)=>a+Number((d.slots||{})[k]||0),0)/l.length : 0) }; };
+  const sa = slotAvg(weekDays(mon)), sb = slotAvg(weekDays(dateAdd(mon,-7)));
+  if(sa.n){
+    $("wkSlot").innerHTML = slotSvg(ks, [], [{v:sa.v,color:"#2c4f39"},{v:sb.v,color:"#b8862b",dash:true}], {min:4});
+    const peakI = sa.v.indexOf(Math.max(...sa.v)); const pPeakI = sb.v.indexOf(Math.max(...sb.v));
+    const tot = sa.v.reduce((a,b)=>a+b,0), ptot = sb.v.reduce((a,b)=>a+b,0);
+    const top3 = v => { const t = v.reduce((a,b)=>a+b,0); return t ? v.slice().sort((a,b)=>b-a).slice(0,3).reduce((a,b)=>a+b,0)/t : null; };
+    const early = v => { const t = v.reduce((a,b)=>a+b,0); return t ? ks.reduce((a,k,i)=>a+(k<"12:00"?v[i]:0),0)/t : null; };
+    const late = v => { const t = v.reduce((a,b)=>a+b,0); return t ? ks.reduce((a,k,i)=>a+(k>="13:00"?v[i]:0),0)/t : null; };
+    $("wkSlotGrid").innerHTML = [
+      ["ピークの枠", `${ks[peakI]}〜 ${sa.v[peakI].toFixed(1)}食`, sb.n?`前週 ${ks[pPeakI]}〜 ${sb.v[pPeakI].toFixed(1)}食`:""],
+      ["上位3枠の集中度", pct(top3(sa.v)), sb.n?`前週 ${pct(top3(sb.v))}`:""],
+      ["12時前の比率", pct(early(sa.v)), sb.n?`前週 ${pct(early(sb.v))}`:"" ],
+      ["13時以降の比率", pct(late(sa.v)), sb.n?`前週 ${pct(late(sb.v))}`:""]
+    ].map(a=>cell(...a)).join("");
+  } else { $("wkSlot").innerHTML = "<div class='sub'>この週の15分データはありません</div>"; $("wkSlotGrid").innerHTML=""; }
+  // 8週推移
+  const first = mondayOf(DATA.daily[0].date); const weeks = []; for(let m=mondayOf(DATA.todayKey); m>=first; m=dateAdd(m,-7)) weeks.push(m); weeks.splice(8);
+  const ws = weeks.map(m=>({m, x:sumDays(weekDays(m))}));
+  $("weekTable").innerHTML = "<tr><th>週</th><th>営業</th><th>食数/日</th><th>売上</th><th>客単価</th><th>持帰</th><th>ドリンク</th><th>副菜</th><th>人件費率</th></tr>" + ws.map((w,i)=>{ const prev = ws[i+1]?ws[i+1].x:null; const a=w.x.days?w.x.meals/w.x.days:null, b=prev&&prev.days?prev.meals/prev.days:null;
+    return `<tr class="${w.m===viewWeek?'cur':''}" onclick="viewWeek='${w.m}';renderWeek()"><td>${w.m.slice(5)}〜</td><td>${w.x.days}日</td><td>${a===null?"-":a.toFixed(1)}${b!==null&&a!==null?delta(a,b,"",1):""}</td><td>${num(w.x.sales)}</td><td>${w.x.meals?num(Math.round(w.x.sales/w.x.meals)):"-"}</td><td>${pctOf(w.x.mealsTogo,w.x.meals)}</td><td>${pctOf(w.x.drinks,w.x.meals)}</td><td>${pctOf(w.x.fk,w.x.meals)}</td><td>${w.x.labor?pct(w.x.labor/w.x.sales):"-"}</td></tr>`; }).join("");
+  renderMonth();
+}
 function periodCard(label, x, prev, extra){
   const avgM = x.days ? (x.meals/x.days) : 0;
-  let delta = "";
-  if(prev && prev.days){
-    const pv = prev.meals/prev.days, df = avgM - pv;
-    delta = `<em class="${df>=0?"up":"dn"}">${df>=0?"+":""}${df.toFixed(1)}</em>`;
-  }
+  let dl = "";
+  if(prev && prev.days){ dl = delta(avgM, prev.meals/prev.days, "", 1); }
   return `<div class="pd">`+
     `<div class="pd-h"><b>${label}</b><span>営業 ${x.days}日・${x.count}会計</span></div>`+
-    `<div class="pd-main">`+
-      `<div><small>食数</small><b>${x.meals}</b><i>食</i></div>`+
-      `<div><small>売上</small><b>${x.sales.toLocaleString()}</b><i>円</i></div>`+
-    `</div>`+
+    `<div class="pd-main"><div><small>食数</small><b>${x.meals}</b><i>食</i></div><div><small>売上</small><b>${x.sales.toLocaleString()}</b><i>円</i></div></div>`+
     `<div class="pd-sub">`+
-      `<span>食数/日<b>${x.days?avgM.toFixed(1):"-"}${delta}</b></span>`+
+      `<span>食数/日<b>${x.days?avgM.toFixed(1):"-"}${dl}</b></span>`+
       `<span>客単価<b>${x.meals?Math.round(x.sales/x.meals).toLocaleString()+"円":"-"}</b></span>`+
       `<span>持ち帰り<b>${x.mealsTogo}食 <small>${pctOf(x.mealsTogo,x.meals)}</small></b></span>`+
       `<span>ドリンク<b>${x.drinks}本 <small>${pctOf(x.drinks,x.meals)}</small></b></span>`+
       `<span>副菜追加<b>${x.fk}個 <small>${pctOf(x.fk,x.meals)}</small></b></span>`+
+      `<span>PayPay<b><small>${pctOf(x.salesPaypay,x.sales)}</small></b></span>`+
       (extra||"")+
     `</div></div>`;
 }
-function renderWeek(){
-  const weeks = sumDays(DATA.daily, d=>mondayOf(d.date));
-  const keys = Object.keys(weeks).sort().slice(-12);
-  $("weekTable").innerHTML = keys.slice().reverse().map((k,i)=>{
-    const idx = keys.indexOf(k); const prev = idx>0 ? weeks[keys[idx-1]] : null;
-    return periodCard(`${k.slice(5)}〜${dateAdd(k,6).slice(5)}`, weeks[k], prev);
-  }).join("") || "<div class='sub'>記録なし</div>";
-}
 function renderMonth(){
-  const months = sumDays(DATA.daily, d=>d.date.slice(0,7));
-  const keys = Object.keys(months).sort();
+  const keys = [...new Set(DATA.daily.map(d=>d.date.slice(0,7)))].sort();
   $("monthTable").innerHTML = keys.slice().reverse().map(k=>{
-    const idx = keys.indexOf(k); const prev = idx>0 ? months[keys[idx-1]] : null;
-    const m = months[k];
-    return periodCard(k.replace("/","年")+"月", m, prev,
-      `<span>店内売上<b>${m.salesEatin.toLocaleString()}円</b></span><span>TG売上<b>${m.salesTogo.toLocaleString()}円</b></span>`);
+    const idx = keys.indexOf(k); const m = sumDays(DATA.daily.filter(d=>d.date.slice(0,7)===k)); const prev = idx>0 ? sumDays(DATA.daily.filter(d=>d.date.slice(0,7)===keys[idx-1])) : null;
+    return periodCard(k.replace("/","年")+"月", m, prev, `<span>店内売上<b>${m.salesEatin.toLocaleString()}円</b></span><span>TG売上<b>${m.salesTogo.toLocaleString()}円</b></span>`);
   }).join("") || "<div class='sub'>記録なし</div>";
 }
 
-function renderAll(){
-  if(!viewDate || !dayByDate(viewDate)) viewDate = DATA.todayKey;
-  renderDay(); renderWeek(); renderMonth(); renderPnl();
+// ===== 商品 =====
+function setItemPeriod(p){ itemPeriod = p; [...$("itemSeg").children].forEach((b,i)=>b.classList.toggle("on", ["day","week","month","all"][i]===p)); renderItems(); }
+function periodLists(){
+  const all = DATA.daily; const t = DATA.todayKey;
+  if(itemPeriod==="day"){ const d = dayByDate(viewDate); const pv = bizDays().filter(x=>x.date<viewDate).slice(-1); return {label:`${viewDate.slice(5)}(${youbi(viewDate)})`, cur:d?[d]:[], prev:pv, prevLabel:pv.length?`前の営業日 ${pv[0].date.slice(5)}`:""}; }
+  if(itemPeriod==="week"){ return {label:`${viewWeek.slice(5)}〜の週`, cur:weekDays(viewWeek), prev:weekDays(dateAdd(viewWeek,-7)), prevLabel:"前週"}; }
+  if(itemPeriod==="month"){ const k = t.slice(0,7); const [y,m] = k.split("/").map(Number); const pk = (m===1?(y-1)+"/12":y+"/"+String(m-1).padStart(2,"0")); return {label:k.replace("/","年")+"月", cur:all.filter(d=>d.date.slice(0,7)===k), prev:all.filter(d=>d.date.slice(0,7)===pk), prevLabel:"前月"}; }
+  return {label:"全期間", cur:all, prev:[], prevLabel:""};
+}
+function renderItems(){
+  const P = periodLists(); const cur = P.cur.filter(d=>d.count>0), prev = P.prev.filter(d=>d.count>0);
+  const mx = sumMix(cur), pmx = prev.length?sumMix(prev):null;
+  $("itemMix").innerHTML = mixCells(mx, pmx);
+  $("itemNote").textContent = `${P.label}：営業 ${cur.length}日・${mx.meals}食。${pmx?`（ ）内は${P.prevLabel}との差`:""}`;
+  const it = {}, pit = {}; cur.forEach(d=>Object.entries(d.items||{}).forEach(([k,v])=>{ it[k]=(it[k]||0)+v; })); prev.forEach(d=>Object.entries(d.items||{}).forEach(([k,v])=>{ pit[k]=(pit[k]||0)+v; }));
+  const rows = Object.entries(it).sort((a,b)=>b[1]-a[1]); const total = rows.reduce((a,r)=>a+r[1],0); const top = rows.length?rows[0][1]:1;
+  const uc = pnlData().unitCost||{};
+  $("itemRank").innerHTML = rows.length ? `<table>${rows.map(([n,q])=>{ const pq = pit[n]; const perDay = cur.length?q/cur.length:0; const ppd = prev.length&&pq!==undefined?pq/prev.length:null; return `<tr><td style="width:38%">${n}${uc[n]!==undefined?`<br><small style="color:var(--mute)">原価 ${num(Math.round(uc[n]))}円</small>`:""}</td><td style="text-align:left"><div style="background:#2c4f39;height:12px;border-radius:3px;width:${Math.round(100*q/top)}%;min-width:2px"></div></td><td style="width:26%">${q}<small style="color:var(--mute)"> ${pctOf(q,total)}</small>${ppd!==null&&cur.length>1?`<br><small>${perDay.toFixed(1)}/日 ${delta(perDay,ppd,"",1)}</small>`:(pq!==undefined?`<br><small>${delta(q,pq,"")}</small>`:"")}</td></tr>`; }).join("")}</table>` : "<div class='sub'>この期間の会計はありません</div>";
+  // 週ごとの比率推移
+  const first = mondayOf(DATA.daily[0].date); const weeks = []; for(let m=mondayOf(DATA.todayKey); m>=first; m=dateAdd(m,-7)) weeks.push(m); weeks.splice(8);
+  $("itemTrend").innerHTML = "<tr><th>週</th><th>食数</th><th>フル</th><th>ハーフ</th><th>オリオン</th><th>持帰</th><th>副菜</th><th>ドリンク</th><th>PayPay</th></tr>" + weeks.map(m=>{ const x = sumMix(weekDays(m).filter(d=>d.count>0)); const f = v=>v===null?"-":Math.round(100*v)+"%"; return `<tr><td>${m.slice(5)}〜</td><td>${x.meals}</td><td>${f(x.rFull)}</td><td>${f(x.rHalf)}</td><td>${f(x.rOrion)}</td><td>${f(x.rTogo)}</td><td>${f(x.rFk)}</td><td>${f(x.rDrink)}</td><td>${f(x.rPP)}</td></tr>`; }).join("");
 }
 
 // ===== 収支 =====
 function pnlData(){ return (DATA && DATA.pnl) || {months:[], fixed:[], laborDaily:{}, costDaily:{}, expenses:[]}; }
-function signed(n){ return `<span class="${n>=0?"pos":"neg"}">${n>=0?"":"−"}${Math.abs(Math.round(n)).toLocaleString()}円</span>`; }
-function pct(n){ return (n===null||n===undefined||isNaN(n)) ? "-" : Math.round(n*1000)/10 + "%"; }
+function incomeFor(key){ return ops().income.filter(i=>!i.from || i.from<=key).reduce((a,i)=>a+i.amount,0); }
 function renderDayPnl(d){
   const p = pnlData(); const cost = p.costDaily[viewDate] || 0; const lab = p.laborDaily[viewDate] || null;
   const gp = d.sales - cost - (lab?lab.cost:0);
   $("dPnl").innerHTML = [
     ["売上", d.sales.toLocaleString()+"円", ""],
     ["原価(概算)", cost.toLocaleString()+"円", d.sales?"原価率 "+pct(cost/d.sales):""],
-    ["人件費", lab?lab.cost.toLocaleString()+"円":"-", lab?`${lab.staff}人・${(lab.minutes/60).toFixed(1)}h${d.sales?"・人件費率 "+pct(lab.cost/d.sales):""}`:"勤怠確定後に反映"],
+    ["人件費", lab?lab.cost.toLocaleString()+"円":"-", lab?`${lab.staff}人・${(lab.minutes/60).toFixed(1)}h${d.sales?"・人件費率 "+pct(lab.cost/d.sales):""}`:"勤怠がありません"],
     ["粗利", signed(gp), d.sales?"粗利率 "+pct(gp/d.sales):""],
     ["人時売上高", lab&&lab.minutes?Math.round(d.sales/(lab.minutes/60)).toLocaleString()+"円/h":"-", "売上 ÷ 労働時間。目安 3,500円/h"],
     ["人時食数", lab&&lab.minutes?(d.meals/(lab.minutes/60)).toFixed(1)+"食/h":"-", "食数 ÷ 労働時間"]
-  ].map(([k,v,n])=>`<div class="c"><small>${k}</small><b>${v}</b><i>${n}</i></div>`).join("");
+  ].map(a=>cell(...a)).join("");
 }
 function renderPnl(){
   const p = pnlData(); const curKey = DATA.todayKey.slice(0,7);
   const cur = p.months.find(m=>m.key===curKey) || null;
   const fc = p.months.find(m=>m.key===curKey+" 着地予測") || null;
   const hist = p.months.filter(m=>!/着地予測/.test(m.key)).sort((a,b)=>a.key<b.key?1:-1);
-  $("pnlTitle").textContent = curKey.replace("/","年")+"月の収支（暫定）";
-  if(!cur){ $("pnlTop").innerHTML = ""; $("pnlLines").innerHTML = "<div class='sub'>今月の損益データがまだありません（分析シートの dailyPnlJob 実行後に表示）</div>"; }
+  const openD = openDate();
+  const loan = p.fixed.find(x=>/公庫|返済/.test(x.name)); const loanAmt = loan?loan.amount:0;
+  const inc = incomeFor(curKey); const incNext = ops().income.filter(i=>i.from && i.from>curKey);
+  $("pnlTitle").innerHTML = curKey.replace("/","年")+"月の収支（暫定）<span class='r'><em class='tag j'>実績</em>=確定 <em class='tag g'>概算</em>=推計 <em class='tag k'>仮</em>=未確定</span>";
+  const buy = p.expenses.filter(e=>e.date.slice(0,7)===curKey && e.acct==="仕入高" && e.date>=openD).reduce((a,e)=>a+e.amount,0);
+  if(!cur){ $("pnlTop").innerHTML = ""; $("pnlLines").innerHTML = "<div class='sub'>今月の損益データがまだありません</div>"; }
   else {
+    const net = cur.profit + inc - loanAmt;
     $("pnlTop").innerHTML = [
       ["営業利益", signed(cur.profit), "利益率 "+pct(cur.margin)],
-      ["売上", cur.sales.toLocaleString()+"円", `営業${cur.days}日・${cur.meals}食`],
+      ["最終の手残り", signed(net), `営業利益${inc?" + 収入":""}${loanAmt?" − 公庫返済":""}${!loanAmt?"（公庫返済は未入力）":""}`],
       ["FL率(原価+人件費)", pct(cur.fl), "目安 60%以下"],
       ["損益分岐", cur.bep?cur.bep+"食/日":"-", "固定費と人件費を賄う食数"]
-    ].map(([k,v,n])=>`<div class="c"><small>${k}</small><b>${v}</b><i>${n}</i></div>`).join("");
-    $("pnlLines").innerHTML = [
-      ["売上", cur.sales, ""],
-      ["− 原価(概算)", -cur.cost, "原価率 "+pct(cur.costRate) + (()=>{ const open = (DATA.openDate||"2026/10/13"); const buy = p.expenses.filter(e=>e.date.slice(0,7)===curKey && e.acct==="仕入高" && e.date>=open).reduce((a,e)=>a+e.amount,0); return buy ? `｜仕入れ実績 ${buy.toLocaleString()}円（${cur.sales?pct(buy/cur.sales):"-"}・在庫分を含む）` : ""; })()],
-      ["− 人件費", -cur.labor, `${cur.hours}h・人時売上 ${cur.salesPerHour.toLocaleString()}円`],
-      ["− 変動経費", -cur.exp, ""],
-      ["− 固定費(月額満額)", -cur.fixed, ""],
-    ].map(([k,v,n])=>`<div class="pl"><span>${k} <small style="color:#6b5a40">${n}</small></span><b>${(v<0?"−":"")+Math.abs(Math.round(v)).toLocaleString()}円</b></div>`).join("")
-      + `<div class="pl total"><span>営業利益</span>${signed(cur.profit)}</div>`;
-    $("pnlNote").textContent = cur.status + "。原価は商品原価マスター×個数の概算、固定費は固定費シートの月額。「仕入れ実績」は経費アプリ・カード明細から入った食材・ドリンクの仕入高の合計で、まだ使っていない在庫も含むため原価より大きく出ます。月末の棚卸しで実際の原価率を出します。開業前の費用（研修費・初期仕入など）はイニシャル側。";
+    ].map(a=>cell(...a)).join("");
+    const line = (k,tag,v,n,cls) => `<div class="pl ${cls||""}"><span>${k}${tag?` <em class="tag ${tag}">${{j:"実績",g:"概算",k:"仮"}[tag]}</em>`:""} <span class="n">${n||""}</span></span><b>${(v<0?"−":"")+Math.abs(Math.round(v)).toLocaleString()}円</b></div>`;
+    const fixedTagged = p.fixed.filter(f=>!/収入/.test(f.name)); const fixedZero = fixedTagged.filter(f=>!f.amount).length;
+    $("pnlLines").innerHTML =
+      line("売上","j",cur.sales,`営業${cur.days}日・${cur.meals}食`) +
+      line("− 原価","g",-cur.cost,`原価率 ${pct(cur.costRate)}${buy?`｜仕入れ実績 ${num(buy)}円（${pct(buy/cur.sales)}・在庫分含む）`:""}`) +
+      line("− 人件費","g",-cur.labor,`${cur.hours}h・人時売上 ${num(cur.salesPerHour)}円`) +
+      line("− 変動経費","j",-cur.exp,"消耗品など（仕入れ除く）") +
+      line("− 固定費", fixedZero?"k":"j", -cur.fixed, `月額満額${fixedZero?`・${fixedZero}項目が0円のまま`:""}`) +
+      `<div class="pl total"><span>営業利益</span>${signed(cur.profit)}</div>` +
+      (inc ? line("＋ その他収入","j",inc, ops().income.map(i=>i.name).join("・")) : (incNext.length?`<div class="pl"><span class="n">${incNext.map(i=>`${i.name} ${num(i.amount)}円は ${i.from.replace("/","年")}月から算入`).join("、")}</span></div>`:"")) +
+      (loanAmt ? line("− 公庫返済","j",-loanAmt,"財務のお金（営業利益から返す）") : "") +
+      ((inc||loanAmt) ? `<div class="pl total"><span>最終の手残り</span>${signed(net)}</div>` : "");
+    $("pnlNote").textContent = cur.status + "。原価は商品原価マスター×個数の概算（月末の棚卸しで実際の原価率を出す）。仕入れ実績は経費アプリ・カード明細の仕入高で在庫分を含む。開業前の費用はイニシャル側。";
   }
-  $("pnlFc").innerHTML = fc ? [
+  if(fc){
+    const fnet = fc.profit + inc - loanAmt;
+    $("pnlFc").innerHTML = [
       ["営業利益", signed(fc.profit), "利益率 "+pct(fc.margin)],
-      ["売上", Math.round(fc.sales).toLocaleString()+"円", `想定営業 ${fc.days}日`],
-      ["人件費", Math.round(fc.labor).toLocaleString()+"円", ""],
-      ["原価", Math.round(fc.cost).toLocaleString()+"円", "原価率 "+pct(fc.costRate)]
-    ].map(([k,v,n])=>`<div class="c"><small>${k}</small><b>${v}</b><i>${n}</i></div>`).join("") : "<div class='sub'>-</div>";
+      ["最終の手残り", signed(fnet), `${inc?"収入込み":""}${loanAmt?"・返済後":""}`],
+      ["売上", num(Math.round(fc.sales))+"円", `想定営業 ${fc.days}日・${Math.round(fc.meals)}食`],
+      ["人件費", num(Math.round(fc.labor))+"円", `原価 ${num(Math.round(fc.cost))}円（${pct(fc.costRate)}）`]
+    ].map(a=>cell(...a)).join("");
+    // 60食シナリオ：食数が60/日になった場合（原価率・客単価は今月実績、人件費は同じ）
+    if(cur && cur.days){ const avgM = cur.meals/cur.days; const up = cur.avg * (GOAL_MEALS-avgM) * fc.days; const upCost = up * cur.costRate; const sProfit = fc.profit + up - upCost;
+      $("pnlFcLines").innerHTML = `<div class="pl"><span>もし ${GOAL_MEALS}食/日なら <span class="n">今 ${avgM.toFixed(1)}食/日・客単価 ${num(cur.avg)}円・人件費は同じ</span></span><b>営業利益 ${signed(sProfit)}</b></div>`; }
+  } else { $("pnlFc").innerHTML = "<div class='sub'>-</div>"; $("pnlFcLines").innerHTML=""; }
   // 日別
   const days = DATA.daily.filter(d=>d.date.slice(0,7)===curKey && d.count>0).slice().reverse();
   let tS=0,tC=0,tL=0;
-  $("pnlDays").innerHTML = "<tr><th>日</th><th>売上</th><th>原価</th><th>人件費</th><th>人件費率</th><th>粗利</th></tr>" + days.map(d=>{
+  $("pnlDays").innerHTML = "<tr><th>日</th><th>食数</th><th>売上</th><th>原価</th><th>人件費</th><th>人件費率</th><th>粗利</th></tr>" + days.map(d=>{
     const c = p.costDaily[d.date]||0, l = (p.laborDaily[d.date]||{}).cost||0, g = d.sales-c-l; tS+=d.sales; tC+=c; tL+=l;
-    return `<tr><td>${d.date.slice(5)}(${youbi(d.date)})</td><td>${d.sales.toLocaleString()}</td><td>${c.toLocaleString()}</td><td>${l?l.toLocaleString():"-"}</td><td>${l&&d.sales?pct(l/d.sales):"-"}</td><td>${signed(g)}</td></tr>`;
-  }).join("") + (days.length?`<tr><th>合計</th><th>${tS.toLocaleString()}</th><th>${tC.toLocaleString()}</th><th>${tL.toLocaleString()}</th><th>${tS?pct(tL/tS):"-"}</th><th>${signed(tS-tC-tL)}</th></tr>`:"<tr><td colspan='6'>記録なし</td></tr>");
+    return `<tr onclick="viewDate='${d.date}';renderDay();setTab('day')"><td>${d.date.slice(5)}(${youbi(d.date)})</td><td>${d.meals}</td><td>${num(d.sales)}</td><td>${num(c)}</td><td>${l?num(l):"-"}</td><td>${l&&d.sales?pct(l/d.sales):"-"}</td><td>${signed(g)}</td></tr>`;
+  }).join("") + (days.length?`<tr><th>合計</th><th>${days.reduce((a,d)=>a+d.meals,0)}</th><th>${num(tS)}</th><th>${num(tC)}</th><th>${num(tL)}</th><th>${tS?pct(tL/tS):"-"}</th><th>${signed(tS-tC-tL)}</th></tr>`:"<tr><td colspan='7'>記録なし</td></tr>");
   // 固定費
-  const ft = p.fixed.reduce((a,x)=>a+x.amount,0);
-  $("pnlFixed").innerHTML = p.fixed.map(x=>`<div class="pl"><span>${x.name}</span><b>${x.amount.toLocaleString()}円</b></div>`).join("") + `<div class="pl total"><span>合計</span><b>${ft.toLocaleString()}円</b></div>`;
+  const fx = p.fixed.filter(f=>!/収入/.test(f.name)); const ft = fx.reduce((a,x)=>a+x.amount,0);
+  $("pnlFixed").innerHTML = fx.map(x=>`<div class="pl"><span>${x.name}${x.amount?"":" <em class='tag k'>仮</em>"}</span><b>${x.amount?num(x.amount)+"円":"未入力"}</b></div>`).join("") + `<div class="pl total"><span>合計</span><b>${num(ft)}円</b></div>` + ops().income.map(i=>`<div class="pl" style="color:var(--mute)"><span>${i.name}${i.from?` <span class="n">${i.from.replace("/","年")}月〜</span>`:""}</span><b>+${num(i.amount)}円</b></div>`).join("");
   // 経費
-  const openD = (DATA.openDate||"2026/10/13");
   const exAll = p.expenses.filter(e=>e.date.slice(0,7)===curKey && !e.fixed && e.acct!=="仕入高");
-  const ex = exAll.filter(e=>e.date>=openD).sort((a,b)=>a.date<b.date?1:-1);
+  const ex = exAll.filter(e=>e.date>=openD);
   const preM = exAll.filter(e=>e.date<openD).reduce((a,e)=>a+e.amount,0) + p.expenses.filter(e=>e.date.slice(0,7)===curKey && e.acct==="仕入高" && e.date<openD).reduce((a,e)=>a+e.amount,0);
-  const buyM = p.expenses.filter(e=>e.date.slice(0,7)===curKey && e.acct==="仕入高" && e.date>=openD).reduce((a,e)=>a+e.amount,0);
   const byAcct = {}; ex.forEach(e=>{ byAcct[e.acct]=(byAcct[e.acct]||0)+e.amount; });
-  $("pnlExp").innerHTML = (Object.keys(byAcct).length ? Object.entries(byAcct).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="pl"><span>${k}</span><b>${v.toLocaleString()}円</b></div>`).join("") + `<div class="pl total"><span>合計（仕入れ除く）</span><b>${ex.reduce((a,e)=>a+e.amount,0).toLocaleString()}円</b></div>` + (buyM?`<div class="pl" style="color:#6b5a40"><span>参考：仕入高（原価側で計上）</span><b>${buyM.toLocaleString()}円</b></div>`:"") + (preM?`<div class="pl" style="color:#6b5a40"><span>参考：開業前の仕入・消耗品（初期費用側）</span><b>${preM.toLocaleString()}円</b></div>`:"") : "<div class='sub'>まだ経費の登録がありません（分析シートの「経費」に入力）</div>");
+  $("pnlExp").innerHTML = (Object.keys(byAcct).length ? Object.entries(byAcct).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="pl"><span>${k}</span><b>${num(v)}円</b></div>`).join("") + `<div class="pl total"><span>合計（仕入れ除く）</span><b>${num(ex.reduce((a,e)=>a+e.amount,0))}円</b></div>` : "<div class='sub'>開業後の経費はまだありません</div>")
+    + (buy?`<div class="pl" style="color:var(--mute)"><span>参考：仕入高（原価側）</span><b>${num(buy)}円</b></div>`:"") + (preM?`<div class="pl" style="color:var(--mute)"><span>参考：開業前の仕入・消耗品（初期費用側）</span><b>${num(preM)}円</b></div>`:"")
+    + (ops().receipts.unpaid?`<div class="pl neg"><span>うち未払い</span><b>${num(ops().receipts.unpaid)}円</b></div>`:"");
   // 月比較
-  $("pnlMonths").innerHTML = "<tr><th>月</th><th>売上</th><th>原価率</th><th>人件費</th><th>固定費</th><th>営業利益</th><th>利益率</th></tr>" + (hist.map(m=>`<tr><td>${m.key}</td><td>${m.sales.toLocaleString()}</td><td>${pct(m.costRate)}</td><td>${m.labor.toLocaleString()}</td><td>${m.fixed.toLocaleString()}</td><td>${signed(m.profit)}</td><td>${pct(m.margin)}</td></tr>`).join("") || "<tr><td colspan='7'>記録なし</td></tr>");
-  renderInit(p, hist, fc);
+  $("pnlMonths").innerHTML = "<tr><th>月</th><th>食数/日</th><th>売上</th><th>原価率</th><th>人件費率</th><th>固定費</th><th>営業利益</th><th>手残り</th></tr>" + (hist.map(m=>{ const i = incomeFor(m.key); return `<tr><td>${m.key}</td><td>${m.days?(m.meals/m.days).toFixed(1):"-"}</td><td>${num(m.sales)}</td><td>${pct(m.costRate)}</td><td>${m.sales?pct(m.labor/m.sales):"-"}</td><td>${num(m.fixed)}</td><td>${signed(m.profit)}</td><td>${signed(m.profit+i-loanAmt)}</td></tr>`; }).join("") || "<tr><td colspan='8'>記録なし</td></tr>");
+  renderInit(p, hist, fc, inc, loanAmt);
 }
 
-// ===== イニシャル（開業投資と回収） =====
-// 資金調達は創業計画書ベース（実行額が違えばここを直す）
+// ===== イニシャル =====
 const FUNDING = [["日本政策金融公庫（借入）", 6000000], ["自己資金", 2000000]];
 function pnlMode(m){
   $("pnlRun").classList.toggle("hide", m!=="run"); $("pnlInit").classList.toggle("hide", m!=="init");
   $("ptab-run").classList.toggle("on", m==="run"); $("ptab-init").classList.toggle("on", m==="init");
 }
-function renderInit(p, hist, fc){
+function renderInit(p, hist, fc, inc, loanAmt){
   const it = p.initial;
-  if(!it){ $("initTop").innerHTML = ""; $("initNote").textContent = "開業費データがまだありません（分析シートで setupInitialCostSheet を実行後に表示）"; $("initCat").innerHTML=""; $("initFund").innerHTML=""; $("initItems").innerHTML=""; return; }
-  const cum = hist.reduce((a,m)=>a+(m.profit||0),0);           // 営業開始からの累計営業利益（ランニング）
-  const pace = fc ? fc.profit : (hist[0] ? hist[0].profit : 0);  // 月あたりの回収ペース（着地予測）
+  if(!it){ $("initTop").innerHTML = ""; $("initNote").textContent = "開業費データがまだありません"; $("initCat").innerHTML=""; $("initFund").innerHTML=""; $("initItems").innerHTML=""; return; }
+  const cum = hist.reduce((a,m)=>a+(m.profit||0)+incomeFor(m.key),0);
+  const pace = (fc ? fc.profit : (hist[0] ? hist[0].profit : 0)) + (ops().income.reduce((a,i)=>a+i.amount,0));
   const remain = it.total - cum;
   const rate = it.total ? cum/it.total : 0;
   const back = pace>0 ? Math.ceil(remain/pace) : null;
   $("initTop").innerHTML = [
-    ["投資総額", it.total.toLocaleString()+"円", it.pending?`未入力 ${it.pending}件あり`:"保証金を除く"],
+    ["投資総額", num(it.total)+"円", it.pending?`未入力 ${it.pending}件あり`:"保証金を除く"],
     ["回収済み", signed(cum), "回収率 "+pct(rate)],
-    ["回収完了まで", back===null ? "—" : `あと約${back}か月`, pace>0 ? `月${Math.round(pace).toLocaleString()}円ペース` : "今のペースでは回収が進みません"],
-    ["保証金（別枠）", it.deposit.toLocaleString()+"円", "退去時に返還"]
-  ].map(([k,v,n])=>`<div class="c"><small>${k}</small><b>${v}</b><i>${n}</i></div>`).join("");
-  $("initNote").textContent = "回収率 = 営業開始以降の累計営業利益 ÷ 投資総額。ペースは着地予測の月間営業利益。減価償却・税金は考慮していません。";
+    ["回収完了まで", back===null ? "—" : `あと約${back}か月`, pace>0 ? `月${num(Math.round(pace))}円ペース（収入込み）` : "今のペースでは回収が進みません"],
+    ["保証金（別枠）", num(it.deposit)+"円", "退去時に返還"]
+  ].map(a=>cell(...a)).join("");
+  $("initNote").textContent = "回収率 = 営業開始以降の累計（営業利益＋その他収入） ÷ 投資総額。ペースは着地予測の月間営業利益に夜間貸出などの収入を足したもの。減価償却・税金・公庫返済は考慮していません。";
   const cats = Object.entries(it.byCat).sort((a,b)=>b[1]-a[1]);
-  $("initCat").innerHTML = cats.map(([k,v])=>`<div class="pl"><span>${k} <small style="color:#6b5a40">${it.total?pct(v/it.total):""}</small></span><b>${Math.round(v).toLocaleString()}円</b></div>`).join("") + `<div class="pl total"><span>合計</span><b>${it.total.toLocaleString()}円</b></div>`;
+  $("initCat").innerHTML = cats.map(([k,v])=>`<div class="pl"><span>${k} <span class="n">${it.total?pct(v/it.total):""}</span></span><b>${num(Math.round(v))}円</b></div>`).join("") + `<div class="pl total"><span>合計</span><b>${num(it.total)}円</b></div>`;
   const fsum = FUNDING.reduce((a,x)=>a+x[1],0);
-  const loan = p.fixed.find(x=>/公庫|返済/.test(x.name));
-  $("initFund").innerHTML = FUNDING.map(([k,v])=>`<div class="pl"><span>${k}</span><b>${v.toLocaleString()}円</b></div>`).join("")
-    + `<div class="pl total"><span>合計</span><b>${fsum.toLocaleString()}円</b></div>`
-    + `<div class="pl"><span>うち投資に使った額（保証金含む）</span><b>${(it.total+it.deposit).toLocaleString()}円</b></div>`
-    + `<div class="pl"><span>運転資金として残る額（計算上）</span><b>${(fsum-it.total-it.deposit).toLocaleString()}円</b></div>`
-    + (loan ? `<div class="pl"><span>公庫返済（月額・固定費シート）</span><b>${loan.amount.toLocaleString()}円</b></div>` : "");
+  $("initFund").innerHTML = FUNDING.map(([k,v])=>`<div class="pl"><span>${k}</span><b>${num(v)}円</b></div>`).join("")
+    + `<div class="pl total"><span>合計</span><b>${num(fsum)}円</b></div>`
+    + `<div class="pl"><span>うち投資に使った額（保証金含む）</span><b>${num(it.total+it.deposit)}円</b></div>`
+    + `<div class="pl"><span>運転資金として残る額（計算上）</span><b>${num(fsum-it.total-it.deposit)}円</b></div>`
+    + `<div class="pl"><span>公庫返済（月額）</span><b>${loanAmt?num(loanAmt)+"円":"未入力"}</b></div>`;
   const rows = it.items.slice().sort((a,b)=>b.amount-a.amount);
-  $("initItems").innerHTML = "<tr><th>項目</th><th>区分</th><th>金額</th><th>状態</th></tr>" + rows.map(r=>`<tr><td>${r.name}${r.refundable?" <small>(返還)</small>":""}</td><td>${r.cat}</td><td>${r.amount.toLocaleString()}</td><td>${r.status==="未入力"?"<b style='color:#b03a2e'>未入力</b>":r.status}</td></tr>`).join("")
-    + (it.training?`<tr><td>研修費（開業前の人件費・自動）</td><td>研修費</td><td>${it.training.toLocaleString()}</td><td>自動</td></tr>`:"")
-    + (it.preOpenExpenses?`<tr><td>開業日前の仕入・経費（経費シートより・自動）</td><td>初期仕入</td><td>${it.preOpenExpenses.toLocaleString()}</td><td>自動</td></tr>`:"");
+  $("initItems").innerHTML = "<tr><th>項目</th><th>区分</th><th>金額</th><th>状態</th></tr>" + rows.map(r=>`<tr><td>${r.name}${r.refundable?" <small>(返還)</small>":""}</td><td>${r.cat}</td><td>${num(r.amount)}</td><td>${r.status==="未入力"?"<b style='color:#b03a2e'>未入力</b>":r.status}</td></tr>`).join("")
+    + (it.training?`<tr><td>研修費（開業前の人件費・自動）</td><td>研修費</td><td>${num(it.training)}</td><td>自動</td></tr>`:"")
+    + (it.preOpenExpenses?`<tr><td>開業日前の仕入・経費（自動）</td><td>初期仕入</td><td>${num(it.preOpenExpenses)}</td><td>自動</td></tr>`:"");
+}
+
+// ===== 人 =====
+function renderPeople(){
+  const p = pnlData(); const curKey = DATA.todayKey.slice(0,7); const o = ops();
+  const days = DATA.daily.filter(d=>d.date.slice(0,7)===curKey && d.count>0);
+  let L=0, Min=0, S=0, M=0, n=0, staffSum=0;
+  days.forEach(d=>{ const l = p.laborDaily[d.date]; if(l){ L+=l.cost; Min+=l.minutes; S+=d.sales; M+=d.meals; n++; staffSum+=l.staff; } });
+  $("ppTop").innerHTML = [
+    ["人件費", num(L)+"円", `勤怠のある ${n}/${days.length}日`],
+    ["人件費率", S?pct(L/S):"-", "目安 30%以下"],
+    ["人時売上高", Min?num(Math.round(S/(Min/60)))+"円/h":"-", `合計 ${(Min/60).toFixed(1)}h`],
+    ["1日あたり", n?`${(staffSum/n).toFixed(1)}人・${(Min/60/n).toFixed(1)}h`:"-", `人件費 ${n?num(Math.round(L/n)):"-"}円/日`]
+  ].map(a=>cell(...a)).join("");
+  const rows = days.slice().reverse();
+  $("ppDays").innerHTML = "<tr><th>日</th><th>人数</th><th>時間</th><th>人件費</th><th>率</th><th>人時売上</th><th>人時食数</th></tr>" + rows.map(d=>{ const l = p.laborDaily[d.date]; return `<tr onclick="viewDate='${d.date}';renderDay();setTab('day')"><td>${d.date.slice(5)}(${youbi(d.date)})</td><td>${l?l.staff:"-"}</td><td>${l?(l.minutes/60).toFixed(1)+"h":"-"}</td><td>${l?num(l.cost):"<span class='neg'>なし</span>"}</td><td>${l&&d.sales?pct(l.cost/d.sales):"-"}</td><td>${l&&l.minutes?num(Math.round(d.sales/(l.minutes/60))):"-"}</td><td>${l&&l.minutes?(d.meals/(l.minutes/60)).toFixed(1):"-"}</td></tr>`; }).join("") || "<tr><td colspan='7'>記録なし</td></tr>";
+  const first = mondayOf(DATA.daily[0].date); const weeks = []; for(let m=mondayOf(DATA.todayKey); m>=first; m=dateAdd(m,-7)) weeks.push(m); weeks.splice(8);
+  $("ppWeeks").innerHTML = "<tr><th>週</th><th>営業</th><th>売上</th><th>人件費</th><th>率</th><th>時間</th><th>人時売上</th></tr>" + weeks.map(m=>{ const x = sumDays(weekDays(m)); return `<tr><td>${m.slice(5)}〜</td><td>${x.days}日${x.laborDays<x.days?`<small>(勤怠${x.laborDays})</small>`:""}</td><td>${num(x.sales)}</td><td>${num(x.labor)}</td><td>${x.labor?pct(x.labor/x.sales):"-"}</td><td>${(x.minutes/60).toFixed(1)}h</td><td>${x.minutes?num(Math.round(x.sales/(x.minutes/60))):"-"}</td></tr>`; }).join("");
+  const miss = days.filter(d=>!p.laborDaily[d.date] && d.date<DATA.todayKey);
+  $("ppOps").innerHTML = (o.unclosed.length ? o.unclosed.map(u=>`<div class="pl"><span><b class="neg">未退勤</b> ${u.name} ${u.date.slice(5)} 出勤 ${u.in}</span></div>`).join("") : "") + (miss.length ? `<div class="pl"><span>勤怠のない営業日：${miss.map(d=>d.date.slice(5)).join("・")}</span></div>` : "") + (!o.unclosed.length && !miss.length ? "<div class='sub'>勤怠に問題はありません</div>" : "");
+}
+
+function renderAll(){
+  if(!viewDate || !dayByDate(viewDate)) viewDate = DATA.todayKey;
+  if(!viewWeek) viewWeek = mondayOf(DATA.todayKey);
+  renderAlerts(); renderDay(); renderWeek(); renderItems(); renderPnl(); renderPeople();
 }
 
 let _loading = false;
@@ -616,17 +827,18 @@ async function load(keep){
     $("err").style.display = "none";
     const res = await fetch(SHEET_URL + "?t=" + Date.now(), {cache:"no-store"});
     DATA = await res.json();
-    if(!keep) viewDate = null;          // 自動更新のときは見ている日を保つ
+    if(!keep){ viewDate = null; viewWeek = null; }
     renderAll();
     $("ts").textContent = "最終更新 " + DATA.updated + (keep ? "（自動）" : "");
   }catch(e){
     if(!keep){ $("err").style.display = "block";
       $("err").textContent = "データを取得できませんでした。通信状態と、Apps Scriptの再デプロイ(新バージョン)を確認してください。"; }
+    console.error(e);
   }finally{ _loading = false; }
 }
 
+try{ const t = localStorage.getItem("dash-tab"); if(t && $("tab-"+t)) setTab(t); }catch(e){}
 load();
-// 開いている間は1分ごとに自動更新（画面が見えている時だけ）。アプリに戻った時も即更新
 setInterval(()=>{ if(!document.hidden) load(true); }, 60000);
 document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) load(true); });
 </script>
