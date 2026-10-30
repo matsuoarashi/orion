@@ -121,6 +121,39 @@
   .toast{position:fixed;left:50%;bottom:70px;transform:translateX(-50%);background:var(--midori);color:#fff;padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:30;white-space:nowrap}
   .toast.show{opacity:1}
   .msg{font-size:12px;color:var(--enji);min-height:16px;margin-top:6px}
+  .alerts{cursor:pointer;padding:8px 14px}
+  .bar1{display:flex;align-items:center;gap:10px;font-size:13px}
+  .bar1 b{font-size:14px}
+  .bar1 .st{margin-left:auto;font-size:11px;color:var(--mute);white-space:nowrap}
+  .sc{background:var(--cream);border-radius:14px;border:3px solid var(--wood-d);margin-bottom:10px;overflow:hidden}
+  .sc.ok{border-color:#9bb59f} .sc.ng{border-color:var(--enji)} .sc.done{opacity:.75}
+  .sc-h{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer}
+  .sc-h b{font-size:15px;letter-spacing:1px}
+  .sc-h .bd{font-size:11px;padding:2px 8px;border-radius:999px;color:#fff;background:var(--mute)}
+  .sc-h .bd.ng{background:var(--enji)} .sc-h .bd.ok{background:var(--midori)}
+  .sc-h .sm{font-size:12px;color:var(--mute);margin-left:auto;text-align:right}
+  .sc-b{padding:0 14px 12px;border-top:1px dashed #c9b891}
+  .cmp{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+  .cmp th{font-size:11px;color:var(--midori);text-align:right;padding:4px 3px;border-bottom:1px solid #c9b891}
+  .cmp th:first-child,.cmp td:first-child{text-align:left}
+  .cmp td{padding:6px 3px;text-align:right;border-bottom:1px dotted var(--line);white-space:nowrap}
+  .cmp td.d{font-weight:bold}
+  .big-acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .big-acts button{padding:12px 6px;border-radius:10px;border:2px solid var(--wood-d);background:var(--cream-d);font-size:14px;font-weight:bold;color:var(--ink)}
+  .big-acts button.p{background:var(--midori);color:#fff;border-color:var(--midori)}
+  .big-acts button.d{background:#fff3f0;color:var(--enji);border-color:var(--enji)}
+  .big-acts button.full{grid-column:1/-1}
+  .stbl{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+  .stbl td{padding:7px 4px;border-bottom:1px dotted var(--line);white-space:nowrap}
+  .stbl tr{cursor:pointer}
+  .stbl tr.cx td{color:#a08c6a;text-decoration:line-through}
+  .stbl tr.hi td{background:#fff3d6}
+  .stbl td.i{white-space:normal;min-width:0}
+  .stbl td.r{text-align:right;font-variant-numeric:tabular-nums}
+  .hint{font-size:12px;color:var(--enji);margin-top:6px;line-height:1.5}
+  .mi{font-size:13px;padding:6px 0;border-bottom:1px dotted var(--line);display:flex;gap:8px;align-items:center}
+  .mi small{color:var(--mute);display:block}
+  .mi button{margin-left:auto;flex:none;border:1px solid var(--wood-d);background:var(--cream-d);border-radius:6px;padding:3px 8px;font-size:11px}
   .pd{border-top:1px dashed #c9b891;padding:10px 0 8px}
   .pd:first-child{border-top:none;padding-top:2px}
   .pd-h{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--mute)}
@@ -153,15 +186,25 @@
   <div class="err" id="err"></div>
 
   <!-- ===== 要確認 ===== -->
-  <div class="alerts" id="alerts"><h2>要確認 <span class="r" id="alertsSub"></span></h2><div id="alertList"></div></div>
+  <div class="alerts" id="alerts" onclick="setTab('shime')"><div id="alertList"></div></div>
   <div id="ov"></div><div class="toast" id="toast"></div>
 
   <div class="tabs">
+    <button id="tab-shime" onclick="setTab('shime')">締め</button>
     <button id="tab-day" class="on" onclick="setTab('day')">今日</button>
     <button id="tab-week" onclick="setTab('week')">週</button>
     <button id="tab-items" onclick="setTab('items')">商品</button>
     <button id="tab-pnl" onclick="setTab('pnl')">収支</button>
     <button id="tab-people" onclick="setTab('people')">人</button>
+  </div>
+
+  <!-- ===== 締め（毎朝の確認） ===== -->
+  <div id="view-shime" class="hide">
+    <div class="cards">
+      <div class="card wide" style="padding:8px 14px"><div class="sub" id="shimeHelp">昨日の締めを上から順に確認します。レジ記録と実際（数えた現金・PayPay画面・伝票）の差を見て、違っていれば会計一覧の行をタップして直し、最後に「確認済み」。</div></div>
+      <div id="shimeCards" class="wide"></div>
+      <div class="card wide"><details><summary>その他の確認（勤怠・在庫・経費・設定）</summary><div id="miscList"></div></details></div>
+    </div>
   </div>
 
   <!-- ===== 今日 ===== -->
@@ -322,7 +365,7 @@ let DATA = null, viewDate = null, viewWeek = null, itemPeriod = "day", curTab = 
 
 function setTab(t){
   curTab = t;
-  ["day","week","items","pnl","people"].forEach(x=>{
+  ["shime","day","week","items","pnl","people"].forEach(x=>{
     $("view-"+x).classList.toggle("hide", x!==t);
     $("tab-"+x).classList.toggle("on", x===t);
   });
@@ -359,61 +402,128 @@ function goToday(){ viewDate = DATA.todayKey; renderDay(); if(itemPeriod==="day"
 function moveWeek(n){ viewWeek = dateAdd(viewWeek, 7*n); renderWeek(); if(itemPeriod==="week") renderItems(); }
 function goThisWeek(){ viewWeek = mondayOf(DATA.todayKey); renderWeek(); if(itemPeriod==="week") renderItems(); }
 
-// ===== 要確認 =====
+// ===== 締めの確認（毎朝のルーチン）＋ トップの1行 =====
 function ops(){ return (DATA && DATA.ops) || {shime:[],dup:[],unclosed:[],reports:[],receipts:{unchecked:0,unpaid:0,unpaidList:[]},income:[],stockLow:[],acks:[]}; }
-let ALERTS = [];
-function alertAct(i,j){ const a = ALERTS[i]; if(a && a.acts[j]) a.acts[j].fn(a); }
+let SHIME_OPEN = {};   // 開いているカード
+let SALES_CACHE = {};  // date → list
+function dayStatus(dt){
+  const o = ops(), d = dayByDate(dt) || {sales:0,salesPaypay:0,items:{},mealsEatin:0,mealsTogo:0};
+  const s = o.shime.find(x=>x.date===dt) || null; const acked = (o.acks||[]).find(a=>a.key==="day:"+dt) || null;
+  const r = { date:dt, d, s, acked, issues:[] };
+  if(!s){ r.issues.push("締め未入力"); return r; }
+  r.cashDiff = s.diff||0; r.ppDiff = (s.paypay||0) - (d.salesPaypay||0);
+  if(Math.abs(r.cashDiff)>=100) r.issues.push(`現金 ${r.cashDiff>0?"+":"−"}${num(Math.abs(r.cashDiff))}`);
+  if(Math.abs(r.ppDiff)>=100) r.issues.push(`PayPay ${r.ppDiff>0?"+":"−"}${num(Math.abs(r.ppDiff))}`);
+  const sd = s.slipDetail; r.slipDiffs = [];
+  if(sd && sd.slips){ Object.keys(sd.slips).forEach(k=>{ const a = Number(sd.slips[k]), b = Number((sd.app||{})[k]||0); if(a!==b) r.slipDiffs.push({name:k, slip:a, reg:b}); }); if(r.slipDiffs.length) r.issues.push(`伝票 ${r.slipDiffs.length}項目`); }
+  else if(s.slipMatch && /不一致|NG/.test(s.slipMatch)) r.issues.push("伝票 不一致");
+  if(s.reason) r.reason = s.reason;
+  return r;
+}
 function renderAlerts(){
-  const o = ops(), p = pnlData(), today = DATA.todayKey, H = new Date().getHours();
-  const acked = {}; (o.acks||[]).forEach(a=>{ acked[a.key] = a; });
-  const A = []; const add = (lv, title, note, tab, key, acts) => A.push({lv,title,note,tab,key,acts:acts||[]});
-  const LOGGED = !!ME;
-  const ackAct = {label:"確認済みにする", fn:a=>ackAlert(a)};
-  const salesAct = (date, focus) => ({label:"会計を見る", cls:"p", fn:()=>openSales(date, focus)});
-  const reasonAct = date => ({label:"理由を記録", cls:"p", fn:()=>shimeReason(date)});
-  // レジ締め：直近3営業日
-  const shimeBy = {}; o.shime.forEach(s=>{ shimeBy[s.date] = s; });
-  const recent3 = bizDays().filter(d=>d.date<today).slice(-3).map(d=>d.date);
-  recent3.forEach(dt=>{ const d = dayByDate(dt); if(!shimeBy[dt]) add("w", `${dt.slice(5)}(${youbi(dt)}) レジ締めの記録がありません`, `売上 ${yen(d.sales)}。レジの「締め」から入力`, "pnl", "noshime:"+dt, [ackAct]); });
-  Object.values(shimeBy).filter(s=>recent3.indexOf(s.date)>=0).sort((a,b)=>a.date<b.date?1:-1).forEach(s=>{
-    const d = dayByDate(s.date) || {};
-    const done = s.reason ? `理由：${s.reason}（${s.reasonBy}）` : "";
-    if(s.diff && Math.abs(s.diff)>=500 && !s.reason) add("e", `${s.date.slice(5)} レジ締めの差異 ${s.diff>0?"+":"−"}${num(Math.abs(s.diff))}円`, `予定 ${yen(s.expected)} → 実際 ${yen(s.actual)}${s.vendorPay?`・業者払い ${yen(s.vendorPay)}`:""}${s.slipMatch?`・伝票 ${s.slipMatch}`:""}`, "pnl", "shime:"+s.date, [reasonAct(s.date), salesAct(s.date)]);
-    if(s.slipMatch && /不一致|NG/.test(s.slipMatch) && !s.reason){ const sd = s.slipDetail; const diffs = sd && sd.slips ? Object.keys(sd.slips).filter(k=>Number(sd.slips[k])!==Number((sd.app||{})[k]||0)).map(k=>`${k.replace(/^TG/,"持帰")} 伝票${sd.slips[k]}/レジ${(sd.app||{})[k]||0}`) : [];
-      add("e", `${s.date.slice(5)} 伝票とレジが不一致`, diffs.length ? diffs.join("、") + "。「会計を見る」から差替え・追加・取消で直す" : "締めの入力で「不一致」になっています。会計の二重入力・入れ忘れを確認", "pnl", "slip:"+s.date, [salesAct(s.date), reasonAct(s.date)]); }
-    if(d.salesPaypay!==undefined && s.paypay && Math.abs(s.paypay-d.salesPaypay)>=100) add("e", `${s.date.slice(5)} PayPayの差 ${num(Math.abs(s.paypay-d.salesPaypay))}円`, `PayPay画面 ${yen(s.paypay)} / レジのPayPay会計 ${yen(d.salesPaypay)}。${s.paypay>d.salesPaypay?"現金で打った会計がPayPayだった可能性":"PayPayで打った会計が未受取か現金だった可能性"}${done?"。"+done:""}`, "day", "pp:"+s.date, [{label:"PayPay画面と照合", cls:"p", fn:()=>openPayPay(s.date)}, salesAct(s.date), ackAct]);
-  });
-  if(!shimeBy[today] && H>=16 && (dayByDate(today)||{}).count>0) add("w", "本日のレジ締めがまだです", "閉店後にレジの「締め」から入力", "pnl", "noshime:"+today, []);
-  // 二重入力の疑い：同じ分・同じ内訳・同じ金額・同じ支払方法（今日・昨日）
-  o.dup.filter(x=>x.date>=dateAdd(today,-1) && x.time1===x.time2 && x.pay1===x.pay2).slice(0,6).forEach(x=>{
-    add("w", `${x.date.slice(5)} ${x.time1} 二重入力の疑い：${x.items} ${num(x.amount)}円 ${x.pay1}×2`, "同じ会計が同じ分に2回通っています。伝票の枚数と見比べて、重複なら片方を取消", "day", `dup:${x.date}:${x.time1}:${x.items}:${x.amount}:${x.pay1}`, [salesAct(x.date, x.time1), {label:"2件とも正しい", fn:a=>ackAlert(a, "伝票と一致（2件とも正しい）")}]);
-  });
-  // 勤怠
-  const staffAct = {label:"勤怠アプリを開く", cls:"p", fn:()=>window.open("admin.html","_blank")};
-  o.unclosed.forEach(u=>add("e", `${u.name} ${u.date.slice(5)} 退勤の打刻がありません`, `出勤 ${u.in}。勤怠アプリの修正申請で直す`, "people", `unclosed:${u.name}:${u.date}`, [staffAct]));
-  bizDays().filter(d=>d.date<today && d.date>=openDate()).slice(-7).forEach(d=>{ const l = p.laborDaily[d.date]; if(!l) add("w", `${d.date.slice(5)}(${youbi(d.date)}) 勤怠がありません`, `売上 ${yen(d.sales)} に対して人件費が0になっています`, "people", "labor:"+d.date, [staffAct, ackAct]); else if(l.staff<2 && d.meals>=20) add("w", `${d.date.slice(5)}(${youbi(d.date)}) 勤怠が${l.staff}人分だけです`, `${(l.minutes/60).toFixed(1)}h・${d.meals}食。打刻漏れか修正申請が未承認の可能性`, "people", "labor1:"+d.date, [staffAct, ackAct]); });
-  // 在庫・備品
-  const hacAct = {label:"発注アプリを開く", cls:"p", fn:()=>window.open("hacchu.html","_blank")};
-  if(o.stockLow.length) add("w", `在庫が下限以下 ${o.stockLow.length}品目`, o.stockLow.slice(0,5).map(s=>`${s.name} ${s.stock}${s.unit}（下限${s.min}）`).join("、")+(o.stockLow.length>5?" …":""), null, "stock:"+today, [hacAct]);
-  if(o.reports.length) add("i", `備品・不足の報告 ${o.reports.length}件`, o.reports.slice(0,4).map(r=>`${r.name}${r.qty?" "+r.qty:""}（${r.by}）`).join("、"), null, "reports:"+o.reports.length, [hacAct]);
-  // 経費
-  const keihiAct = {label:"経費アプリを開く", cls:"p", fn:()=>window.open("keihi.html","_blank")};
-  if(o.receipts.unchecked) add("i", `経費の未確認 ${o.receipts.unchecked}件`, "経費アプリで内容を確認してください", null, "rc:"+o.receipts.unchecked, [keihiAct]);
-  if(o.receipts.unpaid) add("i", `未払いの経費（掛け・月末払い） ${yen(o.receipts.unpaid)}`, o.receipts.unpaidList.slice(0,4).map(r=>`${r.date.slice(5)} ${r.vendor} ${num(r.amount)}円`).join("、"), null, "unpaid:"+o.receipts.unpaid, [keihiAct]);
-  if(p.initial && p.initial.pending) add("i", `開業費の未入力 ${p.initial.pending}件`, "分析シート「開業費」で金額を入れると投資回収が正確になります", "pnl", "init:"+p.initial.pending, [ackAct]);
-  p.fixed.filter(f=>!f.amount && !/収入/.test(f.name)).forEach(f=> add("i", `固定費が0円のまま：${f.name}`, "実額が分かったら入力（損益が良く見えすぎています）", "pnl", "fixed:"+f.name, [{label:"金額を入力", cls:"p", fn:()=>fixedInput(f.name)}, ackAct]));
-  // 描画
-  const vis = A.filter(a=>!acked[a.key]); const hid = A.filter(a=>acked[a.key]);
-  ALERTS = vis;
-  const box = $("alerts"); box.classList.toggle("ok", !vis.some(a=>a.lv!=="i"));
-  const rank = {e:0,w:1,i:2}; vis.sort((a,b)=>rank[a.lv]-rank[b.lv]);
-  $("alertsSub").textContent = vis.length ? `${vis.filter(a=>a.lv==="e").length}件 要対応・${vis.filter(a=>a.lv==="w").length}件 確認・${vis.filter(a=>a.lv==="i").length}件 参考` : "";
-  const row = (a,i) => `<div class="al ${a.lv}"><i></i><div style="flex:1;min-width:0"><b>${a.title}</b><small>${a.note}</small>${LOGGED&&a.acts.length?`<div class="acts">${a.acts.map((x,j)=>`<button class="${x.cls||""}" onclick="alertAct(${i},${j})">${x.label}</button>`).join("")}</div>`:""}</div>${a.tab?`<button onclick="setTab('${a.tab}')">見る</button>`:""}</div>`;
-  const main = vis.filter(a=>a.lv!=="i"), info = vis.filter(a=>a.lv==="i");
-  $("alertList").innerHTML = (main.length ? main.map(a=>row(a, vis.indexOf(a))).join("") : `<div class="al i" style="border:none"><i style="background:var(--midori)"></i><div><b>いま対応が必要なことはありません</b><small>レジ締め・PayPay・勤怠・在庫・経費をチェックしました</small></div></div>`)
-    + (info.length ? `<details><summary>参考 ${info.length}件（未確認の経費・未入力など）</summary>${info.map(a=>row(a, vis.indexOf(a))).join("")}</details>` : "")
-    + (hid.length ? `<details><summary>確認済み ${hid.length}件</summary>${hid.map(a=>{ const k = acked[a.key]; return `<div class="al i"><i style="background:#b5a07a"></i><div style="flex:1"><b style="color:var(--mute)">${a.title}</b><small>${k.by} ${k.at.slice(5,16)}${k.reason?"・"+k.reason:""}</small></div>${LOGGED?`<button onclick="unack('${a.key.replace(/'/g,"\\'")}')">戻す</button>`:""}</div>`; }).join("")}</details>` : "")
-    + (!LOGGED ? `<div class="sub" style="margin-top:6px">直す・確認済みにするには<a href="#" onclick="showLogin();return false" style="color:var(--midori)">ログイン</a>（勤怠アプリと同じ名前とパスコード）</div>` : "");
+  const today = DATA.todayKey;
+  const days = bizDays().filter(d=>d.date<today).slice(-10).reverse().map(d=>dayStatus(d.date));
+  const open = days.filter(r=>r.issues.length && !r.acked && !r.reason);
+  const box = $("alerts"); box.classList.toggle("ok", !open.length);
+  $("alertList").innerHTML = open.length
+    ? `<div class="bar1"><b>締めの確認 ${open.length}日</b><span>${open.slice(0,3).map(r=>`${r.date.slice(5)}（${r.issues.join("・")}）`).join("　")}${open.length>3?" …":""}</span><span class="st">タップで開く ▶</span></div>`
+    : `<div class="bar1"><b style="color:var(--midori)">締めはすべて確認済み</b><span class="st">${days.length?`直近 ${days[0].date.slice(5)} まで`:""}</span></div>`;
+  renderShime(days); renderMisc();
+}
+function renderShime(days){
+  const o = ops(); const LOGGED = !!ME;
+  $("shimeHelp").innerHTML = LOGGED ? "昨日の締めを上から順に確認します。レジ記録と実際（数えた現金・PayPay画面・伝票）の差を見て、違っていれば会計一覧の行をタップして直し、最後に「確認済み」。" : `確認・訂正するには <a href="#" onclick="showLogin();return false" style="color:var(--midori)">ログイン</a>（勤怠アプリと同じ名前とパスコード）`;
+  $("shimeCards").innerHTML = days.map(r=>{
+    const s = r.s, d = r.d; const settled = !!(r.acked || r.reason) || !r.issues.length;
+    const isOpen = SHIME_OPEN[r.date] !== undefined ? SHIME_OPEN[r.date] : !settled;
+    const bd = r.acked ? `<span class="bd ok">確認済み</span>` : r.reason ? `<span class="bd ok">理由あり</span>` : !r.issues.length ? `<span class="bd ok">一致</span>` : `<span class="bd ng">要確認</span>`;
+    const sm = s ? `売上 ${num(d.sales)}円・${d.mealsEatin+d.mealsTogo||0}食` : `売上 ${num(d.sales)}円`;
+    let body = "";
+    if(isOpen){
+      if(!s){ body = `<div class="hint">この日のレジ締めが記録されていません。レジの「締め」から入力してください（翌日以降でも入力できます）。</div>`; }
+      else {
+        const slipIn = r.slipDiffs ? null : null;
+        const sd = s.slipDetail || null;
+        const sum = (obj, keys) => keys.reduce((a,k)=>a+Number((obj||{})[k]||0),0);
+        const inK = ["オリオン","オリオン ハーフ","ナシナシ","ナシナシ ハーフ"], tgK = inK.map(k=>"TG"+k);
+        const slipRow = (label, keys) => sd && sd.slips && keys.some(k=>sd.slips[k]!==undefined) ? `<tr><td>${label}</td><td>${sum(sd.app,keys)}</td><td>${sum(sd.slips,keys)}</td><td class="d ${sum(sd.slips,keys)-sum(sd.app,keys)?"neg":"pos"}">${sum(sd.slips,keys)-sum(sd.app,keys)?((sum(sd.slips,keys)-sum(sd.app,keys))>0?"+":"")+(sum(sd.slips,keys)-sum(sd.app,keys)):"一致"}</td></tr>` : "";
+        body = `<table class="cmp"><tr><th></th><th>レジ記録</th><th>実際</th><th>差</th></tr>
+          <tr><td>現金</td><td>${num(s.expected)}</td><td>${num(s.actual)}</td><td class="d ${r.cashDiff?"neg":"pos"}">${r.cashDiff?(r.cashDiff>0?"+":"−")+num(Math.abs(r.cashDiff)):"一致"}</td></tr>
+          <tr><td>PayPay</td><td>${num(d.salesPaypay||0)}</td><td>${num(s.paypay)}</td><td class="d ${r.ppDiff?"neg":"pos"}">${r.ppDiff?(r.ppDiff>0?"+":"−")+num(Math.abs(r.ppDiff)):"一致"}</td></tr>
+          ${slipRow("伝票 店内", inK)}${slipRow("伝票 持ち帰り", tgK)}${slipRow("伝票 副菜追加", ["副菜追加"])}${slipRow("伝票 副菜値引き", ["副菜値引き"])}${slipRow("伝票 ドリンク", ["ドリンク"])}
+          ${!sd ? `<tr><td>伝票</td><td colspan="2"></td><td class="d ${/不一致|NG/.test(s.slipMatch)?"neg":"pos"}">${s.slipMatch||"未入力"}</td></tr>` : ""}
+          </table>`;
+        const hints = [];
+        if(r.slipDiffs && r.slipDiffs.length) hints.push("伝票とレジの差：" + r.slipDiffs.map(x=>`${x.name.replace(/^TG/,"持帰")} 伝票${x.slip}／レジ${x.reg}`).join("、"));
+        if(r.ppDiff>0) hints.push(`PayPay画面のほうが ${num(r.ppDiff)}円 多い → 現金で打った会計が PayPay だった可能性。「PayPay画面と照合」で自動で直せます`);
+        if(r.ppDiff<0) hints.push(`PayPay画面のほうが ${num(-r.ppDiff)}円 少ない → PayPay で打った会計が未受取か現金だった可能性`);
+        if(s.vendorPay) hints.push(`業者への現金払い ${num(s.vendorPay)}円 を差し引いて計算しています`);
+        const dups = o.dup.filter(x=>x.date===r.date && x.time1===x.time2 && x.pay1===x.pay2);
+        if(dups.length) hints.push("二重入力の疑い：" + dups.map(x=>`${x.time1} ${x.items} ${x.pay1}×2`).join("、"));
+        if(r.reason) hints.push(`理由：${r.reason}（${s.reasonBy}）`);
+        if(r.acked) hints.push(`確認済み：${r.acked.by} ${r.acked.at.slice(5,16)}${r.acked.reason?"・"+r.acked.reason:""}`);
+        body += hints.map(h=>`<div class="hint">${h}</div>`).join("");
+        if(LOGGED) body += `<div class="big-acts">
+            <button class="p" onclick="event.stopPropagation();toggleSales('${r.date}')">${SALES_CACHE[r.date]&&SALES_CACHE[r.date].show?"会計一覧を閉じる":"会計一覧を開いて直す"}</button>
+            <button onclick="event.stopPropagation();openPayPay('${r.date}')">PayPay画面と照合</button>
+            <button onclick="event.stopPropagation();shimeReason('${r.date}')">差異の理由を記録</button>
+            ${r.acked?`<button onclick="event.stopPropagation();unack('day:${r.date}')">確認済みを戻す</button>`:`<button class="p" onclick="event.stopPropagation();ackDay('${r.date}')">確認済みにする</button>`}
+          </div>`;
+        if(SALES_CACHE[r.date] && SALES_CACHE[r.date].show) body += `<div id="sales-${r.date.replace(/\//g,"")}">${salesTable(r.date)}</div>`;
+      }
+    }
+    return `<div class="sc ${settled?"ok":"ng"} ${r.acked?"done":""}"><div class="sc-h" onclick="SHIME_OPEN['${r.date}']=${!isOpen};renderAlerts()"><b>${r.date.slice(5)}(${youbi(r.date)})</b>${bd}<span class="sm">${sm}<br>${r.issues.length?r.issues.join("・"):""}</span><span>${isOpen?"▲":"▼"}</span></div>${isOpen?`<div class="sc-b">${body}</div>`:""}</div>`;
+  }).join("") || "<div class='sub'>営業日がまだありません</div>";
+}
+async function ackDay(date){ if(!needFix()) return; const reason = await askReason(`${date.slice(5)} の締めを確認済みにする`, ["確認した・問題なし","訂正済み","伝票側の数え違い","原因不明のまま"], "カードが畳まれ、トップの件数から消えます"); const r = await fxPost("fx_ack", {key:"day:"+date, title:date+" 締め", reason}); if(r.error){ toast(r.error); return; } toast("確認済みにしました"); load(true); }
+// 会計一覧（カード内）。行タップで操作
+async function toggleSales(date){
+  if(!needFix()) return;
+  const c = SALES_CACHE[date] || {}; if(c.show){ c.show=false; SALES_CACHE[date]=c; renderAlerts(); return; }
+  const r = await fxGet("fx_sales", {date}); if(r.error){ toast(r.error); return; }
+  SALES_CACHE[date] = {show:true, list:r.list||[]}; renderAlerts();
+  const el = document.getElementById("sales-"+date.replace(/\//g,"")); if(el) el.scrollIntoView({block:"start", behavior:"smooth"});
+}
+async function refreshSales(date){ const r = await fxGet("fx_sales", {date}); if(!r.error){ SALES_CACHE[date] = {show:true, list:r.list||[]}; } renderAlerts(); load(true); }
+function salesTable(date){
+  const list = (SALES_CACHE[date]||{}).list || []; const o = ops();
+  const dupT = {}; o.dup.filter(x=>x.date===date && x.time1===x.time2 && x.pay1===x.pay2).forEach(x=>{ dupT[x.time1+"|"+x.items+"|"+x.amount] = true; });
+  const tot = list.filter(x=>x.mode!=="取消").reduce((a,x)=>a+x.amount,0);
+  return `<div class="sub" style="margin-top:8px">${list.length}件・${num(tot)}円。行をタップすると「支払方法を変える／商品を差し替える／取り消す」が出ます。黄色は同じ分に同じ会計が2回あるもの</div>
+    <table class="stbl">${list.map(x=>{ const cx = x.mode==="取消"; const hi = dupT[x.time+"|"+x.items+"|"+x.amount]; return `<tr class="${cx?"cx":""} ${hi?"hi":""}" onclick="rowActions('${date}',${x.row})"><td>${x.time}</td><td class="i">${esc(x.items)}${x.mode==="持ち帰り"?" <small>持帰</small>":""}</td><td class="r">${cx?"取消":num(x.amount)}</td><td><span class="pp ${x.pay==="PayPay"?"pay":""}" style="display:inline-block;width:50px;text-align:center;font-size:11px;border-radius:4px;padding:2px 0;color:#fff;background:${x.pay==="PayPay"?"#d0362b":"#6b5a40"}">${esc(x.pay||"現金")}</span></td></tr>`; }).join("")}</table>
+    <div class="big-acts"><button class="full" onclick="event.stopPropagation();addSale('${date}')">＋ 打ち忘れの会計を追加</button></div>`;
+}
+function rowActions(date, row){
+  const x = ((SALES_CACHE[date]||{}).list||[]).find(y=>y.row===row); if(!x) return;
+  const cx = x.mode==="取消"; const other = x.pay==="PayPay" ? "現金" : "PayPay";
+  sheet(`<h3>${x.time} ${esc(x.items)} ${num(x.amount)}円 ${esc(x.pay||"現金")}</h3><div class="sub">${cx?"取り消された会計です":"どう直しますか？"}</div><div class="big-acts" style="grid-template-columns:1fr">
+    ${cx ? `<button class="p" onclick="fxRestore2('${date}',${row})">取消を元に戻す</button>` : `
+    <button class="p" onclick="fxPay2('${date}',${row},'${other}')">支払方法を ${other} に変える</button>
+    <button onclick="closeOv();swapItem2('${date}',${row})">商品を差し替える</button>
+    <button class="d" onclick="fxCancel2('${date}',${row})">この会計を取り消す（二重入力など）</button>`}
+    <button onclick="closeOv()">閉じる</button></div>`);
+}
+async function fxPay2(date,row,pay){ const r = await fxPost("fx_pay", {date,row,pay,reason:"締めの確認で訂正"}); closeOv(); if(r.error){ toast(r.error); return; } toast(`${pay} に直しました`); refreshSales(date); }
+async function fxCancel2(date,row){ closeOv(); const reason = await askReason("この会計を取り消す", ["二重入力","テスト・練習","打ち直した"], "金額と個数を0にして集計から外します。元に戻せます"); const r = await fxPost("fx_cancel", {date,row,reason}); if(r.error){ toast(r.error); return; } toast("取り消しました"); refreshSales(date); }
+async function fxRestore2(date,row){ const r = await fxPost("fx_restore", {date,row}); closeOv(); if(r.error){ toast(r.error); return; } toast("元に戻しました"); refreshSales(date); }
+function swapItem2(date,row){ const x = ((SALES_CACHE[date]||{}).list||[]).find(y=>y.row===row); if(!x) return; const names = x.items.split(/　/).map(t=>t.replace(/×\d+$/,"").trim()).filter(Boolean);
+  sheet(`<h3>商品の差替え</h3><div class="sub">${esc(x.items)}</div><label>この商品を</label><select id="swFrom">${names.map(n=>`<option>${esc(n)}</option>`).join("")}</select><label>こちらに</label><select id="swTo">${ALL_ITEMS.map(n=>`<option>${esc(n)}</option>`).join("")}</select><label>理由</label><input id="swWhy" placeholder="例：伝票では持ち帰りオリオン"><button class="btn" id="swOk">差し替える</button>`);
+  $("swOk").onclick = async ()=>{ const from=$("swFrom").value, to=$("swTo").value; if(from===to){ toast("同じ商品です"); return; } $("swOk").disabled=true; const r = await fxPost("fx_item", {date,row,from,to,reason:$("swWhy").value||"締めの確認で差替え"}); if(r.error){ toast(r.error); $("swOk").disabled=false; return; } closeOv(); toast(`${to} に差し替えました（${num(r.amount)}円）`); refreshSales(date); };
+}
+// その他の確認（勤怠・在庫・経費・設定）
+function renderMisc(){
+  const o = ops(), p = pnlData(), today = DATA.todayKey, H = new Date().getHours(); const M = [];
+  const li = (t, n, btnLabel, fn) => M.push(`<div class="mi"><div><b>${t}</b><small>${n}</small></div>${btnLabel?`<button onclick="${fn}">${btnLabel}</button>`:""}</div>`);
+  if(!o.shime.find(s=>s.date===today) && H>=16 && (dayByDate(today)||{}).count>0) li("本日のレジ締めがまだです","閉店後にレジの「締め」から入力");
+  o.unclosed.forEach(u=>li(`${u.name} ${u.date.slice(5)} 退勤の打刻がありません`,`出勤 ${u.in}`,"勤怠アプリ","window.open('admin.html','_blank')"));
+  bizDays().filter(d=>d.date<today && d.date>=openDate()).slice(-7).forEach(d=>{ const l = p.laborDaily[d.date]; if(!l) li(`${d.date.slice(5)}(${youbi(d.date)}) 勤怠がありません`,`売上 ${yen(d.sales)} に対して人件費0`,"勤怠アプリ","window.open('admin.html','_blank')"); else if(l.staff<2 && d.meals>=20) li(`${d.date.slice(5)}(${youbi(d.date)}) 勤怠が${l.staff}人分だけ`,`${(l.minutes/60).toFixed(1)}h・${d.meals}食。打刻漏れか修正申請が未承認`,"勤怠アプリ","window.open('admin.html','_blank')"); });
+  if(o.stockLow.length) li(`在庫が下限以下 ${o.stockLow.length}品目`, o.stockLow.slice(0,5).map(s=>`${s.name} ${s.stock}${s.unit}`).join("、"),"発注アプリ","window.open('hacchu.html','_blank')");
+  if(o.reports.length) li(`備品・不足の報告 ${o.reports.length}件`, o.reports.slice(0,4).map(r=>`${r.name}${r.qty?" "+r.qty:""}（${r.by}）`).join("、"),"発注アプリ","window.open('hacchu.html','_blank')");
+  if(o.receipts.unchecked) li(`経費の未確認 ${o.receipts.unchecked}件`,"経費アプリで内容を確認","経費アプリ","window.open('keihi.html','_blank')");
+  if(o.receipts.unpaid) li(`未払いの経費（掛け） ${yen(o.receipts.unpaid)}`, o.receipts.unpaidList.slice(0,4).map(r=>`${r.date.slice(5)} ${r.vendor} ${num(r.amount)}円`).join("、"),"経費アプリ","window.open('keihi.html','_blank')");
+  if(p.initial && p.initial.pending) li(`開業費の未入力 ${p.initial.pending}件`,"分析シート「開業費」で金額を入力");
+  p.fixed.filter(f=>!f.amount && !/収入/.test(f.name)).forEach(f=>li(`固定費が0円のまま：${f.name}`,"実額が分かったら入力", ME?"入力":"", `fixedInput('${f.name}')`));
+  $("miscList").innerHTML = M.join("") || "<div class='sub'>確認することはありません</div>";
 }
 
 // ===== ログインと訂正（要確認の解消） =====
