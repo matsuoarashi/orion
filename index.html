@@ -1130,7 +1130,8 @@ async function oPoll(manual){
     const fresh = O.orders.filter(o=>o.status==="new" && !O.seen.has(o.id));
     oRender();
     if(fresh.length){
-      oBeep(3); oFlash(fresh.map(o=>`${o.slot}受取 ${o.name}様 ${o.meals}食`).join(" ／ "));
+      oBeep(3); oFlash(fresh.map(o=>`${o.slot}受取 ${o.name}様 ${o.meals}食`).join(" ／ ") + (O.printer.ch ? "" : "　⚠ プリンター未接続：テイクアウト画面で接続すると印刷されます"));
+      if(!O.printer.ch) oAutoConnect();
       setTimeout(()=>{ if(O.orders.some(o=>o.status==="new")) oBeep(2); }, 15000); // 15秒後に未対応が残っていればもう一度
       for(const o of fresh){ if(O.printer.ch && !o.printed){ try{ await oPrint(o); await oUpdate(o.id, {printed:true}); o.printed = true; }catch(e){ $("oSt").textContent = "印刷失敗: "+e.message; } } }
       fresh.forEach(o=>O.seen.add(o.id)); localStorage.setItem("seenOrders", JSON.stringify([...O.seen].slice(-300)));
@@ -1198,7 +1199,7 @@ async function oSetupPrinter(device){
 }
 function oPrinterUI(){
   const on = !!O.printer.ch; const name = (O.printer.device&&O.printer.device.name) || localStorage.getItem("printerName") || "";
-  const e=$("oPrint"); if(e){ e.classList.toggle("ok", on); e.classList.toggle("ng", !on); e.innerHTML = on ? "プリンター<b>"+(name||"接続中")+"</b>" : "プリンター<b>未接続</b>（タップで接続）"; }
+  const e=$("oPrint"); if(e){ e.classList.toggle("ok", on); e.classList.toggle("ng", !on); e.innerHTML = on ? "プリンター<b>"+(name||"接続中")+"</b>" : "プリンター<b>未接続</b>（タップで接続）" + (O.printer.note ? `<br><small style="font-weight:normal">${oEsc(O.printer.note)}</small>` : ""); }
   const f=$("vPrinter"); if(f){ f.classList.toggle("ng", !on); f.textContent = on ? "🖨 接続" : "🖨 未接続"; }
   const g=$("aPrinter"); if(g){ g.textContent = on ? "🖨 プリンター接続中" : "🖨 プリンター未接続"; }
 }
@@ -1206,18 +1207,29 @@ async function oConnectPrinter(){
   if(!navigator.bluetooth){ alert("このブラウザはBluetooth印刷に対応していません（AndroidのChromeで開いてください）"); return; }
   try{
     const device = await navigator.bluetooth.requestDevice({ acceptAllDevices:true, optionalServices:O_SVC });
-    await oSetupPrinter(device);
-  }catch(e){ if(!/cancel/i.test(e.message)) alert("接続できませんでした: " + e.message); }
+    await oSetupPrinter(device); oPrinterNote("");
+  }catch(e){ if(!/cancel/i.test(e.message)){ oPrinterNote("接続できませんでした: " + e.message); alert("接続できませんでした: " + e.message + "\n\n確認：①プリンターの電源が入っているか ②スマホのBluetoothがONか ③他の端末（スマホ）がプリンターに繋がっていないか（1台しか繋がりません） ④それでもダメなら プリンターの電源を入れ直してからもう一度"); } }
 }
 // 前回つないだプリンターに、画面を開いた時・戻った時・切れた時に自動で再接続（Chromeが対応している場合）
 let _oAuto = false;
+function oPrinterNote(msg){ O.printer.note = msg||""; try{ localStorage.setItem("printerNote", O.printer.note); }catch(e){} const e=$("oSt"); if(e && msg) e.textContent = msg; oPrinterUI(); }
 async function oAutoConnect(){
-  if(O.printer.ch || _oAuto || !navigator.bluetooth || !navigator.bluetooth.getDevices) return; _oAuto = true;
+  if(O.printer.ch || _oAuto || !navigator.bluetooth) return; _oAuto = true;
   try{
-    const id = localStorage.getItem("printerId"); if(!id) return;
-    const devs = await navigator.bluetooth.getDevices(); const d = devs.find(x=>x.id===id); if(!d) return;
-    await oSetupPrinter(d);
-  }catch(e){ /* 電源OFFなど。次の機会に再試行 */ }
+    const id = localStorage.getItem("printerId"); if(!id){ oPrinterNote("プリンター未設定。「プリンター」をタップして選んでください"); return; }
+    if(!navigator.bluetooth.getDevices){ oPrinterNote("このChromeは自動再接続に対応していません。「プリンター」をタップして接続してください"); return; }
+    const devs = await navigator.bluetooth.getDevices(); const d = devs.find(x=>x.id===id);
+    if(!d){ oPrinterNote("前回のプリンターの許可が切れています。「プリンター」をタップして選び直してください"); return; }
+    // Chromeの仕様で、getDevices() で得た機器は「電波を受信してから」でないと接続できない。最大8秒待つ
+    if(d.watchAdvertisements){
+      try{
+        const ac = new AbortController();
+        const seen = new Promise((res,rej)=>{ d.addEventListener("advertisementreceived", ()=>res(true), {once:true}); setTimeout(()=>rej(new Error("not advertising")), 8000); });
+        await d.watchAdvertisements({signal: ac.signal}); await seen; ac.abort();
+      }catch(e){ oPrinterNote("プリンターが見つかりません（電源が入っているか・近くにあるか確認）"); return; }
+    }
+    await oSetupPrinter(d); oPrinterNote("");
+  }catch(e){ oPrinterNote("自動再接続できません: " + e.message + "。「プリンター」をタップして接続してください"); }
   finally{ _oAuto = false; }
 }
 oAutoConnect(); document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) oAutoConnect(); });
