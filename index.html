@@ -343,6 +343,7 @@
     <div class="fm" style="grid-template-columns:minmax(0,1fr) 130px"><span>釣銭準備金(朝の現金)</span><span class="in"><input type="number" inputmode="numeric" id="prepIn" style="width:96px" onchange="calcShime()" oninput="calcShime()"> 円</span></div>
     <div class="grid2" id="shimeDenoms"></div>
     <div class="fm" style="grid-template-columns:minmax(0,1fr) 130px"><span>業者への現金支払い(あれば)</span><span class="in"><input type="number" inputmode="numeric" id="vendorIn" style="width:96px" placeholder="0" oninput="calcShime()"> 円</span></div>
+    <div class="fm" style="grid-template-columns:minmax(0,1fr) 130px"><span>PayPay画面の本日取引額<br><small style="color:#888">PayPay for Business の「今日の取引額」</small></span><span class="in"><input type="number" inputmode="numeric" id="ppScreenIn" style="width:96px" placeholder="0" oninput="calcShime()"> 円</span></div>
     <div class="lbl">伝票に書かれた品数を入力（1枚に2品なら2。横はレジの記録。副菜とドリンクも数える）</div>
     <div id="shimeSrc" style="font-size:11px;color:#888;text-align:center;margin-bottom:4px"></div>
     <div id="shimeSlips"></div>
@@ -679,7 +680,7 @@ function openShime(){
   $("shimeDenoms").innerHTML = DENOMS.map((d,i)=>
     `<div class="fm"><span>${d.toLocaleString()}円</span><span class="in"><input type="number" inputmode="numeric" id="dn${i}" placeholder="0" oninput="calcShime()"> 枚</span></div>`
   ).join("");
-  $("vendorIn").value = "";
+  $("vendorIn").value = ""; if($("ppScreenIn")) $("ppScreenIn").value = "";
   $("shimeSlips").innerHTML = SLIP_GROUPS.map(g=>`<div class="lbl" style="margin-top:6px">${g.label}</div><div class="grid2">` + g.items.map(n=>{ const i = SLIP_MENUS.indexOf(n); const lab = g.short ? n.replace(/^TG/,"") : n;
     return `<div class="fm"><span style="font-size:13px">${lab.replace(" ","<br>")}<br><small id="sl${i}c" style="color:#888"></small></span><span class="in"><input type="number" inputmode="numeric" id="sl${i}" placeholder="0" oninput="calcShime()"> ${n==="ドリンク"?"本":"品"}</span></div>`; }).join("") + `</div>`).join("");
   _srvDaily = null; calcShime();
@@ -720,6 +721,7 @@ async function calcShime(){
   const cash = shimeCash();
   const pp = daily.paypay || 0;
   const vendor = parseInt($("vendorIn") && $("vendorIn").value) || 0;
+  const ppScreen = parseInt($("ppScreenIn") && $("ppScreenIn").value) || 0;
   const expected = prep + daily.sum - pp - vendor;
   const diff = cash - expected;
   const bank = Math.max(0, cash - PREP_DEFAULT);
@@ -739,6 +741,7 @@ async function calcShime(){
   $("shimeSum").innerHTML =
     `<div class="li"><span>本日売上(アプリ)</span><span>${daily.sum.toLocaleString()} 円</span></div>`+
     `<div class="li"><span>うちPayPay(現金に含めない)</span><span>${pp.toLocaleString()} 円</span></div>`+
+    (ppScreen ? `<div class="li"><span>PayPay画面との差</span><span class="${ppScreen===pp?"diff-ok":"diff-ng"}">${ppScreen===pp?"一致":(ppScreen-pp>0?"+":"")+(ppScreen-pp).toLocaleString()+" 円"}</span></div>` : "")+
     (vendor ? `<div class="li"><span>業者支払い(現金から出した分)</span><span>−${vendor.toLocaleString()} 円</span></div>` : "")+
     `<div class="li"><span>あるべき現金(準備金+現金売上${vendor?"−業者支払い":""})</span><span>${expected.toLocaleString()} 円</span></div>`+
     `<div class="li"><span>数えた現金</span><span>${cash.toLocaleString()} 円</span></div>`+
@@ -746,7 +749,7 @@ async function calcShime(){
     `<div class="li"><span>レジに残す</span><span>${PREP_DEFAULT.toLocaleString()} 円</span></div>`+
     `<div class="li"><span><b>回収する現金(数えた現金−${PREP_DEFAULT.toLocaleString()})</b></span><span><b>${bank.toLocaleString()} 円</b></span></div>`+
     slipHtml;
-  window._shime = {prep, sales: daily.sum, expected, cash, diff, paypay: pp, bank, vendor, slips: slips4, app: app4, slipDetail: {slips, app}, slipOk: slipAny ? slipOk : null, src: daily.src};
+  window._shime = {prep, sales: daily.sum, expected, cash, diff, paypay: pp, ppScreen, bank, vendor, slips: slips4, app: app4, slipDetail: {slips, app}, slipOk: slipAny ? slipOk : null, src: daily.src};
 }
 async function saveShime(){
   const s = window._shime;
@@ -761,7 +764,7 @@ async function saveShime(){
     date: `${now.getFullYear()}/${pad(now.getMonth()+1)}/${pad(now.getDate())}`,
     time: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
     prep: s.prep, sales: s.sales, expected: s.expected, cash: s.cash, diff: s.diff, paypay: s.paypay || 0, keep: PREP_DEFAULT, bank: s.bank || 0,
-    vendor: s.vendor || 0, slips: s.slips || {}, app: s.app || {}, slipOk: s.slipOk, slipDetail: s.slipDetail || null
+    vendor: s.vendor || 0, slips: s.slips || {}, app: s.app || {}, slipOk: s.slipOk, slipDetail: s.slipDetail || null, ppScreen: s.ppScreen || 0
   };
   enqueueRec(rec);
   $("shimeOv").classList.remove("show");

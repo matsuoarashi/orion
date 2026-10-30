@@ -411,9 +411,12 @@ function dayStatus(dt){
   const s = o.shime.find(x=>x.date===dt) || null; const acked = (o.acks||[]).find(a=>a.key==="day:"+dt) || null;
   const r = { date:dt, d, s, acked, issues:[] };
   if(!s){ r.issues.push("締め未入力"); return r; }
-  r.cashDiff = s.diff||0; r.ppDiff = (s.paypay||0) - (d.salesPaypay||0);
+  // あるべき現金は「今の」レジ記録（訂正反映後）から計算し直す：釣銭準備金 + 現金売上 − 業者払い
+  r.expectedNow = (s.prep||0) + (d.sales||0) - (d.salesPaypay||0) - (s.vendorPay||0);
+  r.cashDiff = (s.actual||0) - r.expectedNow; r.cashDiffAt = s.diff||0;
+  r.ppScreen = s.ppScreen||0; r.ppDiff = r.ppScreen ? r.ppScreen - (d.salesPaypay||0) : null;
   if(Math.abs(r.cashDiff)>=100) r.issues.push(`現金 ${r.cashDiff>0?"+":"−"}${num(Math.abs(r.cashDiff))}`);
-  if(Math.abs(r.ppDiff)>=100) r.issues.push(`PayPay ${r.ppDiff>0?"+":"−"}${num(Math.abs(r.ppDiff))}`);
+  if(r.ppDiff!==null && Math.abs(r.ppDiff)>=100) r.issues.push(`PayPay ${r.ppDiff>0?"+":"−"}${num(Math.abs(r.ppDiff))}`);
   const sd = s.slipDetail; r.slipDiffs = [];
   if(sd && sd.slips){ Object.keys(sd.slips).forEach(k=>{ const a = Number(sd.slips[k]), b = Number((sd.app||{})[k]||0); if(a!==b) r.slipDiffs.push({name:k, slip:a, reg:b}); }); if(r.slipDiffs.length) r.issues.push(`伝票 ${r.slipDiffs.length}項目`); }
   else if(s.slipMatch && /不一致|NG/.test(s.slipMatch)) r.issues.push("伝票 不一致");
@@ -448,16 +451,18 @@ function renderShime(days){
         const inK = ["オリオン","オリオン ハーフ","ナシナシ","ナシナシ ハーフ"], tgK = inK.map(k=>"TG"+k);
         const slipRow = (label, keys) => sd && sd.slips && keys.some(k=>sd.slips[k]!==undefined) ? `<tr><td>${label}</td><td>${sum(sd.app,keys)}</td><td>${sum(sd.slips,keys)}</td><td class="d ${sum(sd.slips,keys)-sum(sd.app,keys)?"neg":"pos"}">${sum(sd.slips,keys)-sum(sd.app,keys)?((sum(sd.slips,keys)-sum(sd.app,keys))>0?"+":"")+(sum(sd.slips,keys)-sum(sd.app,keys)):"一致"}</td></tr>` : "";
         body = `<table class="cmp"><tr><th></th><th>レジ記録</th><th>実際</th><th>差</th></tr>
-          <tr><td>現金</td><td>${num(s.expected)}</td><td>${num(s.actual)}</td><td class="d ${r.cashDiff?"neg":"pos"}">${r.cashDiff?(r.cashDiff>0?"+":"−")+num(Math.abs(r.cashDiff)):"一致"}</td></tr>
-          <tr><td>PayPay</td><td>${num(d.salesPaypay||0)}</td><td>${num(s.paypay)}</td><td class="d ${r.ppDiff?"neg":"pos"}">${r.ppDiff?(r.ppDiff>0?"+":"−")+num(Math.abs(r.ppDiff)):"一致"}</td></tr>
+          <tr><td>現金 <small>(あるべき額)</small></td><td>${num(r.expectedNow)}</td><td>${num(s.actual)}</td><td class="d ${r.cashDiff?"neg":"pos"}">${r.cashDiff?(r.cashDiff>0?"+":"−")+num(Math.abs(r.cashDiff)):"一致"}</td></tr>
+          <tr><td>PayPay</td><td>${num(d.salesPaypay||0)}</td><td>${r.ppScreen?num(r.ppScreen):"<small>未入力</small>"}</td><td class="d ${r.ppDiff===null?"":(r.ppDiff?"neg":"pos")}">${r.ppDiff===null?"<small>照合で確認</small>":(r.ppDiff?(r.ppDiff>0?"+":"−")+num(Math.abs(r.ppDiff)):"一致")}</td></tr>
           ${slipRow("伝票 店内", inK)}${slipRow("伝票 持ち帰り", tgK)}${slipRow("伝票 副菜追加", ["副菜追加"])}${slipRow("伝票 副菜値引き", ["副菜値引き"])}${slipRow("伝票 ドリンク", ["ドリンク"])}
           ${!sd ? `<tr><td>伝票</td><td colspan="2"></td><td class="d ${/不一致|NG/.test(s.slipMatch)?"neg":"pos"}">${s.slipMatch||"未入力"}</td></tr>` : ""}
           </table>`;
         const hints = [];
         if(r.slipDiffs && r.slipDiffs.length) hints.push("伝票とレジの差：" + r.slipDiffs.map(x=>`${x.name.replace(/^TG/,"持帰")} 伝票${x.slip}／レジ${x.reg}`).join("、"));
-        if(r.ppDiff>0) hints.push(`PayPay画面のほうが ${num(r.ppDiff)}円 多い → 現金で打った会計が PayPay だった可能性。「PayPay画面と照合」で自動で直せます`);
-        if(r.ppDiff<0) hints.push(`PayPay画面のほうが ${num(-r.ppDiff)}円 少ない → PayPay で打った会計が未受取か現金だった可能性`);
+        if(r.ppDiff!==null && r.ppDiff>0) hints.push(`PayPay画面のほうが ${num(r.ppDiff)}円 多い → 現金で打った会計が PayPay だった可能性。「PayPay画面と照合」で自動で直せます`);
+        if(r.ppDiff!==null && r.ppDiff<0) hints.push(`PayPay画面のほうが ${num(-r.ppDiff)}円 少ない → PayPay で打った会計が未受取か現金だった可能性`);
         if(s.vendorPay) hints.push(`業者への現金払い ${num(s.vendorPay)}円 を差し引いて計算しています`);
+        if(Math.abs(r.cashDiffAt - r.cashDiff) >= 100) hints.push(`締めの時点では現金差異 ${r.cashDiffAt>0?"+":"−"}${num(Math.abs(r.cashDiffAt))}円でした（その後の会計の訂正で、あるべき額が変わっています）`);
+        if(r.ppDiff===null) hints.push("PayPay画面の金額は締めで未入力。「PayPay画面と照合」で取引一覧を貼れば1件ずつ突き合わせます");
         const dups = o.dup.filter(x=>x.date===r.date && x.time1===x.time2 && x.pay1===x.pay2);
         if(dups.length) hints.push("二重入力の疑い：" + dups.map(x=>`${x.time1} ${x.items} ${x.pay1}×2`).join("、"));
         if(r.reason) hints.push(`理由：${r.reason}（${s.reasonBy}）`);
