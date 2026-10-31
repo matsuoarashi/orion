@@ -123,7 +123,12 @@ async function init(){
   try{
     const r = await fetch(API + "?mode=slots&t=" + Date.now(), {cache:"no-store"}); S = await r.json();
   }catch(e){ showClosed("ただいま予約システムに接続できません。<br>少し時間をおいて開き直してください。"); return; }
-  if(!S.open){ showClosed(S.reason || "本日の受付は終了しました"); return; }
+  if(!S.open){
+    // 受付停止中でもメニューと価格は見られるようにする（Googleのメニューリンク先がこのページのため）
+    const list = (S.menu||[]).filter(m=>!(m.opts&&m.opts.length)).map(m=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dotted #d9ccb0"><span>${(m.label||m.name.replace(/^TG/,""))}${m.sub?` <small style="color:#6b5a40">${m.sub}</small>`:""}</span><b>${m.price.toLocaleString()}円</b></div>`).join("");
+    showClosed((S.reason || "本日の受付は終了しました") + (list ? `<div style="margin-top:18px;text-align:left;font-size:14px"><div style="font-size:12px;letter-spacing:2px;color:#2c4f39;margin-bottom:4px">メニュー（店頭価格・税込）</div>${list}<div style="font-size:12px;color:#6b5a40;margin-top:6px">副菜追加 +100円／瓶ドリンク 300円〜</div></div>` : ""));
+    return;
+  }
   const rows = [];
   S.menu.forEach(m=>{
     if(m.opts && m.opts.length){ m.opts.forEach(o=>{ const k = m.name+"::"+o; rows.push({k, title:m.label||m.name, desc:`<span class="v"><em>${o}</em></span>`+o+"を1品追加", price:m.price}); }); }
