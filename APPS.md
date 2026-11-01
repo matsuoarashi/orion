@@ -6,7 +6,7 @@
 
 | 入口 | ファイル | 使う人・端末 | 中身 |
 | --- | --- | --- | --- |
-| 管理者アプリ | kanri.html（ホーム画面名「管理者」manifest-kanri.json） | 松尾・長下（管理者） | 締め・分析／発注／経費／スタッフ・シフトを切り替え。中は下の各画面を埋め込み |
+| 管理者アプリ | kanri.html（ホーム画面名「管理者」manifest-kanri.json） | 松尾・長下（管理者） | 締め・分析／発注／経費／スタッフ・シフト／採用／出店を切り替え。中は下の各画面を埋め込み |
 | スタッフアプリ | staff/index.html（URL は /orion/staff/。ホーム画面の「勤怠」） | スタッフ個人のスマホ | 打刻・連絡・希望・シフト・履歴・聞く。ホームの「店の仕事」から在庫・受け取り・締め・報告 |
 | 店舗（レジ） | index.html | 店の端末 | 会計・テイクアウト（予約受付・プリンター・通知）・来店カウント。締めは予備として残す |
 | お客様 | order.html | お客様 | テイクアウト予約 |
@@ -20,6 +20,7 @@
 | shime.html | スタッフの締め（締めた人を記録） | スタッフアプリ |
 | keihi.html | 経費（レシート・請求書） | 管理者アプリ |
 | staff/admin.html | スタッフ・シフト・給与・お知らせ・設定（staff フォルダにある） | 管理者アプリ |
+| recruit.html | 採用：応募者（状態・面接日時・メモ・連絡文コピー）と求人票（項目ごとにコピー・媒体の管理画面へ）。データは分析シートの「求人票」「応募者」タブ | 管理者アプリ「採用」 |
 | start.html | 出店（ORION START）：案件一覧・案件詳細（試算・凍結・評価・現地調査）・物件Inbox・神田の基準値 | 管理者アプリ「出店」 |
 | busy.js | 共通ローディング。通信中の二重タップ防止（書き込み中は画面にふた、読み込みは上に細いバー） | 各画面の最初の script で読む |
 
@@ -75,6 +76,8 @@
 - v70（11/2 朝）：物件メールの差出人に synchro-food.co.jp を追加（飲食店ドットコムの物件メールはこのドメインから届く）
 - v71〜v74（11/2 朝）：ORION START v0.2（一次判定・まとめメール分割・ページ取り込み・朝の候補メール）。メール送信の権限を追加承認、`startDigestTriggerInstall()` 実行済み（毎朝7時台）、`startRejudgeAll()` 実行済み
 - v75（11/2 朝）：先出し通知 ops_alerts（staffing.gs の後半）。15:30 opsNotifyOrder＝今日が締切の発注で足りなくなる品目、17:00 stfShortNotify＝人手不足（3週間）・年収の壁（設定 annual_caps）・衛生記録の付け忘れ・レジ締めの未入力。送り先 orion.napolitan@gmail.com。分析の「今朝の確認」は doGet mode=ops_alerts（管理者トークン）
+- v76（11/2 朝）：LINE 通知（staffing.gs 末尾の LINE ブロック）。Messaging API（公式アカウント「洋食オリオン」）。doPost の先頭で LINE の webhook を受けてグループIDを LINE_CANDIDATES に保存。LINE_TOKEN を貼り、管理者グループに招待したあと linePickGroup() を 1 回実行すると LINE_TO が決まり、opsMail_ と同じ内容が LINE にも流れる（未設定なら何もしない）
+- v77〜v78（11/2 朝）：採用（recruit.gs）。分析シートに「求人票」「応募者」タブ。doGet mode=rec_list／doPost rec_app_save・rec_job_save（管理者トークン）。メール取り込み（osMailIngest_）で Indeed の応募通知を応募者に自動追加（メールIDで重複なし）。未連絡（新規）の応募は ops_alerts の key "rec" で今朝の確認・17時のまとめに出る。求人票に Indeed の下書き（ホール・平日ランチ 10:30〜15:00・時給1,500円）と 9/29 の店舗スタッフ（休止・応募24）を登録
 - 注意：ORION START スレッドも同じ GAS を更新している（v69〜v74・start.gs）。編集前にエディタを読み込み直し、デプロイ直前にも相手の関数（startGet_ など）が残っているか確認する
 
 ## 6. 原価（COSTS）の根拠

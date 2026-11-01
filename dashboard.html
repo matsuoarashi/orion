@@ -563,7 +563,7 @@ async function loadShort(){ const tk = (()=>{ try{ return localStorage.getItem("
     if (r && r.ok){ OPSA = r.alerts || []; SHORT = []; renderMisc(); return; } }catch(e){}
   try{ const r = await shortDays(call); if(r){ SHORT = r; renderMisc(); } }catch(e){} }
 let OPSA = [];
-const OPSA_BTN = { short:["シフト","goApp('staff','shift')"], cap:["シフト","goApp('staff','shift')"], hyg:["勤怠","goApp('staff','att')"], order:["発注","goApp('hacchu')"], shime:["確認","setTab('shime');scrollTo(0,0)"] };
+const OPSA_BTN = { short:["シフト","goApp('staff','shift')"], cap:["シフト","goApp('staff','shift')"], hyg:["勤怠","goApp('staff','att')"], order:["発注","goApp('hacchu')"], shime:["確認","setTab('shime');scrollTo(0,0)"], rec:["採用","goApp('recruit')"] };
 function renderMisc(){
   if(!DATA) return;
   const o = ops(), p = pnlData(), today = DATA.todayKey, H = new Date().getHours(); const M = [];

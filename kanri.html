@@ -42,7 +42,7 @@ select,input{width:100%;padding:12px;border:1px solid var(--line);border-radius:
 <body>
 <div id="vLogin" class="login hide">
   <h1>管 理 者</h1>
-  <div class="s">洋食オリオン｜分析・発注・経費・スタッフ</div>
+  <div class="s">洋食オリオン｜分析・発注・経費・スタッフ・採用</div>
   <div class="msg" id="loginMsg"></div>
   <label>名前（管理者）</label><select id="staffSel"><option value="">読み込み中…</option></select>
   <label>パスコード（勤怠アプリと同じ）</label><input type="password" inputmode="numeric" id="passIn" placeholder="●●●●" autocomplete="off">
@@ -63,12 +63,13 @@ select,input{width:100%;padding:12px;border:1px solid var(--line);border-radius:
 // 管理者アプリ：1 つの入口。中身は既存の画面を順に移していく（段階統合の第1段）
 const STAFF_API = "https://script.google.com/macros/s/AKfycbwgGW6rXzAW2rHVicdoCMdHOT_E3egrXPsaEJerX-_brZr0mYF6Qo_tRorX8PgLc7c/exec";
 // 中の画面を更新したら V を変える（スマホに残った古い画面を読み直させるため）
-const V = "1102c";
+const V = "1102d";
 const SECTIONS = [
   { id:"shime", label:"確認・分析", src:"dashboard.html?embed=1&v="+V },
   { id:"hacchu", label:"発注", src:"hacchu.html?embed=1&v="+V },
   { id:"keihi", label:"経費", src:"keihi.html?embed=1&v="+V },
   { id:"staff", label:"スタッフ", src:"staff/admin.html?embed=1&v="+V },
+  { id:"recruit", label:"採用", src:"recruit.html?embed=1&v="+V },
   { id:"start", label:"出店", src:"start.html?embed=1&v="+V },
 ];
 const $ = id => document.getElementById(id);
@@ -132,9 +133,10 @@ const HIDE_CSS = {
   keihi: "header{display:none!important}",
   staff: "header{display:none!important} .tabs{top:0!important}",
   hacchu: "",
+  recruit: "",
   start: "header{display:none!important} .tabs{top:0!important}"
 };
-const OPEN_MAP = [[/(^|\/)admin\.html/, "staff"], [/hacchu\.html/, "hacchu"], [/keihi\.html/, "keihi"], [/dashboard\.html/, "shime"]];
+const OPEN_MAP = [[/(^|\/)admin\.html/, "staff"], [/hacchu\.html/, "hacchu"], [/keihi\.html/, "keihi"], [/dashboard\.html/, "shime"], [/recruit\.html/, "recruit"]];
 function tidy(f){
   try{
     const w = f.contentWindow, d = f.contentDocument, id = f.id.slice(3);

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>採用 | 洋食オリオン</title>
+<meta name="theme-color" content="#2c4f39">
+<style>
+:root{ --g:#2c4f39; --g-d:#1f3a2a; --g-l:#e4eee7; --cream:#faf6ee; --cream-d:#ece4d2; --ink:#2b2a26; --mute:#7a7265; --red:#a33c2e; --red-l:#f6e3df; --amber:#b7791f; --amber-l:#f7ebd3; --blue:#2f5d8a; --blue-l:#e2ebf4; --line:#d9d1bd; --r:14px; --sat:env(safe-area-inset-top); --sab:env(safe-area-inset-bottom); }
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%}
+body{font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic',sans-serif;background:var(--cream);color:var(--ink);font-size:15px;line-height:1.5}
+.wrap{max-width:560px;margin:0 auto;padding:12px 12px calc(30px + var(--sab))}
+.hide{display:none!important}
+button{font-family:inherit;cursor:pointer}
+header{background:var(--g);color:#fff;padding:calc(10px + var(--sat)) 14px 10px}
+header .t{font-size:11px;letter-spacing:4px;opacity:.85}header .n{font-size:16px;font-weight:bold}
+.seg{display:flex;background:var(--cream-d);border-radius:10px;padding:3px;margin-bottom:12px;position:sticky;top:0;z-index:5}
+.seg button{flex:1;border:0;background:none;padding:9px;border-radius:8px;font-size:14px;color:var(--mute);font-weight:bold}
+.seg button.on{background:#fff;color:var(--g);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.seg .bd{display:inline-block;min-width:16px;padding:0 4px;border-radius:999px;background:var(--red);color:#fff;font-size:10px;line-height:16px;margin-left:4px;vertical-align:1px}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:12px}
+.card h2{font-size:12px;letter-spacing:2px;color:var(--g);margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card h2 small{letter-spacing:0;color:var(--mute);font-weight:normal}
+.mini{font-size:12px;color:var(--mute)}
+.pill{display:inline-block;font-size:11px;border-radius:999px;padding:2px 8px;background:var(--g-l);color:var(--g);font-weight:bold;white-space:nowrap}
+.pill.red{background:var(--red-l);color:var(--red)}.pill.amber{background:var(--amber-l);color:var(--amber)}.pill.blue{background:var(--blue-l);color:var(--blue)}.pill.gray{background:var(--cream-d);color:var(--mute)}
+.btn{display:block;width:100%;padding:13px;border-radius:12px;border:2px solid var(--g);background:var(--g);color:#fff;font-size:15px;font-weight:bold}
+.btn.sec{background:#fff;color:var(--g);border:2px solid var(--g)}
+.btn.sm{display:inline-block;width:auto;padding:8px 6px;font-size:13px;white-space:nowrap}
+.btn:disabled{opacity:.5}
+.row2{display:flex;gap:8px}.row2>*{flex:1}
+.ap{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--cream-d)}
+.ap:first-of-type{border-top:0}
+.ap .b{flex:1;min-width:0}
+.ap .nm{font-weight:bold;font-size:15px}
+.ap .sub{font-size:12px;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ap .memo{font-size:12px;color:var(--ink);background:var(--cream);border-radius:8px;padding:4px 8px;margin-top:4px;white-space:pre-wrap}
+.ap button.ed{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;font-size:12px;color:var(--g);font-weight:bold;flex:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{border:2px solid var(--line);background:#fff;border-radius:999px;padding:6px 11px;font-size:13px;font-weight:bold;color:var(--ink)}
+.chips button.on{background:var(--g);color:#fff;border-color:var(--g)}
+.tip{background:var(--amber-l);color:#6b4a12;border-radius:12px;padding:10px 12px;font-size:13px;margin-bottom:12px}
+.tip b{color:var(--amber)}
+.job .hd{display:flex;gap:8px;align-items:flex-start}
+.job .ttl{flex:1;font-weight:bold;font-size:15px;line-height:1.4}
+.job .meta{font-size:12px;color:var(--mute);margin:4px 0 8px}
+.fld{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
+.fld .lb{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--g);font-weight:bold;letter-spacing:1px;margin-bottom:4px}
+.fld .lb button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:3px 9px;font-size:12px;color:var(--g);font-weight:bold}
+.fld .tx{white-space:pre-wrap;font-size:13px;line-height:1.65}
+.more{border:0;background:none;color:var(--g);font-weight:bold;font-size:13px;padding:6px 0}
+label{display:block;font-size:12px;color:var(--mute);margin:10px 0 4px}
+input,select,textarea{width:100%;padding:10px 12px;border:2px solid var(--line);border-radius:10px;font-size:16px;background:#fff;font-family:inherit;color:var(--ink)}
+textarea{min-height:80px;line-height:1.55}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.sheet .in{background:var(--cream);width:100%;max-width:560px;max-height:92vh;overflow-y:auto;border-radius:18px 18px 0 0;padding:14px 14px calc(18px + var(--sab))}
+.sheet h3{margin:0 0 4px;font-size:16px;color:var(--g)}
+.toast{position:fixed;left:50%;bottom:calc(24px + var(--sab));transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 16px;border-radius:999px;font-size:13px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:.92}
+.msg{background:var(--red-l);color:var(--red);padding:10px 12px;border-radius:10px;font-size:14px;margin-bottom:10px}
+.empty{color:var(--mute);font-size:13px;text-align:center;padding:16px 0}
+.stat{display:flex;gap:8px;margin-bottom:12px}
+.stat div{flex:1;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px;text-align:center}
+.stat b{display:block;font-size:20px;color:var(--g)}
+.stat small{font-size:11px;color:var(--mute)}
+</style>
+</head>
+<body>
+<header id="hdr"><div class="t">管理者</div><div class="n">採用</div></header>
+<div class="wrap">
+  <div class="msg hide" id="err"></div>
+  <div class="seg"><button id="sg_app" class="on" onclick="tab('app')">応募者<span id="bdNew"></span></button><button id="sg_job" onclick="tab('job')">求人票</button></div>
+
+  <div id="pApp">
+    <div class="stat" id="stat"></div>
+    <div class="tip" id="tipNew"></div>
+    <div class="card"><h2>応募者 <small id="appCnt"></small></h2>
+      <div class="chips" id="flt" style="margin-bottom:6px"></div>
+      <div id="apps"><div class="empty">読み込み中…</div></div>
+    </div>
+    <button class="btn sec" onclick="editApp()">＋ 応募者を手で追加（電話・紹介など）</button>
+    <div class="mini" style="margin-top:10px;line-height:1.7">Indeed の応募通知メールは自動でここに入ります（メールの取り込みと同じタイミング）。名前が読み取れなかったときは「名前不明」と出るので、Indeed の画面で確認して直してください。</div>
+  </div>
+
+  <div id="pJob" class="hide">
+    <div id="jobs"><div class="empty">読み込み中…</div></div>
+    <button class="btn sec" onclick="editJob()">＋ 求人票を追加</button>
+    <div class="mini" style="margin-top:10px;line-height:1.7">文面は項目ごとにコピーできます。Indeed 以外（タイミー・求人ボックス・紙の貼り紙など）に出すときも、ここの文面を使い回してください。公開・休止は Indeed の画面で行い、ここの「状態」も合わせて変えてください。</div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<div id="sheet"></div>
+
+<script src="busy.js?v=1101b"></script>
+<script>
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbzFNl4UM3fkoANru-agWmuOox-h3cS1yJmx4UZxpGFemEBnAUv45Gdp1VOvtCqOVUg/exec";
+const INDEED = "https://employers.indeed.com/jobs";
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function ls(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+const TOKEN = ls("os-admin-token") || ls("os-token") || "";
+const EMBED = /embed=1/.test(location.search);
+if (EMBED) $("hdr").classList.add("hide");
+let D = { apps:[], jobs:[], statuses:["新規","連絡済","面接予定","採用","見送り","辞退"] }, FLT = "対応中", TAB = "app", OPEN = {};
+const JOB_ST = ["下書き","掲載中","休止","終了"];
+const JOB_TEXT = ["キャッチコピー","仕事内容","アピールポイント","求める人材","勤務時間","休日","給与","待遇","その他"];
+const ST_CLS = { "新規":"red", "連絡済":"amber", "面接予定":"blue", "採用":"", "見送り":"gray", "辞退":"gray", "下書き":"amber", "掲載中":"", "休止":"gray", "終了":"gray" };
+
+function toast(t){ const e = $("toast"); e.textContent = t; e.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(()=>e.classList.remove("on"), 1800); }
+function showErr(t){ $("err").textContent = t; $("err").classList.toggle("hide", !t); }
+async function api(){ const r = await fetch(SHEET_URL+"?mode=rec_list&token="+encodeURIComponent(TOKEN)); return r.json(); }
+async function post(type, body){ try{ const r = await fetch(SHEET_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(Object.assign({type, token:TOKEN}, body||{}))}); return await r.json(); }catch(e){ return {error:"通信エラー"}; } }
+
+async function load(){
+  if (!TOKEN){ showErr("管理者アプリからログインして開いてください"); return; }
+  try{ const r = await api(); if (!r.ok){ showErr(r.error==="auth" ? "ログインが切れました。管理者アプリでログインし直してください" : (r.error||"読み込めません")); return; }
+    showErr(""); D = r; render(); }catch(e){ showErr("通信できません。電波を確認してください"); }
+}
+function tab(t){ TAB = t; $("sg_app").classList.toggle("on", t==="app"); $("sg_job").classList.toggle("on", t==="job"); $("pApp").classList.toggle("hide", t!=="app"); $("pJob").classList.toggle("hide", t!=="job"); scrollTo(0,0); }
+function render(){ renderApps(); renderJobs(); }
+
+// ---- 応募者 ----
+function daysSince(s){ const m = String(s||"").match(/(\d{4})\/(\d{1,2})\/(\d{1,2})/); if (!m) return null; return Math.floor((Date.now() - new Date(+m[1], m[2]-1, +m[3]).getTime()) / 864e5); }
+function renderApps(){
+  const A = D.apps || [], n = s => A.filter(a=>a["状態"]===s).length;
+  const nNew = n("新規"); $("bdNew").innerHTML = nNew ? `<span class="bd">${nNew}</span>` : "";
+  $("stat").innerHTML = [["新規", nNew], ["連絡済", n("連絡済")], ["面接予定", n("面接予定")], ["採用", n("採用")]].map(x=>`<div><b>${x[1]}</b><small>${x[0]}</small></div>`).join("");
+  $("tipNew").innerHTML = nNew ? `<b>まだ連絡していない応募が ${nNew}件</b>。前回の募集では応募24件のうち約20件が掲載から3日以内に集中しました。熱が冷めないうちに、その日のうちに連絡しましょう。` : "応募が来たら、その日のうちに連絡しましょう（前回は応募24件のうち約20件が掲載から3日以内）。";
+  const F = [["対応中", a=>["新規","連絡済","面接予定"].includes(a["状態"])], ["すべて", ()=>true], ["採用", a=>a["状態"]==="採用"], ["見送り・辞退", a=>["見送り","辞退"].includes(a["状態"])]];
+  $("flt").innerHTML = F.map(f=>`<button class="${f[0]===FLT?"on":""}" onclick="FLT='${f[0]}';renderApps()">${f[0]}</button>`).join("");
+  const list = A.filter((F.find(f=>f[0]===FLT)||F[1])[1]);
+  $("appCnt").textContent = `${list.length}件／全${A.length}件`;
+  $("apps").innerHTML = list.length ? list.map(a=>{
+    const d = daysSince(a["応募日時"]), late = a["状態"]==="新規" && d !== null && d >= 1;
+    return `<div class="ap"><div class="b">
+      <div class="nm">${esc(a["名前"]||"名前不明")} <span class="pill ${ST_CLS[a["状態"]]||""}">${esc(a["状態"])}</span>${late?` <span class="pill red">${d}日経過</span>`:""}</div>
+      <div class="sub">${esc(String(a["応募日時"]).slice(0,16))}・${esc(a["媒体"])}${a["求人"]?"・"+esc(a["求人"]):""}</div>
+      ${a["面接日時"]?`<div class="sub" style="color:var(--blue);font-weight:bold">面接 ${esc(String(a["面接日時"]).slice(0,16))}</div>`:""}
+      ${a["連絡先"]?`<div class="sub">${esc(a["連絡先"])}</div>`:""}
+      ${a["メモ"]?`<div class="memo">${esc(a["メモ"])}</div>`:""}
+    </div><button class="ed" onclick="editApp('${esc(a.app_id)}')">開く</button></div>`; }).join("") : `<div class="empty">${A.length ? "この条件の応募者はいません" : "まだ応募者はいません"}</div>`;
+}
+function toLocal(s){ const m = String(s||"").match(/(\d{4})\/(\d{1,2})\/(\d{1,2})(?:\s+(\d{1,2}):(\d{2}))?/); if (!m) return ""; const p = x=>String(x).padStart(2,"0"); return `${m[1]}-${p(m[2])}-${p(m[3])}T${p(m[4]||10)}:${m[5]||"00"}`; }
+function fromLocal(v){ return v ? v.replace(/-/g,"/").replace("T"," ") : ""; }
+function closeSheet(){ $("sheet").innerHTML = ""; }
+function editApp(id){
+  const a = (D.apps||[]).find(x=>x.app_id===id) || { "状態":"新規", "媒体":"電話" };
+  const jobs = (D.jobs||[]).map(j=>j["職種名"]);
+  $("sheet").innerHTML = `<div class="sheet" onclick="if(event.target===this)closeSheet()"><div class="in">
+    <h3>${id ? esc(a["名前"]||"名前不明") : "応募者を追加"}</h3>
+    ${id ? `<div class="mini">${esc(String(a["応募日時"]).slice(0,16))}・${esc(a["媒体"])}${a["件名"]?"<br>メール件名：" + esc(a["件名"]):""}</div>` : ""}
+    <label>状態</label><div class="chips" id="eSt">${D.statuses.map(s=>`<button class="${s===a["状態"]?"on":""}" onclick="[...this.parentNode.children].forEach(b=>b.classList.remove('on'));this.classList.add('on')">${s}</button>`).join("")}</div>
+    <label>名前</label><input id="eNm" value="${esc(a["名前"])}" placeholder="山田 花子">
+    <label>連絡先（電話・メール）</label><input id="eCt" value="${esc(a["連絡先"])}" placeholder="090-…／…@…">
+    <label>面接日時</label><input id="eIv" type="datetime-local" value="${esc(toLocal(a["面接日時"]))}">
+    ${id ? "" : `<div class="row2"><div><label>媒体</label><select id="eMd">${["電話","紹介","Indeed","タイミー","貼り紙","その他"].map(m=>`<option ${m===a["媒体"]?"selected":""}>${m}</option>`).join("")}</select></div><div><label>求人</label><select id="eJb"><option value="">—</option>${jobs.map(j=>`<option>${esc(j)}</option>`).join("")}</select></div></div>`}
+    <label>メモ（希望曜日・経験・面接の印象など）</label><textarea id="eMm">${esc(a["メモ"])}</textarea>
+    <div class="row2" style="margin-top:14px"><button class="btn sec" onclick="closeSheet()">閉じる</button><button class="btn" id="eSv" onclick="saveApp('${id?esc(id):""}')">保存</button></div>
+    ${id ? `<button class="btn sec" style="margin-top:10px" onclick="copyReply('${esc(id)}')">連絡文をコピー（面接のご案内）</button><a class="btn sec" style="margin-top:10px;text-align:center;text-decoration:none" href="${INDEED}" target="_blank" rel="noopener">Indeed の管理画面を開く</a>` : ""}
+  </div></div>`;
+}
+async function saveApp(id){
+  const st = ($("eSt").querySelector(".on")||{}).textContent || "新規";
+  const f = { "状態": st, "名前": $("eNm").value.trim(), "連絡先": $("eCt").value.trim(), "面接日時": fromLocal($("eIv").value), "メモ": $("eMm").value };
+  if (st === "面接予定" && !f["面接日時"]){ alert("面接日時を入れてください"); return; }
+  if (!id){ f["媒体"] = $("eMd").value; f["求人"] = $("eJb").value; if (!f["名前"]){ alert("名前を入れてください"); return; } }
+  $("eSv").disabled = true; const r = await post("rec_app_save", { id: id||"", fields: f }); $("eSv").disabled = false;
+  if (!r.ok){ alert(r.error||"保存できませんでした"); return; }
+  closeSheet(); toast("保存しました"); load();
+}
+function copyReply(id){
+  const a = (D.apps||[]).find(x=>x.app_id===id) || {};
+  const nm = a["名前"] ? a["名前"] + "様" : "ご応募いただいた方へ";
+  const t = `${nm}\n\nこのたびは洋食オリオンの求人にご応募いただき、ありがとうございます。\n\nぜひ一度お店でお話しできればと思います。下記のうち、ご都合のよい日時を教えていただけますか。\n\n・\n・\n・\n（30分ほどを予定しています）\n\n場所：東京都千代田区神田淡路町1-15 塚崎ビル1F\n（小川町駅・淡路町駅・新御茶ノ水駅 徒歩約2分）\n\nご不明な点があれば、お気軽にご連絡ください。\nどうぞよろしくお願いいたします。\n\n洋食オリオン 採用担当`;
+  copy(t, "連絡文をコピーしました。日時の候補を入れて送ってください");
+}
+
+// ---- 求人票 ----
+function renderJobs(){
+  const J = D.jobs || [];
+  const ord = s => ({ "掲載中":0, "下書き":1, "休止":2, "終了":3 })[s] ?? 4;
+  const list = J.slice().sort((a,b)=> ord(a["状態"]) - ord(b["状態"]) || String(b["掲載日"]).localeCompare(String(a["掲載日"])));
+  $("jobs").innerHTML = list.length ? list.map(j=>{
+    const apps = (D.apps||[]).filter(a=>a["求人"] && (j["職種名"].indexOf(a["求人"]) >= 0 || a["求人"].indexOf(j["職種名"]) >= 0)).length;
+    const n = Math.max(Number(j["応募数"])||0, apps), open = OPEN[j.job_id];
+    const secs = JOB_TEXT.filter(k=>j[k]);
+    return `<div class="card job"><div class="hd"><div class="ttl">${esc(j["職種名"])}</div><span class="pill ${ST_CLS[j["状態"]]||""}">${esc(j["状態"]||"—")}</span></div>
+      <div class="meta">${esc(j["媒体"])}${j["掲載日"]?"・掲載 "+esc(String(j["掲載日"]).slice(0,10)):""}・応募 ${n}件</div>
+      ${j["メモ"]?`<div class="tip" style="margin:0 0 8px">${esc(j["メモ"])}</div>`:""}
+      <div class="row2">${secs.length?`<button class="btn sm sec" onclick="copyAll('${esc(j.job_id)}')">全文コピー</button>`:""}<a class="btn sm sec" style="text-align:center;text-decoration:none" href="${esc(j["管理URL"]||INDEED)}" target="_blank" rel="noopener">${esc(j["媒体"]||"媒体")}</a><button class="btn sm sec" onclick="editJob('${esc(j.job_id)}')">編集</button></div>
+      ${secs.length ? `<button class="more" onclick="OPEN['${esc(j.job_id)}']=!OPEN['${esc(j.job_id)}'];renderJobs()">${open?"▲ 文面を閉じる":"▼ 文面を見る（項目ごとにコピー）"}</button>` : ""}
+      ${open ? secs.map(k=>`<div class="fld"><div class="lb">${k}<button onclick="copyField('${esc(j.job_id)}','${k}')">コピー</button></div><div class="tx">${esc(j[k])}</div></div>`).join("") : ""}
+    </div>`; }).join("") : `<div class="empty">求人票はまだありません</div>`;
+}
+function copy(t, msg){
+  const done = ()=>toast(msg||"コピーしました");
+  if (navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(done, ()=>fallback()); } else fallback();
+  function fallback(){ const ta = document.createElement("textarea"); ta.value = t; ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.select(); try{ document.execCommand("copy"); done(); }catch(e){ alert("コピーできませんでした"); } ta.remove(); }
+}
+function copyField(id, k){ const j = (D.jobs||[]).find(x=>x.job_id===id); if (j) copy(j[k], k + "をコピーしました"); }
+function copyAll(id){ const j = (D.jobs||[]).find(x=>x.job_id===id); if (!j) return; copy([j["職種名"]].concat(JOB_TEXT.filter(k=>j[k]).map(k=>`【${k}】\n${j[k]}`)).join("\n\n"), "全文をコピーしました"); }
+function editJob(id){
+  const j = (D.jobs||[]).find(x=>x.job_id===id) || { "媒体":"Indeed", "状態":"下書き" };
+  const ta = k => `<label>${k}</label><textarea id="j_${k}" rows="${Math.min(14, Math.max(3, String(j[k]||"").split("\n").length+1))}">${esc(j[k])}</textarea>`;
+  $("sheet").innerHTML = `<div class="sheet" onclick="if(event.target===this)closeSheet()"><div class="in">
+    <h3>${id ? "求人票を編集" : "求人票を追加"}</h3>
+    <label>職種名</label><input id="j_職種名" value="${esc(j["職種名"])}">
+    <div class="row2"><div><label>媒体</label><select id="j_媒体">${["Indeed","タイミー","求人ボックス","Google","貼り紙","その他"].map(m=>`<option ${m===j["媒体"]?"selected":""}>${m}</option>`).join("")}</select></div>
+      <div><label>状態</label><select id="j_状態">${JOB_ST.map(s=>`<option ${s===j["状態"]?"selected":""}>${s}</option>`).join("")}</select></div></div>
+    <div class="row2"><div><label>掲載日</label><input id="j_掲載日" type="date" value="${esc(toLocal(j["掲載日"]).slice(0,10))}"></div><div><label>応募数</label><input id="j_応募数" type="number" inputmode="numeric" value="${esc(j["応募数"])}"></div></div>
+    <label>管理画面のURL</label><input id="j_管理URL" value="${esc(j["管理URL"])}" placeholder="https://…">
+    <label>メモ（費用・結果・次回の注意など）</label><textarea id="j_メモ" rows="3">${esc(j["メモ"])}</textarea>
+    ${JOB_TEXT.map(ta).join("")}
+    <div class="row2" style="margin-top:14px"><button class="btn sec" onclick="closeSheet()">閉じる</button><button class="btn" id="jSv" onclick="saveJob('${id?esc(id):""}')">保存</button></div>
+  </div></div>`;
+}
+async function saveJob(id){
+  const f = {}; ["職種名","媒体","状態","応募数","管理URL","メモ"].concat(JOB_TEXT).forEach(k=>{ f[k] = $("j_"+k).value; });
+  f["掲載日"] = $("j_掲載日").value ? $("j_掲載日").value.replace(/-/g,"/") : "";
+  if (!f["職種名"].trim()){ alert("職種名を入れてください"); return; }
+  $("jSv").disabled = true; const r = await post("rec_job_save", { id: id||"", fields: f }); $("jSv").disabled = false;
+  if (!r.ok){ alert(r.error||"保存できませんでした"); return; }
+  closeSheet(); toast("保存しました"); load();
+}
+if (/[?&]tab=job/.test(location.search)) tab("job");
+load();
+</script>
+</body>
+</html>

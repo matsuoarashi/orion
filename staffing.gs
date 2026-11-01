@@ -187,7 +187,7 @@ function opsAlerts_(which){
   var today = opsDay_(new Date()), out = [], run = function(f){ try { out = out.concat(f()); } catch(e){ out.push({ key: "err", level: "mid", title: "確認の一部が動きませんでした", detail: String(e).slice(0,120), app: "" }); } };
   if (which === "order" || which === "all") run(opsOrderAlerts_);
   if (which === "evening" || which === "all"){
-    run(opsShortAlerts_); run(opsCapAlerts_);
+    run(opsShortAlerts_); run(opsCapAlerts_); run(opsRecAlerts_);
     var h = Number(Utilities.formatDate(new Date(), OPS_TZ, "H"));
     // 衛生記録・締めは閉店後（16時以降）に今日の分を見る。それより前は前営業日の分
     var day = h >= 16 ? today : opsAdd_(today, -1);
@@ -201,6 +201,7 @@ function opsMail_(list, subjHead){
   var body = list.map(function(x){ return (x.level === "high" ? "■ " : "□ ") + x.title + "\n　" + String(x.detail||"").replace(/\n/g, "\n　"); }).join("\n\n")
     + "\n\n管理者アプリ：https://matsuoarashi.github.io/orion/kanri.html\n（自動で確認しています。該当がない日は送りません）";
   GmailApp.sendEmail(STF_NOTIFY_TO, subj, body, { name: "洋食オリオン" });
+  try { linePush_("【洋食オリオン】" + subjHead + " " + list.length + "件\n\n" + body); } catch(e){}   // LINE にも（設定があるときだけ）
 }
 function opsNotifyOrder(){ opsMail_(opsAlerts_("order"), "発注の締切"); }
 // 17時のまとめ（トリガー名は stfShortNotify のまま）
@@ -216,3 +217,33 @@ function opsAlertsOut_(p){
 }
 function opsTest(){ Logger.log(JSON.stringify({ all: opsAlerts_("all"), order1103: opsOrderAlerts_("2026/11/03", "15:30") })); }
 // ===== 先出し通知 END =====
+// ===== LINE 通知（公式アカウント「洋食オリオン」Messaging API）=====
+// スクリプト プロパティ：LINE_TOKEN（チャネルアクセストークン。松尾さんが貼る）／LINE_TO（送り先のグループID）
+// 送り先は管理者グループ。グループにアカウントを招待すると webhook で候補（LINE_CANDIDATES）に入り、linePickGroup() で決める
+function lineProp_(k){ return PropertiesService.getScriptProperties().getProperty(k) || ""; }
+function linePush_(text){
+  var token = lineProp_("LINE_TOKEN"), to = lineProp_("LINE_TO"); if (!token || !to) return false;
+  var res = UrlFetchApp.fetch("https://api.line.me/v2/bot/message/push", { method: "post", contentType: "application/json", muteHttpExceptions: true,
+    headers: { Authorization: "Bearer " + token }, payload: JSON.stringify({ to: to, messages: [{ type: "text", text: String(text).slice(0, 4900) }] }) });
+  return res.getResponseCode() === 200;
+}
+// webhook：グループ・トークルームの ID を候補として控えるだけ（ここでは送り先を変えない）
+function lineWebhook_(d){
+  var props = PropertiesService.getScriptProperties(); var c = {}; try { c = JSON.parse(props.getProperty("LINE_CANDIDATES") || "{}"); } catch(e){}
+  (d.events || []).forEach(function(ev){ var s = ev.source || {}; var id = s.groupId || s.roomId; if (!id) return;
+    c[id] = { type: s.type, event: ev.type, at: Utilities.formatDate(new Date(), "Asia/Tokyo", "yyyy/MM/dd HH:mm") }; });
+  props.setProperty("LINE_CANDIDATES", JSON.stringify(c));
+}
+// エディタで実行：いちばん新しい候補グループを送り先にして、テストを送る
+function linePickGroup(){
+  var token = lineProp_("LINE_TOKEN"); if (!token) throw new Error("LINE_TOKEN が未設定です");
+  var c = {}; try { c = JSON.parse(lineProp_("LINE_CANDIDATES") || "{}"); } catch(e){}
+  var ids = Object.keys(c).sort(function(a, b){ return c[a].at < c[b].at ? 1 : -1; }); if (!ids.length) throw new Error("グループの候補がありません。グループにアカウントを招待し、何か1回発言してください");
+  var id = ids[0], name = "";
+  if (c[id].type === "group"){ var r = UrlFetchApp.fetch("https://api.line.me/v2/bot/group/" + id + "/summary", { headers: { Authorization: "Bearer " + token }, muteHttpExceptions: true }); try { name = JSON.parse(r.getContentText()).groupName || ""; } catch(e){} }
+  PropertiesService.getScriptProperties().setProperty("LINE_TO", id);
+  var ok = linePush_("洋食オリオンの通知をこのグループに送ります。\n15:30 発注の締切／17:00 要確認（人手不足・年収の壁・衛生記録・締め）。該当がない日は送りません。");
+  Logger.log(JSON.stringify({ to: id, name: name, sent: ok }));
+}
+function lineTest(){ Logger.log(linePush_("テスト：洋食オリオンの通知です")); }
+// ===== LINE 通知 END =====
