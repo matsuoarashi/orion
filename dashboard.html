@@ -531,7 +531,7 @@ function renderMisc(){
   if(OSC.m) li(`メールからの候補 ${OSC.m}件`, OSC.ms, "確認する", "setTab('people');setTimeout(()=>$('osM').scrollIntoView({behavior:'smooth'}),100)");
   if(OSC.c) li(`契約・許認可の期限 ${OSC.c}件`, OSC.cs, "見る", "setTab('people');setTimeout(()=>$('osCt').scrollIntoView({behavior:'smooth'}),100)");
   if(!o.shime.find(s=>s.date===today) && H>=16 && (dayByDate(today)||{}).count>0) li("本日のレジ締めがまだです","閉店後にレジの「締め」から入力");
-  o.unclosed.forEach(u=>li(`${u.name} ${u.date.slice(5)} 退勤の打刻がありません`,`出勤 ${u.in}`,"勤怠アプリ","goApp('staff')"));
+  o.unclosed.forEach(u=>li(`${u.name} ${u.date.slice(5)} 退勤の打刻がありません`,`出勤 ${hmOnly(u.in)}`,"勤怠アプリ","goApp('staff')"));
   bizDays().filter(d=>d.date<today && d.date>=openDate()).slice(-7).forEach(d=>{ const l = p.laborDaily[d.date]; if(!l) li(`${d.date.slice(5)}(${youbi(d.date)}) 勤怠がありません`,`売上 ${yen(d.sales)} に対して人件費0`,"勤怠アプリ","goApp('staff')"); else if(l.staff<2 && d.meals>=20) li(`${d.date.slice(5)}(${youbi(d.date)}) 勤怠が${l.staff}人分だけ`,`${(l.minutes/60).toFixed(1)}h・${d.meals}食。打刻漏れか修正申請が未承認`,"勤怠アプリ","goApp('staff')"); });
   if(o.stockLow.length) li(`在庫が下限以下 ${o.stockLow.length}品目`, o.stockLow.slice(0,5).map(s=>`${s.name} ${s.stock}${s.unit}`).join("、"),"発注アプリ","goApp('hacchu')");
   if(o.reports.length) li(`備品・不足の報告 ${o.reports.length}件`, o.reports.slice(0,4).map(r=>`${r.name}${r.qty?" "+r.qty:""}（${r.by}）`).join("、"),"発注アプリ","goApp('hacchu')");
@@ -1092,9 +1092,11 @@ function renderPeople(){
   $("ppWeeks").innerHTML = "<tr><th>週</th><th>営業</th><th>売上</th><th>人件費</th><th>率</th><th>時間</th><th>人時売上</th></tr>" + weeks.map(m=>{ const x = sumDays(weekDays(m)); return `<tr><td>${m.slice(5)}〜</td><td>${x.days}日${x.laborDays<x.days?`<small>(勤怠${x.laborDays})</small>`:""}</td><td>${num(x.sales)}</td><td>${num(x.labor)}</td><td>${x.labor?pct(x.labor/x.sales):"-"}</td><td>${(x.minutes/60).toFixed(1)}h</td><td>${x.minutes?num(Math.round(x.sales/(x.minutes/60))):"-"}</td></tr>`; }).join("");
   const miss = days.filter(d=>!p.laborDaily[d.date] && d.date<DATA.todayKey);
   renderOsQ(); renderOsM();
-  $("ppOps").innerHTML = (o.unclosed.length ? o.unclosed.map(u=>`<div class="pl"><span><b class="neg">未退勤</b> ${u.name} ${u.date.slice(5)} 出勤 ${u.in}</span></div>`).join("") : "") + (miss.length ? `<div class="pl"><span>勤怠のない営業日：${miss.map(d=>d.date.slice(5)).join("・")}</span></div>` : "") + (!o.unclosed.length && !miss.length ? "<div class='sub'>勤怠に問題はありません</div>" : "");
+  $("ppOps").innerHTML = (o.unclosed.length ? o.unclosed.map(u=>`<div class="pl"><span><b class="neg">未退勤</b> ${u.name} ${u.date.slice(5)} 出勤 ${hmOnly(u.in)}</span></div>`).join("") : "") + (miss.length ? `<div class="pl"><span>勤怠のない営業日：${miss.map(d=>d.date.slice(5)).join("・")}</span></div>` : "") + (!o.unclosed.length && !miss.length ? "<div class='sub'>勤怠に問題はありません</div>" : "");
 }
 
+// シートの時刻だけのセルが「1899/12/30 10:40:00」で届くので時刻だけにする
+function hmOnly(v){ const m = String(v||"").match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*$/); return m ? `${+m[1]}:${m[2]}` : String(v||""); }
 // 管理者アプリの中ならタブ切替、単体なら管理者アプリへ
 function goApp(id){ try{ if(window.parent !== window && typeof window.parent.show === "function"){ window.parent.show(id); return; } }catch(e){} location.href = "kanri.html#" + id; }
 // 朝の確認に出す件数（人タブの読み込み結果を流用）
