@@ -192,7 +192,7 @@
   <div id="ov"></div><div class="toast" id="toast"></div>
 
   <div class="tabs">
-    <button id="tab-shime" onclick="setTab('shime')">締め</button>
+    <button id="tab-shime" onclick="setTab('shime')">朝の確認</button>
     <button id="tab-day" class="on" onclick="setTab('day')">今日</button>
     <button id="tab-week" onclick="setTab('week')">週</button>
     <button id="tab-items" onclick="setTab('items')">商品</button>
@@ -204,8 +204,8 @@
   <div id="view-shime" class="hide">
     <div class="cards">
       <div class="card wide" style="padding:8px 14px"><div class="sub" id="shimeHelp">昨日の締めを上から順に確認します。レジ記録と実際（数えた現金・PayPay画面・伝票）の差を見て、違っていれば会計一覧の行をタップして直し、最後に「確認済み」。</div></div>
+      <div class="card wide"><h2>今朝の確認</h2><div class="sub" style="margin-bottom:6px">質問・メール・契約・勤怠・在庫・経費。ボタンでその画面に移ります</div><div id="miscList"></div></div>
       <div id="shimeCards" class="wide"></div>
-      <div class="card wide"><details><summary>その他の確認（勤怠・在庫・経費・設定）</summary><div id="miscList"></div></details></div>
     </div>
   </div>
 
@@ -524,15 +524,19 @@ function swapItem2(date,row){ const x = ((SALES_CACHE[date]||{}).list||[]).find(
 }
 // その他の確認（勤怠・在庫・経費・設定）
 function renderMisc(){
+  if(!DATA) return;
   const o = ops(), p = pnlData(), today = DATA.todayKey, H = new Date().getHours(); const M = [];
   const li = (t, n, btnLabel, fn) => M.push(`<div class="mi"><div><b>${t}</b><small>${n}</small></div>${btnLabel?`<button onclick="${fn}">${btnLabel}</button>`:""}</div>`);
+  if(OSC.q) li(`スタッフからの質問 ${OSC.q}件（未回答）`, OSC.qs, "回答する", "setTab('people');setTimeout(()=>$('osQ').scrollIntoView({behavior:'smooth'}),100)");
+  if(OSC.m) li(`メールからの候補 ${OSC.m}件`, OSC.ms, "確認する", "setTab('people');setTimeout(()=>$('osM').scrollIntoView({behavior:'smooth'}),100)");
+  if(OSC.c) li(`契約・許認可の期限 ${OSC.c}件`, OSC.cs, "見る", "setTab('people');setTimeout(()=>$('osCt').scrollIntoView({behavior:'smooth'}),100)");
   if(!o.shime.find(s=>s.date===today) && H>=16 && (dayByDate(today)||{}).count>0) li("本日のレジ締めがまだです","閉店後にレジの「締め」から入力");
-  o.unclosed.forEach(u=>li(`${u.name} ${u.date.slice(5)} 退勤の打刻がありません`,`出勤 ${u.in}`,"勤怠アプリ","window.open('admin.html','_blank')"));
-  bizDays().filter(d=>d.date<today && d.date>=openDate()).slice(-7).forEach(d=>{ const l = p.laborDaily[d.date]; if(!l) li(`${d.date.slice(5)}(${youbi(d.date)}) 勤怠がありません`,`売上 ${yen(d.sales)} に対して人件費0`,"勤怠アプリ","window.open('admin.html','_blank')"); else if(l.staff<2 && d.meals>=20) li(`${d.date.slice(5)}(${youbi(d.date)}) 勤怠が${l.staff}人分だけ`,`${(l.minutes/60).toFixed(1)}h・${d.meals}食。打刻漏れか修正申請が未承認`,"勤怠アプリ","window.open('admin.html','_blank')"); });
-  if(o.stockLow.length) li(`在庫が下限以下 ${o.stockLow.length}品目`, o.stockLow.slice(0,5).map(s=>`${s.name} ${s.stock}${s.unit}`).join("、"),"発注アプリ","window.open('hacchu.html','_blank')");
-  if(o.reports.length) li(`備品・不足の報告 ${o.reports.length}件`, o.reports.slice(0,4).map(r=>`${r.name}${r.qty?" "+r.qty:""}（${r.by}）`).join("、"),"発注アプリ","window.open('hacchu.html','_blank')");
-  if(o.receipts.unchecked) li(`経費の未確認 ${o.receipts.unchecked}件`,"経費アプリで内容を確認","経費アプリ","window.open('keihi.html','_blank')");
-  if(o.receipts.unpaid) li(`未払いの経費（掛け） ${yen(o.receipts.unpaid)}`, o.receipts.unpaidList.slice(0,4).map(r=>`${r.date.slice(5)} ${r.vendor} ${num(r.amount)}円`).join("、"),"経費アプリ","window.open('keihi.html','_blank')");
+  o.unclosed.forEach(u=>li(`${u.name} ${u.date.slice(5)} 退勤の打刻がありません`,`出勤 ${u.in}`,"勤怠アプリ","goApp('staff')"));
+  bizDays().filter(d=>d.date<today && d.date>=openDate()).slice(-7).forEach(d=>{ const l = p.laborDaily[d.date]; if(!l) li(`${d.date.slice(5)}(${youbi(d.date)}) 勤怠がありません`,`売上 ${yen(d.sales)} に対して人件費0`,"勤怠アプリ","goApp('staff')"); else if(l.staff<2 && d.meals>=20) li(`${d.date.slice(5)}(${youbi(d.date)}) 勤怠が${l.staff}人分だけ`,`${(l.minutes/60).toFixed(1)}h・${d.meals}食。打刻漏れか修正申請が未承認`,"勤怠アプリ","goApp('staff')"); });
+  if(o.stockLow.length) li(`在庫が下限以下 ${o.stockLow.length}品目`, o.stockLow.slice(0,5).map(s=>`${s.name} ${s.stock}${s.unit}`).join("、"),"発注アプリ","goApp('hacchu')");
+  if(o.reports.length) li(`備品・不足の報告 ${o.reports.length}件`, o.reports.slice(0,4).map(r=>`${r.name}${r.qty?" "+r.qty:""}（${r.by}）`).join("、"),"発注アプリ","goApp('hacchu')");
+  if(o.receipts.unchecked) li(`経費の未確認 ${o.receipts.unchecked}件`,"経費アプリで内容を確認","経費アプリ","goApp('keihi')");
+  if(o.receipts.unpaid) li(`未払いの経費（掛け） ${yen(o.receipts.unpaid)}`, o.receipts.unpaidList.slice(0,4).map(r=>`${r.date.slice(5)} ${r.vendor} ${num(r.amount)}円`).join("、"),"経費アプリ","goApp('keihi')");
   if(p.initial && p.initial.pending) li(`開業費の未入力 ${p.initial.pending}件`,"分析シート「開業費」で金額を入力");
   p.fixed.filter(f=>!f.amount && !/収入/.test(f.name)).forEach(f=>li(`固定費が0円のまま：${f.name}`,"実額が分かったら入力", ME?"入力":"", `fixedInput('${f.name}')`));
   $("miscList").innerHTML = M.join("") || "<div class='sub'>確認することはありません</div>";
@@ -549,7 +553,7 @@ async function fxGet(mode, params){ const q = Object.assign({mode, token:TOKEN, 
 async function fxPost(type, body){ try{ const r = await fetch(SHEET_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(Object.assign({type, token:TOKEN}, body||{}))}); return await r.json(); }catch(e){ return {error:"通信エラー"}; } }
 async function bootAuth(){
   const cands = []; try{ [localStorage.getItem("os-admin-token"), localStorage.getItem("os-token")].forEach(t=>{ if(t) cands.push(t); }); }catch(e){}
-  for (const tk of cands){ TOKEN = tk; const r = await fxGet("fx_me"); if(!r.error){ ME = r.me; renderWho(); if(DATA) renderAlerts(); return; } }
+  for (const tk of cands){ TOKEN = tk; const r = await fxGet("fx_me"); if(!r.error){ ME = r.me; renderWho(); if(DATA) renderAlerts(); renderOsQ(); renderOsM(); return; } }
   TOKEN = ""; ME = null; renderWho();
 }
 function renderWho(){ $("who").innerHTML = ME ? `<span>${esc(ME.name)}${ME.role==="admin"?"（管理者）":""}</span><button onclick="logout()">ログアウト</button>` : `<button onclick="showLogin()">ログイン</button>`; }
@@ -1091,6 +1095,10 @@ function renderPeople(){
   $("ppOps").innerHTML = (o.unclosed.length ? o.unclosed.map(u=>`<div class="pl"><span><b class="neg">未退勤</b> ${u.name} ${u.date.slice(5)} 出勤 ${u.in}</span></div>`).join("") : "") + (miss.length ? `<div class="pl"><span>勤怠のない営業日：${miss.map(d=>d.date.slice(5)).join("・")}</span></div>` : "") + (!o.unclosed.length && !miss.length ? "<div class='sub'>勤怠に問題はありません</div>" : "");
 }
 
+// 管理者アプリの中ならタブ切替、単体なら管理者アプリへ
+function goApp(id){ try{ if(window.parent !== window && typeof window.parent.show === "function"){ window.parent.show(id); return; } }catch(e){} location.href = "kanri.html#" + id; }
+// 朝の確認に出す件数（人タブの読み込み結果を流用）
+const OSC = {q:0, qs:"", m:0, ms:"", c:0, cs:""};
 // スタッフからの未回答質問（ORION OS）。管理者だけ
 async function renderOsQ(){
   const el = $("osQ"); if (!el) return;
@@ -1099,6 +1107,7 @@ async function renderOsQ(){
   const un = (r.unanswered||[]).filter(x=>x.status!=="回答済");
   const ca = r.contractAlerts||[]; $("osctN").textContent = ca.length ? `${ca.length}件` : ""; $("osCt").innerHTML = ca.length ? ca.map(a=>`<div class="pl"><span>${a.overdue?"<b class='neg'>期限超過</b> ":""}${esc(a.name)}<small>（${esc(a.kind)}）</small> ${esc(a.col)} ${esc(a.date)}${a.auto?` / 自動更新:${esc(a.auto)}`:""}</span></div>`).join("") : "<div class='sub'>90 日以内の期限はありません（終了日・更新期限が未記入の契約は出ません）</div>";
   $("osqN").textContent = un.length ? `未回答 ${un.length}` : "";
+  OSC.q = un.length; OSC.qs = un.slice(0,3).map(x=>x.q).join("／"); OSC.c = ca.length; OSC.cs = ca.slice(0,3).map(a=>a.name).join("、"); renderMisc();
   el.innerHTML = un.length ? un.map(x=>`<div class="pl" style="display:block" id="osq_${esc(x.id)}"><div><b>${esc(x.q)}</b> <small>${esc(x.who)}・${esc(String(x.at).slice(0,16))}</small></div><textarea rows="3" style="width:100%;margin:6px 0;font-size:14px;padding:8px;border:1px solid var(--line);border-radius:8px" placeholder="回答（スタッフにそのまま見えます）"></textarea><button class="btn" onclick="osAnswer('${esc(x.id)}')">回答して Knowledge に入れる</button></div>`).join("") : "<div class='sub'>未回答の質問はありません</div>";
 }
 async function osAnswer(id){
@@ -1113,6 +1122,7 @@ async function renderOsM(){
   if (!ME || ME.role !== "admin"){ el.innerHTML = "<div class='sub'>管理者でログインすると表示されます</div>"; return; }
   const r = await fxGet("os_mail"); if (r.error){ el.innerHTML = `<div class='sub'>${esc(r.error)}</div>`; return; }
   const L = r.list||[]; $("osmN").textContent = L.length ? `未確認 ${L.length}` : "";
+  OSC.m = L.length; OSC.ms = L.slice(0,3).map(x=>x["取引先"]).join("、"); renderMisc();
   el.innerHTML = L.length ? L.map(x=>`<div class="pl" style="display:block" id="osm_${esc(x.cand_id)}"><div><b>${esc(x["取引先"])}</b> <span class="pill">${esc(x["種別"])}</span> <small>${esc(x["受信日時"])}</small></div><div>${esc(x["件名"])}${x["金額"]?` ― <b>${num(Number(x["金額"]))}円</b>`:""}${x["日付"]?` / ${esc(x["日付"])}`:""} <a href="${esc(x["リンク"])}" target="_blank">メールを開く</a></div><div style="margin-top:6px"><button class="btn" onclick="osMailSet('${esc(x.cand_id)}','反映済')">反映済</button> <button class="btn" style="background:#888" onclick="osMailSet('${esc(x.cand_id)}','不要')">不要</button></div></div>`).join("") : "<div class='sub'>未確認の候補はありません</div>";
 }
 async function osMailSet(id, status){ const box = $("osm_"+id); box.querySelectorAll("button").forEach(b=>b.disabled=true); const r = await fxPost("os_mail_set", {id, status}); if (r.error){ alert(r.error); box.querySelectorAll("button").forEach(b=>b.disabled=false); return; } box.remove(); renderOsM(); }
@@ -1143,7 +1153,7 @@ async function load(keep){
   }finally{ _loading = false; }
 }
 
-try{ const t = localStorage.getItem("dash-tab"); if(t && $("tab-"+t)) setTab(t); }catch(e){}
+try{ if(/embed=1/.test(location.search)) setTab("shime"); else { const t = localStorage.getItem("dash-tab"); if(t && $("tab-"+t)) setTab(t); } }catch(e){}
 renderWho(); bootAuth().then(()=>{ try{ const fx = new URLSearchParams(location.search).get("fix"); if(fx && ME){ const go = ()=>{ if(!DATA){ setTimeout(go,500); return; } setTab("day"); viewDate = fx; renderDay(); openSales(fx); }; go(); } }catch(e){} });
 load();
 setInterval(()=>{ if(!document.hidden) load(true); }, 60000);
