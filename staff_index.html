@@ -168,6 +168,8 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
 .ans.none{background:var(--amber-l);border-color:transparent} .ans .src{margin-top:10px;font-size:13px;color:var(--mute)} .ans .src b{display:block;color:var(--ink);margin-top:4px}
 .rate{display:flex;gap:8px;margin-top:10px} .rate button{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px;font-size:14px} .rate button.on{background:var(--g-l);border-color:var(--g);color:var(--g)}
 .myq{padding:10px 0;border-top:1px solid var(--line)} .myq:first-child{border-top:0} .myq .q{font-size:15px} .myq .st{font-size:12px;color:var(--mute)} .myq .a{font-size:15px;line-height:1.6;margin-top:4px;white-space:pre-wrap;color:var(--ink)}
+.shopbtn{display:flex;align-items:center;gap:10px;width:100%;border:1px solid var(--line);background:#fff;border-radius:12px;padding:12px;margin-top:8px;text-align:left;font-size:16px;color:var(--ink)}
+.shopbtn span{font-size:20px;width:28px;text-align:center}.shopbtn b{flex:1}.shopbtn small{display:block;font-weight:normal;font-size:12px;color:var(--mute)}.shopbtn i{font-style:normal;color:var(--mute)}
 .monthnav{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
 .monthnav button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 16px;font-size:16px;min-height:44px}
 .monthnav b{font-size:17px}
@@ -236,6 +238,13 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
           <div class="sub" id="hShiftSub"></div>
         </div>
         <div id="punchArea"></div>
+        <div class="card" id="shopCard">
+          <h2>店の仕事</h2>
+          <button class="shopbtn" onclick="openShop('chef')"><span>🍳</span><b>食材を数える<small>シェフ・毎日</small></b><i>›</i></button>
+          <button class="shopbtn" onclick="openShop('hall')"><span>🥤</span><b>備品・飲料を数える<small>ホール・週1</small></b><i>›</i></button>
+          <button class="shopbtn" onclick="openShop('recv')"><span>📦</span><b>届いた物を受け取る・発注<small>納品書と数を確認</small></b><i>›</i></button>
+          <button class="shopbtn" onclick="openShop('report')"><span>!</span><b>不足・破損を報告<small>備品が壊れた・足りない</small></b><i>›</i></button>
+        </div>
         <div class="card">
           <div class="row"><span class="l">次回の勤務</span><b id="hNext">-</b></div>
           <div class="row" id="hWishRow"><span class="l">来月の希望</span><b id="hWish"></b></div>
@@ -491,6 +500,8 @@ function renderAskMine(list){
 // 回答がついた質問がまだ見られていなければ「聞く」に印
 function askBadge(list){ const seen = localStorage.getItem("os-ask-seen")||""; const n = (list||[]).filter(x=>x.status==="回答済" && x.answeredAt > seen).length; $("bdAsk").classList.toggle("hide", !n); }
 
+// 店の仕事：発注アプリ（同じログイン）を開く。終わったら「勤怠アプリに戻る」で戻れる
+function openShop(k){ location.href = "hacchu.html?from=staff#" + k; }
 // ───── 画面遷移 ─────
 function enterApp(){ $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); go("home"); }
 function go(p, sub){

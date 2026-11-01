@@ -108,7 +108,7 @@ nav .bd{position:absolute;top:4px;right:calc(50% - 20px);background:var(--red);c
   </div>
 
   <div id="vApp" class="hide" style="display:flex;flex-direction:column;height:100%">
-    <header><button id="hBack" class="hide" onclick="go('home')" style="margin-right:8px">‹ 戻る</button><div style="flex:1"><div class="t" id="hTitle">発 注</div><div class="n" id="hName">-</div></div><button onclick="loadHome(true)">更新</button></header>
+    <header><button id="hBack" class="hide" onclick="if(PAGE==='home'&&FROM_STAFF){ location.href='staff_index.html'; } else if(FROM_STAFF && (location.hash==='#chef'||location.hash==='#hall'||location.hash==='#report')){ location.href='staff_index.html'; } else go('home')" style="margin-right:8px">‹ 戻る</button><div style="flex:1"><div class="t" id="hTitle">発 注</div><div class="n" id="hName">-</div></div><button onclick="loadHome(true)">更新</button></header>
     <main id="main">
       <div id="msg"></div>
       <section id="pHome"><div class="loading">読み込み中…</div></section>
@@ -158,100 +158,17 @@ async function doLogin(){
     TOKEN = r.token; localStorage.setItem("os-token", TOKEN); $("passIn").value=""; const h = await get("inv_home"); if(h.error){ $("loginMsg").textContent=h.error; return; } enterApp(h);
   }catch(e){ $("loginMsg").textContent="通信できません"; } finally{ $("loginBtn").disabled=false; }
 }
-function enterApp(h){ $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); applyHome(h); go("home"); loadPrices().then(()=>{ if(PAGE==="master") renderMaster(); }); }
+const FROM_STAFF = /[?&]from=staff/.test(location.search);
+function enterApp(h){ $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); applyHome(h);
+  const hk = (location.hash||"").slice(1);
+  if (hk==="chef"){ OWNER="シェフ"; go("stock"); } else if (hk==="hall"){ OWNER="ホール"; go("stock"); } else if (hk==="report"){ go("report"); } else { go("home"); if (hk==="recv") setTimeout(()=>{ const c = document.querySelectorAll("#pHome .card")[2]; if (c) c.scrollIntoView({behavior:"smooth"}); }, 200); } loadPrices().then(()=>{ if(PAGE==="master") renderMaster(); }); }
 const TITLES = {home:"発 注", stock:"在庫を数える", order:"発 注", report:"不足・破損の報告", master:"品目と価格"};
 function go(p){ if(p==="order") p="home"; PAGE = p; ["home","stock","order","report","master"].forEach(x=>{ $("p"+x[0].toUpperCase()+x.slice(1)).classList.toggle("hide", x!==p); }); showMsg(""); closeOv();
-  $("hTitle").textContent = TITLES[p]||"発 注"; $("hBack").classList.toggle("hide", p==="home");
+  $("hTitle").textContent = TITLES[p]||"発 注"; $("hBack").classList.toggle("hide", p==="home" && !FROM_STAFF); $("hBack").textContent = (p==="home" && FROM_STAFF) ? "‹ 勤怠" : "‹ 戻る";
   if(p==="home") renderHome(); if(p==="stock") renderStock(); if(p==="report") renderReport(); if(p==="master"){ renderMaster(); if(!PRICES.length) loadPrices().then(renderMaster); } $("main").scrollTo(0,0); }
 async function loadHome(reload){ const r = await get("inv_home"); if(r.error){ if(r.error==="auth"){ TOKEN=""; localStorage.removeItem("os-token"); showLogin("ログインし直してください"); } else showMsg(r.error); return; } applyHome(r); if(reload) toast("更新しました"); go(PAGE); }
 function applyHome(h){ HOME = h; ME = h.me; MASTER = h.items||[]; CHEF = h.chefNames||[]; $("hName").textContent = ME.name + (ME.role==="admin"?"（管理者）":""); OWNER = CHEF.includes(ME.name) ? "シェフ" : (ME.role==="admin" ? "シェフ" : "ホール");
-  h.suggest = (h.suggest||[]).filter(x=>!x.plan).concat(buildPlan());
 }
-
-// ───── 発注計画（使用量 × 納品日 × 発注倍数）─────
-// ・納品は営業終了（14:00）と同時刻以降に届くので、届いた日の昼には使えない
-// ・発注量 ＝ 次の納品の翌日から、その次の納品日までの不足分。発注倍数（ケース・90個など）で切り上げ
-// ・安全在庫ぶんで1単位増やすのは、不足が1単位の半分を超えるときだけ
-let MEALS = Number(localStorage.getItem("inv-meals")) || 55; let PLAN = {};
-const WD = ["日","月","火","水","木","金","土"], OPEN_DAYS = [1,2,3,4,5], CLOSE = "14:00";
-function pDate(s){ const m = String(s||"").match(/(\d{4})\/(\d{1,2})\/(\d{1,2})(?:\s+(\d{1,2}):(\d{2}))?/); return m ? new Date(+m[1],+m[2]-1,+m[3],+(m[4]||0),+(m[5]||0)) : null; }
-function atTime(d, hm){ const [h,m] = String(hm||"00:00").split(":").map(Number); const x = new Date(d); x.setHours(h||0, m||0, 0, 0); return x; }
-function dayKey(d){ return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}`; }
-function md(d){ return `${d.getMonth()+1}/${d.getDate()}（${WD[d.getDay()]}）`; }
-function addD(d, n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
-function isOpen(d){ return OPEN_DAYS.includes(d.getDay()); }
-function ceilTo(x, m){ return Math.ceil(x / m - 1e-9) * m; }
-function parseDays(s){ return [...String(s||"")].map(c=>WD.indexOf(c)).filter(i=>i>=0); }
-function cutoffOf(it, delivery){ const c = String(it.cutoff||""); const m = c.match(/前日\s*(\d{1,2}:\d{2})/); return m ? atTime(addD(delivery,-1), m[1]) : null; }
-// 期間 (from, to] の出来事を時刻順に並べた在庫の推移（昼の消費 → 入荷 の順）
-function simulate(it, daily, from, to, extra){
-  const ev = [];
-  for (let d = new Date(from.getFullYear(), from.getMonth(), from.getDate()); d <= to; d = addD(d,1)){
-    if (isOpen(d)){ const t = atTime(d, CLOSE); if (t > from && t <= to) ev.push({t, k:0, q:-daily, day:new Date(d)}); }
-    const reg = String(it.regular||"").split(",").map(x=>x.split(":")).filter(x=>x.length===2 && WD.indexOf(x[0].trim())===d.getDay());
-    reg.forEach(([w,q])=>{ const t = atTime(d, it.time||CLOSE); if (t > from && t <= to) ev.push({t, k:1, q:Number(q)||0, day:new Date(d), regular:true}); });
-  }
-  (HOME.orders||[]).filter(o=>o.status==="発注済" && o.item_id===it.id).forEach(o=>{ const e = pDate(o.eta) || null; if (!e) return; const t = atTime(e, it.time||CLOSE); if (t > from && t <= to) ev.push({t, k:1, q:Number(o.qty)||0, day:e}); });
-  (extra||[]).forEach(x=>ev.push(x));
-  return ev.sort((a,b)=>a.t-b.t || a.k-b.k);
-}
-function normT(v){ const m = String(v||"").match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*$/); return m ? `${+m[1]}:${m[2]}` : ""; }
-function planItem(it, now){
-  it.time = normT(it.time);
-  const daily = it.usage60 !== null && it.usage60 !== undefined ? it.usage60 * MEALS / 60 : null;
-  const out = { daily, info:"", sug:null };
-  if (it.stockState === "未計測" || it.stock === null){ out.info = "未計測（発注計算から外しています）"; return out; }
-  const rule = String(it.rule||"");
-  // タバスコ：予備の本数を固定数に保つ
-  const keep = rule.match(/予備本数:(\d+)/);
-  if (keep){ const need = Number(keep[1]) - it.stock; out.info = `予備 ${it.stock}／${keep[1]}本`; if (need > 0) out.sug = { qty:need, reason:`予備を${keep[1]}本に戻す（今 ${it.stock}本）`, eta:"", deadline:"電話で追加" }; return out; }
-  if (!daily){ out.info = it.usage60===null && rule==="使用量" ? "1日の使用量が未設定" : ""; return out; }
-  const base = pDate(it.stockAt) || now; const horizon = addD(now, 28);
-  // 今の理論在庫
-  let cur = it.stock; simulate(it, daily, base, now).forEach(e=>{ cur += e.q; });
-  // 先の推移と、最初に足りなくなる昼
-  let s = cur, short = null, lunches = 0; for (const e of simulate(it, daily, now, horizon)){ if (e.k===0){ if (s + 1e-9 < daily && !short) short = e.day; if (!short) lunches++; } s += e.q; }
-  out.cur = cur; out.lunches = lunches; out.short = short;
-  out.info = `理論在庫 ${Math.round(cur*10)/10}${it.unit}・約${lunches}営業日分` + (short ? `・${md(short)}の昼に不足` : "");
-  const mult = it.mult || 1, safetyQ = (it.safety||0) * daily;
-  const days = parseDays(it.days);
-  if (rule === "定期"){
-    if (!short) return out;
-    // 不足する昼の直前の定期配送日を探して、その回を増やす提案
-    const regDays = String(it.regular||"").split(",").map(x=>WD.indexOf(x.split(":")[0].trim())).filter(i=>i>=0);
-    let d = addD(short, -1); while (d > now && !regDays.includes(d.getDay())) d = addD(d,-1);
-    let s2 = cur, minS = Infinity; for (const e of simulate(it, daily, now, short)){ s2 += e.q; if (e.k===0) minS = Math.min(minS, s2); }
-    const need = Math.max(mult, ceilTo(Math.max(0, -minS + safetyQ), mult));
-    out.sug = { qty:need, reason:`${md(short)}の昼に不足の見込み → ${regDays.includes(d.getDay()) && d > now ? md(d)+"の配送を "+need+it.unit+"（"+(need/mult)+"袋）増やす" : "追加で手配"}`, eta: d > now ? dayKey(d) : "", deadline:"店舗へ電話" };
-    return out;
-  }
-  let D1 = null, D2 = null;
-  if (days.length){
-    for (let i = 0; i <= 14 && !D2; i++){ const d = addD(new Date(now.getFullYear(), now.getMonth(), now.getDate()), i); if (!days.includes(d.getDay())) continue; const arr = atTime(d, it.time||CLOSE); if (arr <= now) continue; const co = cutoffOf(it, d); if (co && co <= now) continue; if (!D1) D1 = d; else D2 = d; }
-  } else { // 店頭：次の買い出し（営業日の朝）から補充周期ぶん
-    let d = new Date(now.getFullYear(), now.getMonth(), now.getDate()); if (now >= atTime(d, "11:00") || !isOpen(d)) d = addD(d,1); while (!isOpen(d)) d = addD(d,1);
-    D1 = d; let n = 0, e = d; while (n < (it.cycle||3)){ if (isOpen(e)) n++; if (n < (it.cycle||3)) e = addD(e,1); } D2 = e;
-  }
-  if (!D1 || !D2) return out;
-  const arr1 = days.length ? atTime(D1, it.time||CLOSE) : atTime(D1, "10:00"), end = atTime(D2, CLOSE);
-  let s3 = cur, minS = Infinity; for (const e of simulate(it, daily, now, end)){ s3 += e.q; if (e.k===0 && e.t > arr1) minS = Math.min(minS, s3); }
-  if (minS === Infinity) return out;
-  const target = Math.max(0, -minS), safetyDef = Math.max(0, safetyQ - minS); let q = ceilTo(target, mult);
-  if (q < safetyDef && safetyDef - q > mult/2) q += mult;
-  if (q <= 0) return out;
-  const co = cutoffOf(it, D1);
-  out.sug = { qty:q, reason: days.length ? `${md(D1)}${it.time||""}着で${md(addD(D1,1))}〜${md(D2)}の昼をまかなう（不足 ${Math.round(target)}${it.unit}・安全在庫 ${Math.round(safetyQ)}${it.unit}）` : `次の買い出し（${md(D1)}）で${md(D2)}までの昼をまかなう`, eta: dayKey(D1),
-    deadline: co ? `${md(co)}${String(it.cutoff).replace(/.*?(\d{1,2}:\d{2}).*/,"$1")}まで` : (days.length ? "" : "店頭で購入") };
-  if (mult > 1) out.sug.reason += `・${mult}${it.unit}×${q/mult}`;
-  return out;
-}
-function buildPlan(){
-  const now = new Date(); PLAN = {}; const sugs = [];
-  MASTER.forEach(it=>{ if (it.usage60===null && !it.rule) return; const p = planItem(it, now); PLAN[it.id] = p;
-    if (p.sug) sugs.push({ id: it.id, name: it.name, supplier: it.supplier, lead: it.lead, unit: it.unit, orderUnit: it.unit, qty: p.sug.qty, reason: (p.sug.deadline?"【"+p.sug.deadline+"】":"") + p.sug.reason, eta: p.sug.eta, plan:true }); });
-  return sugs;
-}
-function setMeals(n){ MEALS = n; try{ localStorage.setItem("inv-meals", n); }catch(e){} applyHome(HOME); go(PAGE); }
 
 // ───── ホーム：今日やること ─────
 function dueItems(owner){
@@ -274,8 +191,6 @@ function renderHome(){
     </div>
 
     <div class="card">${stepHead("②","発注する", n2, "今は必要なし")}
-      <div class="seg" style="margin:6px 0 8px"><button class="${MEALS===55?"on":""}" onclick="setMeals(55)">実績 55食で計算</button><button class="${MEALS===60?"on":""}" onclick="setMeals(60)">安全側 60食で計算</button></div>
-      <div class="mini" style="margin:0 0 6px">納品は営業終了（14時）以降に届くので、届いた日の昼には使わない前提で計算しています。</div>
       <div class="mini" style="margin:2px 0 8px">仕入先ごとに数量を確認 → 「内容をコピー」で LINE・メール・Order Pro に貼る → 発注したら「発注した」。発注した人として <b>${esc(ME.name)}</b> が記録されます</div>
       ${Object.keys(bySup).map(sup=>`<div class="sup"><div class="suph">${esc(sup)} <small>${esc(bySup[sup][0].lead||"")}</small></div>
         ${bySup[sup].map(s=>`<div class="row"><span class="l">${esc(s.name)}<small>${esc(s.reason)}</small></span><span style="display:flex;align-items:center;gap:4px"><input class="qty" type="number" inputmode="numeric" id="q_${s.id}" value="${s.qty}"><span class="mini">${esc(s.orderUnit||s.unit)}</span></span></div>`).join("")}
@@ -311,7 +226,7 @@ function renderStock(){
     ${Object.keys(groups).map(cat=>`<div class="sec">${esc(cat)}</div><div class="card">${groups[cat].map(it=>{
       const due = (it.freq==="毎日" && (daysAgo(it.stockAt)===null||daysAgo(it.stockAt)>=1)) || (it.freq==="週次" && (daysAgo(it.stockAt)===null||daysAgo(it.stockAt)>=7));
       if(isChef || it.unit){ // 数量入力
-        return `<div class="row"><span class="l">${esc(it.name)} ${due?"":"<span class='pill'>入力済</span>"}<small>${esc(it.freq)}${it.stockAt?"・前回 "+fmtD(it.stockAt):""}${PLAN[it.id]&&PLAN[it.id].info?`<br><span style="color:${PLAN[it.id].short?"var(--red)":"var(--mute)"}">${esc(PLAN[it.id].info)}</span>`:(it.min!==null?"・最低 "+it.min+esc(it.unit):"")}${it.perPack&&it.baseUnit&&it.baseUnit!==it.unit?`<br>1${esc(it.unit)}＝${it.perPack.toLocaleString()}${esc(it.baseUnit)}`:""}</small></span>
+        return `<div class="row"><span class="l">${esc(it.name)} ${due?"":"<span class='pill'>入力済</span>"}<small>${esc(it.freq)}${it.min!==null?"・最低 "+it.min+esc(it.unit):""}${it.stockAt?"・前回 "+fmtD(it.stockAt):""}</small></span>
           <span class="step"><button onclick="stAdd('${it.id}',-1)">−</button><span class="v" id="v_${it.id}" onclick="stEdit('${it.id}')" style="cursor:pointer">${it.stock===null?"—":it.stock}<small>${esc(it.unit)}</small></span><button onclick="stAdd('${it.id}',1)">＋</button></span></div>`;
       }
       return `<div class="row"><span class="l">${esc(it.name)}<small>${esc(it.freq)}</small></span><span class="tri"><button onclick="stState('${it.id}','十分',this)">十分</button><button onclick="stState('${it.id}','少',this)">少</button><button onclick="stState('${it.id}','無',this)">無</button></span></div>`;
@@ -327,7 +242,7 @@ function stCount(){ const n = Object.keys(STK).length; $("stN").textContent = n?
 async function saveStock(){
   const entries = Object.keys(STK).map(id=>Object.assign({item_id:id}, STK[id])); if(!entries.length){ toast("変更がありません"); return; }
   const r = await post("inv_stock", {entries, owner: OWNER}); if(r.error){ showMsg(r.error); return; }
-  toast(`${r.saved}品目を記録しました`); await loadHome(); go("home");
+  toast(`${r.saved}品目を記録しました`); await loadHome(); if (FROM_STAFF && /chef|hall/.test(location.hash)){ setTimeout(()=>{ location.href = "staff_index.html"; }, 900); } else go("home");
 }
 
 // ───── 発注 ─────
@@ -349,7 +264,7 @@ function renderOrder(){
 }
 function supItems(sup){ return (HOME.suggest||[]).filter(s=>(s.supplier||"（仕入先未設定）")===sup).map(s=>({item_id:s.id, qty:Number(($("q_"+s.id)||{}).value)||s.qty, name:s.name, unit:s.orderUnit||s.unit})).filter(x=>x.qty>0); }
 function orderSheet(sup){ const items = supItems(sup); if(!items.length){ toast("数量が0です"); return; }
-  const t = new Date(); t.setDate(t.getDate()+1); const etaPlan = ((HOME.suggest||[]).find(s=>(s.supplier||"（仕入先未設定）")===sup && s.eta)||{}).eta||""; const def = etaPlan ? etaPlan.replace(/\//g,"-") : t.toISOString().slice(0,10);
+  const t = new Date(); t.setDate(t.getDate()+1); const def = t.toISOString().slice(0,10);
   sheet(`<h3>${esc(sup)} に発注した</h3><div class="card" style="margin-bottom:10px">${items.map(x=>`<div class="row"><span class="l">${esc(x.name)}</span><b>×${x.qty}${esc(x.unit)}</b></div>`).join("")}</div>
     <label>納品予定日</label><input type="date" id="osEta" value="${def}"><label style="display:flex;align-items:center;gap:6px;font-weight:normal"><input type="checkbox" id="osNoEta" style="width:auto"> まだ分からない</label>
     <div class="mini" style="margin-top:6px">発注した人：<b>${esc(ME.name)}</b></div>
@@ -426,7 +341,7 @@ function renderMaster(){
     <div class="mini" style="margin:0 4px 8px">${MASTER.length}品目・価格${PRICES.length}件。タップで仕入先ごとの価格を見られます。${ME.role==="admin"?"":"価格の追加・編集は管理者のみ。"}</div>
     ${ME.role==="admin"&&!q?`<button class="btn sec" style="margin-bottom:10px" onclick="editItem(null)">＋ 品目を追加</button>`:""}
     ${Object.keys(groups).map(ow=>`<div class="sec">${esc(ow)}</div><div class="card">${groups[ow].map(it=>{ const bp = bestPrice(it.name); const n = pricesOf(it.name).length;
-      return `<button class="row" style="border-left:0;border-right:0;border-top:0;background:none;width:100%;text-align:left;font-size:15px;color:var(--ink)" onclick="openItem('${esc(it.name)}')"><span class="l">${esc(it.name)}<small>${esc(it.supplier||"仕入先未設定")}${it.spec?"・"+esc(it.spec):""}${it.lead?"・"+esc(it.lead):""}</small></span><span style="text-align:right;white-space:nowrap">${bp?`<b>${yen1(bp.per)}</b><small style="display:block;font-size:11px;color:var(--mute)">/${esc(bp.base)}・${esc(bp.supplier)}${n>1?"（他"+(n-1)+"件）":""}</small>`:`<small style="color:var(--mute)">${esc(it.priceState||"未確認")}</small>`}</span></button>`; }).join("")}</div>`).join("")}
+      return `<button class="row" style="border-left:0;border-right:0;border-top:0;background:none;width:100%;text-align:left;font-size:15px;color:var(--ink)" onclick="openItem('${esc(it.name)}')"><span class="l">${esc(it.name)}<small>${esc(it.supplier||"仕入先未設定")}${it.spec?"・"+esc(it.spec):""}${it.lead?"・"+esc(it.lead):""}</small></span><span style="text-align:right;white-space:nowrap">${bp?`<b>${yen1(bp.per)}</b><small style="display:block;font-size:11px;color:var(--mute)">/${esc(bp.base)}・${esc(bp.supplier)}${n>1?"（他"+(n-1)+"件）":""}</small>`:`<small style="color:var(--mute)">価格未登録</small>`}</span></button>`; }).join("")}</div>`).join("")}
     ${extra.length?`<div class="sec">価格表のみ</div><div class="card">${extra.map(n=>{ const bp = bestPrice(n); return `<button class="row" style="border-left:0;border-right:0;border-top:0;background:none;width:100%;text-align:left;font-size:15px;color:var(--ink)" onclick="openItem('${esc(n)}')"><span class="l">${esc(n)}</span><span style="text-align:right">${bp?`<b>${yen1(bp.per)}</b><small style="display:block;font-size:11px;color:var(--mute)">/${esc(bp.base)}・${esc(bp.supplier)}</small>`:""}</span></button>`; }).join("")}</div>`:""}
     ${!list.length&&!extra.length?`<div class="card mini">「${esc(q)}」に合う品目がありません</div>`:""}`;
 }
@@ -436,7 +351,7 @@ function openItem(name){
   sheet(`<h3>${esc(name)}</h3>
     ${it?`<div class="mini" style="margin-bottom:8px">発注先：${esc(it.supplier||"未設定")}${it.orderUnit?"・"+esc(it.orderUnit)+"単位":""}${it.lead?"・"+esc(it.lead):""}${it.use?"<br>用途："+esc(it.use):""}</div>`:""}
     <div class="sec" style="margin-top:4px">仕入先ごとの価格${best?`<span class="pill" style="margin-left:6px">最安 ${esc(best.supplier)}</span>`:""}</div>
-    <div class="card">${ps.length?ps.map(p=>`<div class="row" ${ME.role==="admin"?`onclick="editPrice('${p.id}')" style="cursor:pointer"`:""}><span class="l"><b style="font-size:14px">${esc(p.supplier)}</b> <span class="pill ${p.status==="確定"?"":"amber"}">${esc(p.status||"旧価格")}</span>${best&&p.id===best.id?` <span class="pill">最安</span>`:""}<small>${esc(p.spec)}${p.qty?"・"+p.qty+esc(p.unit):""}・${p.price.toLocaleString()}円<br>${esc(p.date)}・${esc(p.src)}${p.memo?"・"+esc(p.memo):""}</small></span><span style="text-align:right;white-space:nowrap">${p.per!==null?`<b>${yen1(p.per)}</b><small style="display:block;font-size:11px;color:var(--mute)">/${esc(p.base)}</small>`:`<small style="color:var(--mute)">容量未確認</small>`}</span></div>`).join(""):`<div class="mini">まだ価格が登録されていません</div>`}</div>
+    <div class="card">${ps.length?ps.map(p=>`<div class="row" ${ME.role==="admin"?`onclick="editPrice('${p.id}')" style="cursor:pointer"`:""}><span class="l"><b style="font-size:14px">${esc(p.supplier)}</b>${best&&p.id===best.id?` <span class="pill">最安</span>`:""}<small>${esc(p.spec)}${p.qty?"・"+p.qty+esc(p.unit):""}・${p.price.toLocaleString()}円<br>${esc(p.date)}・${esc(p.src)}${p.memo?"・"+esc(p.memo):""}</small></span><span style="text-align:right;white-space:nowrap">${p.per!==null?`<b>${yen1(p.per)}</b><small style="display:block;font-size:11px;color:var(--mute)">/${esc(p.base)}</small>`:`<small style="color:var(--mute)">容量未確認</small>`}</span></div>`).join(""):`<div class="mini">まだ価格が登録されていません</div>`}</div>
     ${ME.role==="admin"?`<button class="btn sec" onclick="editPrice(null,'${esc(name)}')">＋ 価格を追加</button><div style="height:8px"></div>${it?`<button class="btn sec" onclick="editItem('${it.id}')">品目の設定を編集</button><div style="height:8px"></div>`:""}`:""}
     <button class="btn sec" style="border-color:var(--line);color:var(--mute)" onclick="closeOv()">閉じる</button>`);
 }
