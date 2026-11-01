@@ -465,7 +465,8 @@ var START_MAIL_DOMAINS = ["inshokuten.com","i-tenpo.com","abc-tenpo.com","bukena
 function startIsPropertyMail_(from){ var f = String(from||"").toLowerCase(); return START_MAIL_DOMAINS.some(function(d){ return f.indexOf("@" + d) >= 0 || f.indexOf("." + d) >= 0; }); }
 function startIngestMessages_(msgs, mailbox){
   if (!PropertiesService.getScriptProperties().getProperty(START_PROP)) return 0; // START 未設定なら何もしない
-  var props = (msgs||[]).filter(function(m){ return startIsPropertyMail_(m.from); }); if (!props.length) return 0;
+  // 会員登録・認証・パスワード等のお知らせは物件ではないので入れない
+  var props = (msgs||[]).filter(function(m){ return startIsPropertyMail_(m.from) && !/会員登録|仮登録|本登録|登録完了|認証|パスワード|ログイン|退会|メールアドレスの(確認|登録)/.test(String(m.subject||"")); }); if (!props.length) return 0;
   var known = {}; startRows_("lst").forEach(function(r){ if (r["メールID"]) known[String(r["メールID"])] = 1; });
   var sh = startSheet_("lst"); var n = 0;
   props.forEach(function(m){ if (known[m.id]) return; known[m.id] = 1;
