@@ -268,7 +268,7 @@
 
   <div class="tabs">
     <button class="on" id="tOpen" onclick="goTab('open')">営 業<small>レジ・来店・テイクアウト</small></button>
-    <button id="tAfter" onclick="goTab('after')">閉 店 後<small>締め・在庫・出退勤・設定</small></button>
+    <button id="tAfter" onclick="goTab('after')">閉 店 後<small>締め・日計・来店・テイクアウト設定</small></button>
   </div>
 </div>
 
@@ -458,6 +458,12 @@ function refresh(){
   $("items").textContent = items.length ? `[${mode}] ` + counts() : "ご注文をどうぞ";
 }
 
+let _clrT = null;
+function clearAll(e){
+  const b = e && e.currentTarget;
+  if (items.length <= 1 || _clrT){ clearTimeout(_clrT); _clrT = null; if (b) b.innerHTML = "全消し"; items = []; if (typeof O !== "undefined") O.pendingId = null; refresh(); return; }
+  if (b){ b.innerHTML = "もう一度<br>押すと全消し"; _clrT = setTimeout(()=>{ _clrT = null; b.innerHTML = "全消し"; }, 2000); }
+}
 function renderGrid(){
   $("grid").innerHTML = "";
   MENUS[mode].forEach((m)=>{
@@ -472,7 +478,7 @@ function renderGrid(){
   });
   // 機能キー(−/C/＝)。空セルを作らず、＝会計は行の残りいっぱいに広げる
   [["1つ戻す","fn-minus",()=>{items.pop();refresh();}],
-   ["全消し","fn-clear",()=>{items=[];refresh();}],
+   ["全消し","fn-clear",clearAll],  // 会計の隣なので誤タップ対策：2品以上はもう一度押して確定
    ["会 計","fn-total",showPay]
   ].forEach(([html,cls,fn])=>{
     const b = document.createElement("button");
@@ -1129,8 +1135,10 @@ function oFlash(text){ const f = $("vFlash"); if(!f) return; $("vfBig").textCont
 function oSoundTest(){ oBeep(3); oFlash("通知音のテスト"); }
 document.addEventListener("pointerdown", ()=>{ if(!O.audio){ try{ O.audio = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } }, {once:true});
 
+let _oPolling = false; // 予約の確認が重なると同じ予約を2回通知・印刷するので、1本ずつ
 async function oPoll(manual){
   if(document.hidden && !manual) return;
+  if(_oPolling) return; _oPolling = true;
   try{
     const r = await fetch(`${SHEET_URL}?mode=orders&date=${encodeURIComponent(oToday())}&key=${encodeURIComponent(oKey())}&t=${Date.now()}`, {cache:"no-store"});
     const j = await r.json(); if(j.error){ $("oSt").textContent = "エラー: "+j.error; return; }
@@ -1138,6 +1146,7 @@ async function oPoll(manual){
     const fresh = O.orders.filter(o=>o.status==="new" && !O.seen.has(o.id));
     oRender();
     if(fresh.length){
+      fresh.forEach(o=>O.seen.add(o.id)); try{ localStorage.setItem("seenOrders", JSON.stringify([...O.seen].slice(-300))); }catch(e){}
       oBeep(3); oFlash(fresh.map(o=>`${o.slot}受取 ${o.name}様 ${o.meals}食`).join(" ／ ") + (O.printer.ch ? "" : "　⚠ プリンター未接続：テイクアウト画面で接続すると印刷されます"));
       if(!O.printer.ch) oAutoConnect();
       setTimeout(()=>{ if(O.orders.some(o=>o.status==="new")) oBeep(2); }, 15000); // 15秒後に未対応が残っていればもう一度
@@ -1147,6 +1156,7 @@ async function oPoll(manual){
     }
     $("oSt").textContent = "確認 " + oNow();
   }catch(e){ $("oSt").textContent = "通信エラー"; }
+  finally{ _oPolling = false; }
 }
 function oLeft(slot){ const d = oMin(slot) - oMin(oNow()); if(d>60) return {t:`あと${Math.floor(d/60)}時間${d%60}分`,c:""}; if(d>10) return {t:`あと${d}分`,c:""}; if(d>=0) return {t:`あと${d}分`,c:"soon"}; return {t:`${-d}分過ぎ`,c:"late"}; }
 function oRender(){
@@ -1188,7 +1198,9 @@ function oToRegister(id){
   mode = "持ち帰り"; $("mTo").classList.add("on"); $("mEat").classList.remove("on"); renderGrid(); refresh();
   O.pendingId = id; $("ordOv").classList.remove("show");
 }
-function oAfterSale(){ if(!O.pendingId) return; const id = O.pendingId; O.pendingId = null; oSetStatus(id, "done"); }
+function oAfterSale(){ if(!O.pendingId) return; const id = O.pendingId; O.pendingId = null; oSetStatus(id, "done");
+  // 予約の会計が終わったら店内に戻す（次の店内客が持ち帰りで打たれないように）
+  mode = "店内"; $("mEat").classList.add("on"); $("mTo").classList.remove("on"); renderGrid(); refresh(); }
 
 // ===== Bluetooth レシートプリンター（ESC/POS 58mm=384dot、伝票は画像で送る） =====
 const O_SVC = [0x18f0, "e7810a71-73ae-499d-8c15-faa9aef0c3f2", "49535343-fe7d-4ae5-8fa9-9fafd205e455", 0xff00, 0xffe0, 0xfee7];

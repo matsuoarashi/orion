@@ -177,6 +177,8 @@ function invOrderUpdate_(d, me){
   if (d.eta !== undefined) invSet_(sh, o._row, "納品予定", String(d.eta));
   if (d.qty !== undefined) invSet_(sh, o._row, "数量", Number(d.qty)||0);
   if (d.note !== undefined) invSet_(sh, o._row, "備考", String(d.note));
+  // 11/1: すでに納品済みの発注をもう一度「届いた」にしても在庫を足さない（2台・押し直しでの二重加算防止）
+  if (d.status === "納品済" && String(o["状態"]) === "納品済") return { ok: true, dup: true };
   if (d.status){
     invSet_(sh, o._row, "状態", String(d.status));
     if (d.status === "発注済" && !o["発注日"]) invSet_(sh, o._row, "発注日", invToday_());
