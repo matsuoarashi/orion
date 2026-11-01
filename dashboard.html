@@ -192,7 +192,7 @@
   <div id="ov"></div><div class="toast" id="toast"></div>
 
   <div class="tabs">
-    <button id="tab-shime" onclick="setTab('shime')">朝の確認</button>
+    <button id="tab-shime" onclick="setTab('shime')">確認</button>
     <button id="tab-day" class="on" onclick="setTab('day')">今日</button>
     <button id="tab-week" onclick="setTab('week')">週</button>
     <button id="tab-items" onclick="setTab('items')">商品</button>
@@ -558,7 +558,8 @@ async function bootAuth(){
   for (const tk of cands){ TOKEN = tk; const r = await fxGet("fx_me"); if(!r.error){ ME = r.me; renderWho(); if(DATA) renderAlerts(); renderOsQ(); renderOsM(); return; } }
   TOKEN = ""; ME = null; renderWho();
 }
-function renderWho(){ $("who").innerHTML = ME ? `<span>${esc(ME.name)}${ME.role==="admin"?"（管理者）":""}</span><button onclick="logout()">ログアウト</button>` : `<button onclick="showLogin()">ログイン</button>`; }
+function renderWho(){ $("who").style.display = (ME && /embed=1/.test(location.search)) ? "none" : ""; // 管理者アプリの中ではログイン中の名前・ログアウトは上の帯にあるので出さない
+  $("who").innerHTML = ME ? `<span>${esc(ME.name)}${ME.role==="admin"?"（管理者）":""}</span><button onclick="logout()">ログアウト</button>` : `<button onclick="showLogin()">ログイン</button>`; }
 async function showLogin(){
   sheet(`<h3>ログイン</h3><div class="sub">勤怠アプリと同じ名前・パスコード。訂正や確認済みの記録に名前が残ります</div><label>名前</label><select id="staffSel"><option value="">読み込み中…</option></select><label>パスコード</label><input type="password" inputmode="numeric" id="passIn" autocomplete="off"><div class="msg" id="loginMsg"></div><button class="btn" id="loginBtn" onclick="doLogin()">ログイン</button>`);
   try{ const r = await (await fetch(STAFF_API+"?action=staff_list")).json(); $("staffSel").innerHTML = `<option value="">名前を選んでください</option>` + (r.staff||[]).map(s=>`<option value="${s.staff_id}">${esc(s.name)}</option>`).join(""); }catch(e){ $("loginMsg").textContent="通信できません"; }
