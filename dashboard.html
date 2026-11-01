@@ -136,7 +136,9 @@
   .sc-h b{font-size:15px;letter-spacing:1px}
   .sc-h .bd{flex:none;white-space:nowrap;font-size:11px;line-height:1.5;padding:2px 9px;border-radius:999px;color:#fff;background:var(--mute)}
   .sc-h .bd.ng{background:var(--enji)} .sc-h .bd.ok{background:var(--midori)}
-  .sc-h .sm{font-size:12px;color:var(--mute);margin-left:auto;text-align:right}
+  .sc-h{flex-wrap:wrap;row-gap:4px}
+  .sc-h .ar{margin-left:auto;flex:none}
+  .sc-h .sm{flex-basis:100%;font-size:12px;color:var(--mute);line-height:1.6}
   .sc-b{padding:0 14px 12px;border-top:1px dashed #c9b891}
   .cmp{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
   .cmp th{font-size:11px;color:var(--midori);text-align:right;padding:4px 3px;border-bottom:1px solid #c9b891}
@@ -494,7 +496,7 @@ function renderShime(days){
         if(SALES_CACHE[r.date] && SALES_CACHE[r.date].show) body += `<div id="sales-${r.date.replace(/\//g,"")}">${salesTable(r.date)}</div>`;
       }
     }
-    return `<div class="sc ${settled?"ok":"ng"} ${r.acked?"done":""}"><div class="sc-h" onclick="SHIME_OPEN['${r.date}']=${!isOpen};renderAlerts()"><b>${r.date.slice(5)}(${youbi(r.date)})</b>${bd}<span class="sm">${sm}<br>${r.issues.length?r.issues.join("・"):""}</span><span>${isOpen?"▲":"▼"}</span></div>${isOpen?`<div class="sc-b">${body}</div>`:""}</div>`;
+    return `<div class="sc ${settled?"ok":"ng"} ${r.acked?"done":""}"><div class="sc-h" onclick="SHIME_OPEN['${r.date}']=${!isOpen};renderAlerts()"><b>${r.date.slice(5)}(${youbi(r.date)})</b>${bd}<span class="ar">${isOpen?"▲":"▼"}</span><span class="sm">${sm}${r.issues.length?"<br>"+r.issues.join("・"):""}</span></div>${isOpen?`<div class="sc-b">${body}</div>`:""}</div>`;
   }).join("") || "<div class='sub'>営業日がまだありません</div>";
 }
 async function ackDay(date){ if(!needFix()) return; const reason = await askReason(`${date.slice(5)} の締めを確認済みにする`, ["確認した・問題なし","訂正済み","伝票側の数え違い","原因不明のまま"], "カードが畳まれ、トップの件数から消えます"); const r = await fxPost("fx_ack", {key:"day:"+date, title:date+" 締め", reason}); if(r.error){ toast(r.error); return; } toast("確認済みにしました"); load(true); }
