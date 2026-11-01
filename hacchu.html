@@ -108,7 +108,7 @@ nav .bd{position:absolute;top:4px;right:calc(50% - 20px);background:var(--red);c
   </div>
 
   <div id="vApp" class="hide" style="display:flex;flex-direction:column;height:100%">
-    <header><button id="hBack" class="hide" onclick="if(PAGE==='home'&&FROM_STAFF){ location.href='staff_index.html'; } else if(FROM_STAFF && (location.hash==='#chef'||location.hash==='#hall'||location.hash==='#report')){ location.href='staff_index.html'; } else go('home')" style="margin-right:8px">‹ 戻る</button><div style="flex:1"><div class="t" id="hTitle">発 注</div><div class="n" id="hName">-</div></div><button onclick="loadHome(true)">更新</button></header>
+    <header><button id="hBack" class="hide" onclick="if(PAGE==='home'&&FROM_STAFF){ location.href='staff/'; } else if(FROM_STAFF && (location.hash==='#chef'||location.hash==='#hall'||location.hash==='#report')){ location.href='staff/'; } else go('home')" style="margin-right:8px">‹ 戻る</button><div style="flex:1"><div class="t" id="hTitle">発 注</div><div class="n" id="hName">-</div></div><button onclick="loadHome(true)">更新</button></header>
     <main id="main">
       <div id="msg"></div>
       <section id="pHome"><div class="loading">読み込み中…</div></section>
@@ -331,7 +331,7 @@ function stCount(){ const n = Object.keys(STK).length; $("stN").textContent = n?
 async function saveStock(){
   const entries = Object.keys(STK).map(id=>Object.assign({item_id:id}, STK[id])); if(!entries.length){ toast("変更がありません"); return; }
   const r = await post("inv_stock", {entries, owner: OWNER}); if(r.error){ showMsg(r.error); return; }
-  toast(`${r.saved}品目を記録しました`); await loadHome(); if (FROM_STAFF && /chef|hall/.test(location.hash)){ setTimeout(()=>{ location.href = "staff_index.html"; }, 900); } else go("home");
+  toast(`${r.saved}品目を記録しました`); await loadHome(); if (FROM_STAFF && /chef|hall/.test(location.hash)){ setTimeout(()=>{ location.href = "staff/"; }, 900); } else go("home");
 }
 
 // ───── 発注 ─────
