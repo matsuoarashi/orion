@@ -349,6 +349,7 @@
       <div class="card wide"><h2>契約・許認可の期限 <small id="osctN"></small></h2><div class="sub" style="margin-bottom:8px">契約台帳の終了日・更新期限が 90 日以内のもの</div><div id="osCt">読み込み中…</div></div>
       <div class="card wide"><h2>メールからの候補 <small id="osmN"></small></h2><div class="sub" style="margin-bottom:8px">店の Gmail（PayPay・トーホー・取引先）から自動で拾ったもの。確認して「反映済」か「不要」に</div><div id="osM">読み込み中…</div></div>
       <div class="card wide"><h2>スタッフからの質問 <small id="osqN"></small></h2><div class="sub" style="margin-bottom:8px">勤怠アプリ「聞く」で答えられなかった質問。回答すると Knowledge に入り、次からアプリが答えます</div><div id="osQ">読み込み中…</div></div>
+      <div class="card wide"><h2>承認待ちの決まり <small id="ospkN"></small></h2><div class="sub" style="margin-bottom:8px">「確認中」のままの決まり。内容を直して「承認」すると、勤怠アプリの「聞く」で答えに使われます</div><div id="osPK">読み込み中…</div></div>
     </div>
   </div>
 
@@ -529,6 +530,7 @@ function renderMisc(){
   const li = (t, n, btnLabel, fn) => M.push(`<div class="mi"><div><b>${t}</b><small>${n}</small></div>${btnLabel?`<button onclick="${fn}">${btnLabel}</button>`:""}</div>`);
   if(OSC.q) li(`スタッフからの質問 ${OSC.q}件（未回答）`, OSC.qs, "回答する", "setTab('people');setTimeout(()=>$('osQ').scrollIntoView({behavior:'smooth'}),100)");
   if(OSC.m) li(`メールからの候補 ${OSC.m}件`, OSC.ms, "確認する", "setTab('people');setTimeout(()=>$('osM').scrollIntoView({behavior:'smooth'}),100)");
+  if(OSC.k) li(`承認待ちの決まり ${OSC.k}件`, OSC.ks, "確認する", "setTab('people');setTimeout(()=>$('osPK').scrollIntoView({behavior:'smooth'}),100)");
   if(OSC.c) li(`契約・許認可の期限 ${OSC.c}件`, OSC.cs, "見る", "setTab('people');setTimeout(()=>$('osCt').scrollIntoView({behavior:'smooth'}),100)");
   if(!o.shime.find(s=>s.date===today) && H>=16 && (dayByDate(today)||{}).count>0) li("本日のレジ締めがまだです","閉店後にレジの「締め」から入力");
   o.unclosed.forEach(u=>li(`${u.name} ${u.date.slice(5)} 退勤の打刻がありません`,`出勤 ${hmOnly(u.in)}`,"勤怠アプリ","goApp('staff')"));
@@ -1100,7 +1102,7 @@ function hmOnly(v){ const m = String(v||"").match(/(\d{1,2}):(\d{2})(?::\d{2})?\
 // 管理者アプリの中ならタブ切替、単体なら管理者アプリへ
 function goApp(id){ try{ if(window.parent !== window && typeof window.parent.show === "function"){ window.parent.show(id); return; } }catch(e){} location.href = "kanri.html#" + id; }
 // 朝の確認に出す件数（人タブの読み込み結果を流用）
-const OSC = {q:0, qs:"", m:0, ms:"", c:0, cs:""};
+const OSC = {q:0, qs:"", m:0, ms:"", c:0, cs:"", k:0, ks:""};
 // スタッフからの未回答質問（ORION OS）。管理者だけ
 async function renderOsQ(){
   const el = $("osQ"); if (!el) return;
@@ -1110,7 +1112,27 @@ async function renderOsQ(){
   const ca = r.contractAlerts||[]; $("osctN").textContent = ca.length ? `${ca.length}件` : ""; $("osCt").innerHTML = ca.length ? ca.map(a=>`<div class="pl"><span>${a.overdue?"<b class='neg'>期限超過</b> ":""}${esc(a.name)}<small>（${esc(a.kind)}）</small> ${esc(a.col)} ${esc(a.date)}${a.auto?` / 自動更新:${esc(a.auto)}`:""}</span></div>`).join("") : "<div class='sub'>90 日以内の期限はありません（終了日・更新期限が未記入の契約は出ません）</div>";
   $("osqN").textContent = un.length ? `未回答 ${un.length}` : "";
   OSC.q = un.length; OSC.qs = un.slice(0,3).map(x=>x.q).join("／"); OSC.c = ca.length; OSC.cs = ca.slice(0,3).map(a=>a.name).join("、"); renderMisc();
-  el.innerHTML = un.length ? un.map(x=>`<div class="pl" style="display:block" id="osq_${esc(x.id)}"><div><b>${esc(x.q)}</b> <small>${esc(x.who)}・${esc(String(x.at).slice(0,16))}</small></div><textarea rows="3" style="width:100%;margin:6px 0;font-size:14px;padding:8px;border:1px solid var(--line);border-radius:8px" placeholder="回答（スタッフにそのまま見えます）"></textarea><button class="btn" onclick="osAnswer('${esc(x.id)}')">回答して Knowledge に入れる</button></div>`).join("") : "<div class='sub'>未回答の質問はありません</div>";
+  renderOsPK(r.pendingKnow||[]);
+  el.innerHTML = un.length ? un.map(x=>`<div class="pl" style="display:block" id="osq_${esc(x.id)}"><div><b>${esc(x.q)}</b> <small>${esc(x.who)}・${esc(String(x.at).slice(0,16))}</small></div><textarea rows="3" style="width:100%;margin:6px 0;font-size:14px;padding:8px;border:1px solid var(--line);border-radius:8px" placeholder="回答（スタッフにそのまま見えます）"></textarea><div style="display:flex;gap:8px"><button class="btn" style="flex:2" onclick="osAnswer('${esc(x.id)}')">回答して Knowledge に入れる</button><button class="btn" style="flex:1;background:#fff;color:var(--mute);border:1px solid var(--line)" onclick="osQClose('${esc(x.id)}')">対象外（テスト・重複）</button></div></div>`).join("") : "<div class='sub'>未回答の質問はありません</div>";
+}
+// 承認待ちの決まり（Knowledge の proposed）。直して承認すると新しい行で approved になり、旧行は archived（履歴が残る）
+function renderOsPK(list){
+  const el = $("osPK"); if (!el) return; OSC.k = list.length; OSC.ks = list.slice(0,3).map(k=>k.q).join("／");
+  $("ospkN").textContent = list.length ? `${list.length}件` : "";
+  el.innerHTML = list.length ? list.map(k=>`<div class="pl" style="display:block" id="ospk_${esc(k.id)}"><div><b>${esc(k.q)}</b> <small>${esc(k.cat)}</small></div><textarea rows="4" style="width:100%;margin:6px 0;font-size:14px;padding:8px;border:1px solid var(--line);border-radius:8px">${esc(k.a)}</textarea><button class="btn" onclick="osPKApprove('${esc(k.id)}')">この内容で承認</button></div>`).join("") : "<div class='sub'>承認待ちはありません</div>";
+  renderMisc();
+}
+async function osPKApprove(id){
+  const box = $("ospk_"+id); const a = box.querySelector("textarea").value.trim(); if(!a){ alert("回答を入れてください"); return; }
+  if (/確認中/.test(a) && !confirm("「確認中」の文字が残っています。このまま承認しますか？")) return;
+  const b = box.querySelector("button"); b.disabled = true;
+  const r = await fxPost("os_know_save", {id, a, status:"approved"}); if (r.error){ alert(r.error); b.disabled = false; return; }
+  box.innerHTML = `<div><b>承認しました</b></div>`; setTimeout(renderOsQ, 1500);
+}
+async function osQClose(id){
+  if(!confirm("この質問を「対象外（テスト・重複）」として閉じますか？ 決まりは作りません")) return;
+  const r = await fxPost("os_q_close", {id, reason:"テスト・重複"}); if (r.error){ alert(r.error); return; }
+  const box = $("osq_"+id); if (box) box.innerHTML = "<div class='sub'>閉じました</div>"; setTimeout(renderOsQ, 1200);
 }
 async function osAnswer(id){
   const box = $("osq_"+id); const a = box.querySelector("textarea").value.trim(); if(!a){ alert("回答を入れてください"); return; }

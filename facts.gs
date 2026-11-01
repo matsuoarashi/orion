@@ -26,7 +26,7 @@ function handleOsGet(e){
     var facts = osRows_(OS_FACTS, OS_FACTS_COLS).filter(function(r){ return r["状態"] !== "superseded" && r["状態"] !== "rejected"; });
     var know = osRows_(OS_KNOW, OS_KNOW_COLS).filter(function(r){ return r["状態"] === "approved" && osCanSee_(me, String(r["対象"])); });
     var un = osRows_(OS_UNANS, OS_UNANS_COLS).filter(function(r){ return r["状態"] !== "回答済"; });
-    return invOut_({ me: me, facts: facts.map(osFact_), knowledge: know.map(osKnow_), unanswered: me.role === "admin" ? un.map(osUnans_) : un.filter(function(r){ return r["質問者"] === me.name; }).map(osUnans_), contractAlerts: me.role === "admin" ? (function(){ try { return osContractAlerts_(90); } catch(e){ return []; } })() : [], auth: me.role === "admin" ? osRows_(OS_AUTH, OS_AUTH_COLS).map(function(r){ var o = {}; OS_AUTH_COLS.forEach(function(c){ o[c] = String(r[c]||""); }); return o; }) : [] });
+    return invOut_({ me: me, facts: facts.map(osFact_), knowledge: know.map(osKnow_), unanswered: me.role === "admin" ? un.map(osUnans_) : un.filter(function(r){ return r["質問者"] === me.name; }).map(osUnans_), pendingKnow: me.role === "admin" ? osRows_(OS_KNOW, OS_KNOW_COLS).filter(function(r){ return r["状態"] === "proposed"; }).map(osKnow_) : [], contractAlerts: me.role === "admin" ? (function(){ try { return osContractAlerts_(90); } catch(e){ return []; } })() : [], auth: me.role === "admin" ? osRows_(OS_AUTH, OS_AUTH_COLS).map(function(r){ var o = {}; OS_AUTH_COLS.forEach(function(c){ o[c] = String(r[c]||""); }); return o; }) : [] });
   }
   if (mode === "os_rpt"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_({ list: osRows_(OS_RPT, OS_RPT_COLS).map(osRpt_) }); }
   if (mode === "os_seed"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_(osSeed20261101()); }
@@ -66,6 +66,7 @@ function handleOsPost(d){
       else if (d.type === "os_know_save") res = osKnowSave_(d, me);
       else if (d.type === "os_ask") res = osAsk_(d, me);
       else if (d.type === "os_answer") res = osAnswer_(d, me);
+      else if (d.type === "os_q_close") res = osQClose_(d, me);   // 11/1: テスト・重複の質問を「対象外」で閉じる
       else if (d.type === "os_rate") res = osRate_(d, me);
       else if (d.type === "os_mail_set") res = osMailCandSet_(d, me);
       else if (d.type === "os_dec_save") res = osDecSave_(d, me);
@@ -183,6 +184,13 @@ function osRate_(d, me){
   return { ok:true };
 }
 // 未回答に回答 → Knowledge に追加（承認済み）
+// 11/1: 未回答の質問を、決まりを作らずに閉じる（テスト・重複・答える必要のないもの）
+function osQClose_(d, me){
+  if (me.role !== "admin") return { error: "管理者のみ" };
+  var sh = osSheet_(OS_UNANS, OS_UNANS_COLS); var r = invRows_(sh).filter(function(x){ return x.q_id === d.id; })[0]; if (!r) return { error: "見つかりません" };
+  invSet_(sh, r._row, "状態", "回答済"); invSet_(sh, r._row, "回答", "（対象外：" + String(d.reason || "テスト・重複") + "）"); invSet_(sh, r._row, "回答者", me.name); invSet_(sh, r._row, "回答日時", invNow_());
+  return { ok:true };
+}
 function osAnswer_(d, me){
   if (me.role !== "admin") return { error: "管理者のみ" };
   var sh = osSheet_(OS_UNANS, OS_UNANS_COLS); var r = invRows_(sh).filter(function(x){ return x.q_id === d.id; })[0]; if (!r) return { error: "見つかりません" };
