@@ -309,19 +309,20 @@ function renderHome(){
 let STK = {};
 function renderStock(){
   const items = MASTER.filter(it=>it.owner===OWNER); const groups = {}; items.forEach(it=>{ (groups[it.cat]=groups[it.cat]||[]).push(it); });
-  const isChef = OWNER==="シェフ"; STK = {};
+  const isChef = OWNER==="シェフ"; // STK（入力途中の数）は保存に成功するまで残す。切替・更新で消さない
   $("pStock").innerHTML = `
-    <div class="seg"><button class="${isChef?"on":""}" onclick="OWNER='シェフ';renderStock()">食材（シェフ）</button><button class="${!isChef?"on":""}" onclick="OWNER='ホール';renderStock()">備品・飲料（ホール）</button></div>
+    <div class="seg"><button class="${isChef?"on":""}" onclick="OWNER='シェフ';renderStock()">食材（厨房）</button><button class="${!isChef?"on":""}" onclick="OWNER='ホール';renderStock()">備品・飲料（ホール）</button></div>
     <div class="mini" style="margin:0 4px 8px">${isChef?"残っている量を入れてください。± で直すか、数字をタップして入力。":"週1回、3択でタップ。「少」「無」は発注候補・買い出しリストに載ります。"}</div>
     ${Object.keys(groups).map(cat=>`<div class="sec">${esc(cat)}</div><div class="card">${groups[cat].map(it=>{
       const due = (it.freq==="毎日" && (daysAgo(it.stockAt)===null||daysAgo(it.stockAt)>=1)) || (it.freq==="週次" && (daysAgo(it.stockAt)===null||daysAgo(it.stockAt)>=7));
       if(isChef){ // 数量入力（厨房の食材）。ホールは数えず「十分・少・無」の3択（サーバー側で目安の在庫数に換算）
         return `<div class="row"><span class="l">${esc(it.name)} ${due?"":"<span class='pill'>入力済</span>"}<small>${esc(it.freq)}${it.stockAt?"・前回 "+fmtD(it.stockAt):""}${PLAN[it.id]&&PLAN[it.id].info?`<br><span style="color:${PLAN[it.id].short?"var(--red)":"var(--mute)"}">${esc(PLAN[it.id].info)}</span>`:(it.min!==null?"・最低 "+it.min+esc(it.unit):"")}${it.perPack&&it.baseUnit&&it.baseUnit!==it.unit?`<br>1${esc(it.unit)}＝${it.perPack.toLocaleString()}${esc(it.baseUnit)}`:""}</small></span>
-          <span class="step"><button onclick="stAdd('${it.id}',-1)">−</button><span class="v" id="v_${it.id}" onclick="stEdit('${it.id}')" style="cursor:pointer">${it.stock===null?"—":it.stock}<small>${esc(it.unit)}</small></span><button onclick="stAdd('${it.id}',1)">＋</button></span></div>`;
+          <span class="step"><button onclick="stAdd('${it.id}',-1)">−</button><span class="v ${STK[it.id]?"chg":""}" id="v_${it.id}" onclick="stEdit('${it.id}')" style="cursor:pointer">${STK[it.id]&&STK[it.id].qty!==undefined?STK[it.id].qty:(it.stock===null?"—":it.stock)}<small>${esc(it.unit)}</small></span><button onclick="stAdd('${it.id}',1)">＋</button></span></div>`;
       }
-      return `<div class="row"><span class="l">${esc(it.name)}<small>${esc(it.freq)}${it.stockAt?"・前回 "+fmtD(it.stockAt):""}${it.min!=null&&it.unit?`・${it.min}${esc(it.unit)}を切ったら「少」`:""}</small></span><span class="tri"><button onclick="stState('${it.id}','十分',this)">十分</button><button onclick="stState('${it.id}','少',this)">少</button><button onclick="stState('${it.id}','無',this)">無</button></span></div>`;
+      return `<div class="row"><span class="l">${esc(it.name)}<small>${esc(it.freq)}${it.stockAt?"・前回 "+fmtD(it.stockAt):""}${it.min!=null&&it.unit?`・${it.min}${esc(it.unit)}を切ったら「少」`:""}</small></span><span class="tri">${["十分","少","無"].map(v=>{ const on = STK[it.id] && STK[it.id].state===v; return `<button class="${on?("on "+(v==="少"?"low":v==="無"?"out":"")):""}" onclick="stState('${it.id}','${v}',this)">${v}</button>`; }).join("")}</span></div>`;
     }).join("")}</div>`).join("")}
     <div class="sticky"><button class="btn" onclick="saveStock()">記録する<span id="stN"></span></button></div>`;
+  stCount();
 }
 function stEdit(id){ const it = MASTER.find(x=>x.id===id); const cur = STK[id]!==undefined ? STK[id].qty : (it.stock===null?"":it.stock);
   sheet(`<h3>${esc(it.name)}</h3><label>残っている量（${esc(it.unit)}）</label><input type="number" inputmode="decimal" id="stIn" value="${cur}" autofocus><div style="height:12px"></div><button class="btn" onclick="stSet('${id}')">決定</button><button class="btn sec" style="margin-top:8px" onclick="closeOv()">やめる</button>`); setTimeout(()=>{ const i=$("stIn"); if(i){ i.focus(); i.select(); } }, 50); }
@@ -332,7 +333,7 @@ function stCount(){ const n = Object.keys(STK).length; $("stN").textContent = n?
 async function saveStock(){
   const entries = Object.keys(STK).map(id=>Object.assign({item_id:id}, STK[id])); if(!entries.length){ toast("変更がありません"); return; }
   const r = await post("inv_stock", {entries, owner: OWNER}); if(r.error){ showMsg(r.error); return; }
-  toast(`${r.saved}品目を記録しました`); await loadHome(); if (FROM_STAFF && /chef|hall/.test(location.hash)){ setTimeout(()=>{ location.href = "staff/"; }, 900); } else go("home");
+  STK = {}; toast(`${r.saved}品目を記録しました`); await loadHome(); if (FROM_STAFF && /chef|hall/.test(location.hash)){ setTimeout(()=>{ location.href = "staff/"; }, 900); } else go("home");
 }
 
 // ───── 発注 ─────
@@ -352,7 +353,7 @@ function renderOrder(){
     <div style="height:8px"></div>
     <button class="btn sec" onclick="orderHistory()">発注・納品の履歴</button>`;
 }
-function supItems(sup){ return (HOME.suggest||[]).filter(s=>(s.supplier||"（仕入先未設定）")===sup).map(s=>({item_id:s.id, qty:Number(($("q_"+s.id)||{}).value)||s.qty, name:s.name, unit:s.orderUnit||s.unit})).filter(x=>x.qty>0); }
+function supItems(sup){ return (HOME.suggest||[]).filter(s=>(s.supplier||"（仕入先未設定）")===sup).map(s=>({item_id:s.id, qty:(()=>{ const el = $("q_"+s.id); return (el && el.value !== "") ? Math.max(0, Number(el.value)||0) : s.qty; })(), name:s.name, unit:s.orderUnit||s.unit})).filter(x=>x.qty>0); }
 function orderSheet(sup){ const items = supItems(sup); if(!items.length){ toast("数量が0です"); return; }
   const t = new Date(); t.setDate(t.getDate()+1); const etaPlan = ((HOME.suggest||[]).find(s=>(s.supplier||"（仕入先未設定）")===sup && s.eta)||{}).eta||""; const def = etaPlan ? etaPlan.replace(/\//g,"-") : t.toISOString().slice(0,10);
   sheet(`<h3>${esc(sup)} に発注した</h3><div class="card" style="margin-bottom:10px">${items.map(x=>`<div class="row"><span class="l">${esc(x.name)}</span><b>×${x.qty}${esc(x.unit)}</b></div>`).join("")}</div>
@@ -368,11 +369,11 @@ async function recvSup(sup){
   const list = (HOME.orders||[]).filter(o=>o.status==="発注済" && (o.supplier||"（仕入先未設定）")===sup);
   const need = list.filter(o=>!sameUnit(o)); if(need.length){ toast("「"+need[0].name+"」は単位の換算が要るので、品目をタップして受け取ってください"); return recvSheet(need[0].id); }
   if(!confirm(sup+" の "+list.length+"品目をすべて受け取りにしますか？")) return;
-  for (const o of list){ const r = await post("inv_order_update", {order_id:o.id, status:"納品済", received:o.qty, perUnit:1}); if(r.error){ showMsg(r.error); break; } }
+  let done = 0; for (const o of list){ const r = await post("inv_order_update", {order_id:o.id, status:"納品済", received:o.qty, perUnit:1}); if(r.error){ showMsg(`${list.length}品目中 ${done}品目だけ記録しました（${r.error}）。残りはもう一度「全部届いた」を押してください`); loadHome(); return; } done++; }
   toast("受け取りを記録しました"); loadHome();
 }
 async function cancelSup(sup){ const list = (HOME.orders||[]).filter(o=>o.status==="発注済" && (o.supplier||"（仕入先未設定）")===sup); if(!confirm(sup+" の発注 "+list.length+"品目を取り消しますか？")) return;
-  for (const o of list){ await post("inv_order_update", {order_id:o.id, status:"取消"}); } toast("取り消しました"); loadHome(); }
+  let ng = 0; for (const o of list){ const r = await post("inv_order_update", {order_id:o.id, status:"取消"}); if (r.error) ng++; } if (ng) showMsg(`${ng}品目は取り消せませんでした。もう一度お試しください`); else toast("取り消しました"); loadHome(); }
 function copySup(sup){ const items = supItems(sup); const txt = `【洋食オリオン 発注】${sup}\n` + items.map(x=>`・${x.name} ×${x.qty}${x.unit}`).join("\n"); navigator.clipboard.writeText(txt).then(()=>toast("発注内容をコピーしました")).catch(()=>toast(txt)); }
 async function ordUpd(id, status){ if(status==="取消" && !confirm("この発注を取り消しますか？")) return; const r = await post("inv_order_update", {order_id:id, status}); if(r.error){ showMsg(r.error); return; } toast(status==="取消"?"取り消しました":"更新しました"); loadHome(); }
 function recvSheet(id){ const o = (HOME.orders||[]).find(x=>x.id===id); if(!o) return;
@@ -413,7 +414,7 @@ async function buyDo(){
   $("byOk").disabled = true;
   const c = await post("inv_order_create", {items, supplier:shop, status:"発注済", eta:"", note:"店頭で購入"});
   if (c.error){ showMsg(c.error); $("byOk").disabled = false; return; }
-  for (let i=0;i<c.ids.length;i++){ const r = await post("inv_order_update", {order_id:c.ids[i], status:"納品済", received:items[i].qty, perUnit:1, note:"店頭で購入"}); if (r.error){ showMsg(r.error); break; } }
+  let done = 0; for (let i=0;i<c.ids.length;i++){ const r = await post("inv_order_update", {order_id:c.ids[i], status:"納品済", received:items[i].qty, perUnit:1, note:"店頭で購入"}); if (r.error){ closeOv(); showMsg(`${ids.length}品目中 ${done}品目だけ在庫に入れました。残りは「③ 届く」に出ているので、そこで「全部届いた」を押してください`); loadHome(); return; } done++; }
   closeOv(); toast(`${ids.length}品目を在庫に入れました`); loadHome();
 }
 function manualOrder(){

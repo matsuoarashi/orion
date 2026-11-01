@@ -40,7 +40,7 @@ input.wide{width:100%;text-align:left}
 </style>
 </head>
 <body>
-<header><button onclick="back()">‹ 勤怠</button><div style="flex:1"><div class="t">締 め</div><div class="n" id="who">-</div></div><button onclick="loadDay(true)">更新</button></header>
+<header><button onclick="back()">‹ 勤怠</button><div style="flex:1"><div class="t">締 め</div><div class="n" id="who">-</div></div><button onclick="ME ? loadDay(true) : boot()">更新</button></header>
 <main>
   <div id="msg"></div>
   <div id="body" class="hide">
@@ -107,7 +107,10 @@ async function boot(){
   TOKEN = ls("os-token") || "";
   if (!TOKEN){ msg("勤怠アプリでログインしてから開いてください。<br><a href='staff/'>勤怠アプリへ</a>"); return; }
   msg("読み込み中…", "ok");
+  // 売上の読み込みは本人確認と同時に始める（順番に待つと20秒近くかかるため）
+  DAYP = fetchJ(SHEET_URL + "?t=" + Date.now()).catch(e=>{ throw e; }); DAYP.catch(()=>{});
   let h; try{ h = await fetchJ(STAFF_API, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({action:"home", token:TOKEN})}); }catch(e){ msg("通信できません。電波を確認して「更新」を押してください"); return; }
+  if (!h.ok && h.code !== "noauth"){ msg("読み込めませんでした（" + String(h.error||"").replace(/[<>&]/g,"") + "）。電波を確認して「更新」を押してください"); return; }
   if (!h.ok){ msg("ログインの期限が切れました。勤怠アプリでログインし直してください。<br><a href='staff/'>勤怠アプリへ</a>"); return; }
   ME = h.staff; $("who").textContent = ME.name;
   // 締められるのは今日のシフトに入っている人と管理者
@@ -122,9 +125,10 @@ function build(){
   $("slips").innerHTML = SLIP_GROUPS.map(g=>`<div class="lbl">${g.label}</div><div class="grid">` + g.items.map(n=>{ const i = SLIP_MENUS.indexOf(n); const lab = g.short ? n.replace(/^TG/,"") : n;
     return `<div class="fm"><span>${esc(lab)}<small id="sl${i}c"></small></span><span><input type="number" inputmode="numeric" id="sl${i}" placeholder="—" value="${d["sl"+i]??""}" oninput="calc()"></span></div>`; }).join("") + `</div>`).join("");
 }
+let DAYP = null;
 async function loadDay(manual){
   try{
-    const j = await fetchJ(SHEET_URL + "?t=" + Date.now());
+    const j = (!manual && DAYP) ? await DAYP : await fetchJ(SHEET_URL + "?t=" + Date.now()); DAYP = null;
     const t = (j.daily||[]).find(x=>x.date===j.todayKey) || { date:j.todayKey, count:0, sales:0, salesPaypay:0, items:{} };
     DAY = { count:t.count||0, sum:t.sales||0, paypay:t.salesPaypay||0, items:t.items||{}, updated:j.updated, date:j.todayKey };
     const done = (j.ops && j.ops.shime || []).filter(x=>x.date===j.todayKey);
@@ -151,7 +155,7 @@ function calc(){
   $("result").innerHTML =
     `<div class="row"><span class="l">あるべき現金<small>準備金 ${yen(prep)} ＋ 現金売上 ${yen(DAY.sum-pp)}${vendor?" − 業者払い "+yen(vendor):""}</small></span><b>${yen(expected)}</b></div>` +
     `<div class="row"><span class="l">数えた現金</span><b>${yen(cash)}</b></div>` +
-    `<div class="row"><span class="l">現金の差</span><span class="${diff===0?"ok":"ng"}">${diff===0?"ぴったり":(diff>0?"+":"")+diff.toLocaleString()+" 円"}</span></div>` +
+    `<div class="row"><span class="l">現金の差</span><span class="${!cash?"":(diff===0?"ok":"ng")}">${!cash?"未入力（上で現金を数えてください）":(diff===0?"ぴったり":(diff>0?"+":"")+diff.toLocaleString()+" 円")}</span></div>` +
     `<div class="row"><span class="l">PayPay 画面との差</span><span class="${ppd===null?"":(ppd===0?"ok":"ng")}">${ppd===null?"未入力":(ppd===0?"一致":(ppd>0?"+":"")+ppd.toLocaleString()+" 円")}</span></div>` +
     `<div class="row"><span class="l">注文票の品数</span><span class="${!slipAny?"":(slipOk?"ok":"ng")}">${!slipAny?"未入力":(slipOk?"レジと一致":"差あり")}</span></div>` + slipRows +
     `<div class="row"><span class="l"><b>回収する現金</b><small>数えた現金 − レジに残す ${yen(PREP_DEFAULT)}</small></span><b class="big">${yen(bank)}</b></div>`;

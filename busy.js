@@ -14,8 +14,8 @@
     if (document.getElementById("bzBar")) return;
     var st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
     var bar = document.createElement("div"); bar.id = "bzBar"; bar.className = "bz-bar"; document.body.appendChild(bar);
-    var lk = document.createElement("div"); lk.id = "bzLock"; lk.className = "bz-lock"; lk.innerHTML = '<div class="bz-box"><span class="bz-sp"></span><span id="bzText">処理中…</span></div>'; document.body.appendChild(lk);
-    ["click","touchstart","pointerdown","keydown"].forEach(function(ev){ lk.addEventListener(ev, function(e){ e.preventDefault(); e.stopPropagation(); }, true); });
+    var lk = document.createElement("div"); lk.id = "bzLock"; lk.className = "bz-lock"; lk.innerHTML = '<div class="bz-box" style="flex-wrap:wrap;max-width:300px"><span class="bz-sp"></span><span id="bzText">処理中…</span><button id="bzClose" style="display:none;margin-top:10px;width:100%;border:0;border-radius:10px;padding:10px;font:bold 14px sans-serif;background:#e8c26a;color:#1f3a2a">待たずに閉じる（記録されたか画面で確認）</button></div>'; document.body.appendChild(lk);
+    ["click","touchstart","pointerdown","keydown"].forEach(function(ev){ lk.addEventListener(ev, function(e){ if (e.target && e.target.id === "bzClose"){ if (ev === "click"){ writes = 0; upd(); } return; } e.preventDefault(); e.stopPropagation(); }, true); });
   }
   if (document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);
   var reads = 0, writes = 0, readT = null, writeT = null;
@@ -23,8 +23,8 @@
     var bar = document.getElementById("bzBar"), lk = document.getElementById("bzLock"); if (!bar || !lk) return;
     if (reads > 0 && !readT && !bar.classList.contains("on")) readT = setTimeout(function(){ readT = null; if (reads > 0) bar.classList.add("on"); }, 400);
     if (reads <= 0){ clearTimeout(readT); readT = null; bar.classList.remove("on"); }
-    if (writes > 0){ lk.classList.add("on"); clearTimeout(writeT); writeT = setTimeout(function(){ var t = document.getElementById("bzText"); if (t) t.textContent = "処理中…（通信に時間がかかっています）"; }, 6000); }
-    else { lk.classList.remove("on"); clearTimeout(writeT); var t = document.getElementById("bzText"); if (t) t.textContent = "処理中…"; }
+    if (writes > 0){ lk.classList.add("on"); clearTimeout(writeT); writeT = setTimeout(function(){ var t = document.getElementById("bzText"); if (t) t.textContent = "処理中…（通信に時間がかかっています）"; writeT = setTimeout(function(){ var c = document.getElementById("bzClose"); if (c) c.style.display = "inline-block"; }, 14000); }, 6000); }
+    else { lk.classList.remove("on"); clearTimeout(writeT); var t = document.getElementById("bzText"); if (t) t.textContent = "処理中…"; var c = document.getElementById("bzClose"); if (c) c.style.display = "none"; }
   }
   window.busyText = function(s){ var t = document.getElementById("bzText"); if (t) t.textContent = s || "処理中…"; };
   var orig = window.fetch.bind(window);
