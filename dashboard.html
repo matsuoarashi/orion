@@ -22,12 +22,15 @@
        background:var(--cream-d);font-size:14px;font-weight:bold;color:var(--ink)}
   .tabs button.on{background:var(--midori);color:#fff;border-color:var(--midori)}
   .tabs.sub button{padding:7px 4px;font-size:12px;border-width:1px}
-  .datebar{display:flex;align-items:center;gap:8px;background:var(--cream);border-radius:12px;
-       border:3px solid var(--wood-d);padding:8px 10px;justify-content:space-between}
-  .datebar button{border:2px solid var(--wood-d);background:var(--cream-d);border-radius:8px;
-       padding:6px 14px;font-size:16px;font-weight:bold}
-  .datebar .d{font-size:15px;font-weight:bold;letter-spacing:1px}
-  .datebar .today-btn{font-size:12px;padding:6px 8px}
+  .datebar{display:grid;grid-template-columns:52px 1fr 52px;align-items:center;gap:8px;background:var(--cream);border-radius:12px;
+       border:3px solid var(--wood-d);padding:8px 10px}
+  .datebar .nav{border:2px solid var(--wood-d);background:var(--cream-d);border-radius:8px;
+       height:44px;font-size:16px;font-weight:bold;color:var(--ink)}
+  .datebar .nav:disabled{opacity:.35}
+  .datebar .mid{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0}
+  .datebar .d{font-size:15px;font-weight:bold;letter-spacing:.5px;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .datebar .jump{border:1px solid var(--wood-d);background:var(--cream-d);border-radius:999px;font-size:11px;padding:2px 10px;color:var(--ink);white-space:nowrap}
+  .datebar .now{font-size:11px;color:var(--midori);font-weight:bold;padding:3px 0;white-space:nowrap}
   .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
   .card{background:var(--cream);border-radius:14px;padding:12px 14px;border:3px solid var(--wood-d);min-width:0}
   .card h2{font-size:12px;letter-spacing:3px;color:var(--midori);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
@@ -131,7 +134,7 @@
   .sc.ok{border-color:#9bb59f} .sc.ng{border-color:var(--enji)} .sc.done{opacity:.75}
   .sc-h{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer}
   .sc-h b{font-size:15px;letter-spacing:1px}
-  .sc-h .bd{font-size:11px;padding:2px 8px;border-radius:999px;color:#fff;background:var(--mute)}
+  .sc-h .bd{flex:none;white-space:nowrap;font-size:11px;line-height:1.5;padding:2px 9px;border-radius:999px;color:#fff;background:var(--mute)}
   .sc-h .bd.ng{background:var(--enji)} .sc-h .bd.ok{background:var(--midori)}
   .sc-h .sm{font-size:12px;color:var(--mute);margin-left:auto;text-align:right}
   .sc-b{padding:0 14px 12px;border-top:1px dashed #c9b891}
@@ -212,12 +215,9 @@
   <!-- ===== 今日 ===== -->
   <div id="view-day">
     <div class="datebar">
-      <button onclick="moveDate(-1)">◀</button>
-      <span class="d" id="dateLabel">-</span>
-      <span>
-        <button class="today-btn" onclick="goToday()">今日へ</button>
-        <button onclick="moveDate(1)">▶</button>
-      </span>
+      <button class="nav" onclick="moveDate(-1)">◀</button>
+      <div class="mid"><span class="d" id="dateLabel">-</span><span id="dateJump"></span></div>
+      <button class="nav" onclick="moveDate(1)">▶</button>
     </div>
     <div style="height:10px"></div>
     <div class="cards">
@@ -265,12 +265,9 @@
   <!-- ===== 週 ===== -->
   <div id="view-week" class="hide">
     <div class="datebar">
-      <button onclick="moveWeek(-1)">◀</button>
-      <span class="d" id="weekLabel">-</span>
-      <span>
-        <button class="today-btn" onclick="goThisWeek()">今週へ</button>
-        <button onclick="moveWeek(1)">▶</button>
-      </span>
+      <button class="nav" onclick="moveWeek(-1)">◀</button>
+      <div class="mid"><span class="d" id="weekLabel">-</span><span id="weekJump"></span></div>
+      <button class="nav" onclick="moveWeek(1)">▶</button>
     </div>
     <div style="height:10px"></div>
     <div class="cards">
@@ -307,21 +304,28 @@
   <!-- ===== 収支 ===== -->
   <div id="view-pnl" class="hide">
     <div class="tabs sub" style="margin-bottom:8px"><button id="ptab-run" class="on" onclick="pnlMode('run')">ランニング（毎月）</button><button id="ptab-init" onclick="pnlMode('init')">イニシャル（開業投資）</button></div>
-    <div id="pnlRun" class="cards">
+    <div id="pnlRun">
+    <div class="datebar" style="margin-bottom:10px">
+      <button class="nav" id="mPrevP" onclick="moveMonth(-1)">◀</button>
+      <div class="mid"><span class="d mLabel">-</span><span class="mJump"></span></div>
+      <button class="nav" id="mNextP" onclick="moveMonth(1)">▶</button>
+    </div>
+    <div class="cards">
       <div class="card wide"><h2 id="pnlTitle">今月の収支（暫定）<span class="r"><em class="tag j">実績</em>=確定 <em class="tag g">概算</em>=推計 <em class="tag k">仮</em>=未確定</span></h2>
         <div class="pnlGrid" id="pnlTop"></div>
         <div id="pnlLines" style="margin-top:8px"></div>
-        <div class="sub" id="pnlNote"></div></div>
-      <div class="card wide"><h2>着地予測 <span class="r">今のペースで月末まで営業した場合</span></h2>
+        <div class="sub" id="pnlNote"></div>
+        <div class="sub"><em class="tag j">実績</em>=確定　<em class="tag g">概算</em>=推計　<em class="tag k">仮</em>=未確定</div></div>
+      <div class="card wide" id="pnlFcCard"><h2>着地予測 <span class="r">今のペースで月末まで営業した場合</span></h2>
         <div class="pnlGrid" id="pnlFc"></div>
         <div id="pnlFcLines" style="margin-top:8px"></div></div>
-      <div class="card wide"><h2>日別の粗利（今月）</h2>
+      <div class="card wide"><h2 id="pnlDaysT">日別の粗利（今月）</h2>
         <div class="scroll"><table class="daygrid" id="pnlDays"></table></div>
         <div class="sub">粗利 = 売上 − 原価(概算) − 人件費。人件費「-」は勤怠が未確定の日</div></div>
       <div class="card"><h2>固定費（月額）</h2><div id="pnlFixed"></div></div>
-      <div class="card"><h2>今月の経費（変動）<em class="tag j">実績</em></h2><div id="pnlExp"></div></div>
+      <div class="card"><h2><span id="pnlExpT">今月の経費（変動）</span><em class="tag j">実績</em></h2><div id="pnlExp"></div></div>
       <div class="card wide"><h2>月ごとの比較</h2><div class="scroll"><table id="pnlMonths"></table></div></div>
-    </div>
+    </div></div>
     <div id="pnlInit" class="cards hide">
       <div class="card wide"><h2>開業投資と回収</h2>
         <div class="pnlGrid" id="initTop"></div>
@@ -336,8 +340,13 @@
 
   <!-- ===== 人 ===== -->
   <div id="view-people" class="hide">
+    <div class="datebar" style="margin-bottom:10px">
+      <button class="nav" id="mPrevH" onclick="moveMonth(-1)">◀</button>
+      <div class="mid"><span class="d mLabel">-</span><span class="mJump"></span></div>
+      <button class="nav" id="mNextH" onclick="moveMonth(1)">▶</button>
+    </div>
     <div class="cards">
-      <div class="card wide"><h2>今月の人件費 <em class="tag g">概算</em></h2>
+      <div class="card wide"><h2><span id="ppTitle">今月の人件費</span> <em class="tag g">概算</em></h2>
         <div class="pnlGrid" id="ppTop"></div>
         <div class="sub">勤怠アプリの打刻×時給。退勤が未確定の日は入っていません</div></div>
       <div class="card wide"><h2>日別の労働時間と生産性</h2>
@@ -535,7 +544,7 @@ function renderMisc(){
   if(!o.shime.find(s=>s.date===today) && H>=16 && (dayByDate(today)||{}).count>0) li("本日のレジ締めがまだです","閉店後にレジの「締め」から入力");
   o.unclosed.forEach(u=>li(`${u.name} ${u.date.slice(5)} 退勤の打刻がありません`,`出勤 ${hmOnly(u.in)}`,"勤怠アプリ","goApp('staff')"));
   bizDays().filter(d=>d.date<today && d.date>=openDate()).slice(-7).forEach(d=>{ const l = p.laborDaily[d.date]; if(!l) li(`${d.date.slice(5)}(${youbi(d.date)}) 勤怠がありません`,`売上 ${yen(d.sales)} に対して人件費0`,"勤怠アプリ","goApp('staff')"); else if(l.staff<2 && d.meals>=20) li(`${d.date.slice(5)}(${youbi(d.date)}) 勤怠が${l.staff}人分だけ`,`${(l.minutes/60).toFixed(1)}h・${d.meals}食。打刻漏れか修正申請が未承認`,"勤怠アプリ","goApp('staff')"); });
-  if(o.stockLow.length) li(`在庫が下限以下 ${o.stockLow.length}品目`, o.stockLow.slice(0,5).map(s=>`${s.name} ${s.stock}${s.unit}`).join("、"),"発注アプリ","goApp('hacchu')");
+  if(o.stockLow.length) li(`在庫が下限以下 ${o.stockLow.length}品目`, o.stockLow.slice(0,5).map(s=>`${s.name} ${s.stock}${s.unit}（下限${s.min}）`).join("、"),"発注アプリ","goApp('hacchu')");
   if(o.reports.length) li(`備品・不足の報告 ${o.reports.length}件`, o.reports.slice(0,4).map(r=>`${r.name}${r.qty?" "+r.qty:""}（${r.by}）`).join("、"),"発注アプリ","goApp('hacchu')");
   if(o.receipts.unchecked) li(`経費の未確認 ${o.receipts.unchecked}件`,"経費アプリで内容を確認","経費アプリ","goApp('keihi')");
   if(o.receipts.unpaid) li(`未払いの経費（掛け） ${yen(o.receipts.unpaid)}`, o.receipts.unpaidList.slice(0,4).map(r=>`${r.date.slice(5)} ${r.vendor} ${num(r.amount)}円`).join("、"),"経費アプリ","goApp('keihi')");
@@ -658,7 +667,8 @@ function renderDay(){
   const d = dayByDate(viewDate) || {count:0,meals:0,drinks:0,sales:0,eatin:0,togo:0,
     salesEatin:0,salesTogo:0,mealsEatin:0,mealsTogo:0,items:{},hours:{},camera:null};
   const isToday = viewDate===DATA.todayKey;
-  $("dateLabel").textContent = `${viewDate}(${youbi(viewDate)})${isToday?" 本日":""}`;
+  $("dateLabel").textContent = `${viewDate}(${youbi(viewDate)})`;
+  $("dateJump").outerHTML = isToday ? `<span id="dateJump" class="now">本日</span>` : `<button id="dateJump" class="jump" onclick="goToday()">今日へ戻る</button>`;
   $("dMeals").innerHTML = d.meals + '<small> 食</small>';
   $("dSales").textContent = yen(d.sales);
   $("dCount").textContent = `${d.count}会計 / 客単価 ${d.meals?yen(Math.round(d.sales/d.meals)):"-"} / 会計あたり ${d.count?(d.meals/d.count).toFixed(2):"-"}食`;
@@ -869,7 +879,8 @@ function sumDays(list){
 function weekDays(mon){ return DATA.daily.filter(d=>d.date>=mon && d.date<=dateAdd(mon,6)); }
 function renderWeek(){
   const mon = viewWeek; const end = dateAdd(mon,6);
-  $("weekLabel").textContent = `${mon.slice(5)}（月）〜 ${end.slice(5)}（${youbi(end)}）${mon===mondayOf(DATA.todayKey)?" 今週":""}`;
+  $("weekLabel").textContent = `${+mon.slice(5,7)}/${+mon.slice(8)}(月)〜${+end.slice(5,7)}/${+end.slice(8)}(${youbi(end)})`;
+  $("weekJump").outerHTML = mon===mondayOf(DATA.todayKey) ? `<span id="weekJump" class="now">今週</span>` : `<button id="weekJump" class="jump" onclick="goThisWeek()">今週へ戻る</button>`;
   const w = sumDays(weekDays(mon)); const pw = sumDays(weekDays(dateAdd(mon,-7)));
   const avgM = w.days?w.meals/w.days:null, pAvgM = pw.days?pw.meals/pw.days:null;
   $("wkSub").textContent = `営業 ${w.days}日・${w.count}会計`;
@@ -960,6 +971,18 @@ function renderItems(){
 }
 
 // ===== 収支 =====
+// 収支・人で見る月（null＝今月）
+let PM = null;
+function thisMonth(){ return DATA.todayKey.slice(0,7); }
+function viewMonth(){ return PM || thisMonth(); }
+function firstMonth(){ return (DATA.daily[0] ? DATA.daily[0].date : DATA.todayKey).slice(0,7); }
+function monthAdd(k, n){ let y = +k.slice(0,4), m = +k.slice(5,7) + n; while(m<1){ m+=12; y--; } while(m>12){ m-=12; y++; } return y+"/"+String(m).padStart(2,"0"); }
+function moveMonth(n){ const k = monthAdd(viewMonth(), n); if(k<firstMonth() || k>thisMonth()) return; PM = (k===thisMonth()) ? null : k; renderPnl(); renderPeople(); }
+function goThisMonth(){ PM = null; renderPnl(); renderPeople(); }
+function renderMonthBars(){ const k = viewMonth(), cur = k===thisMonth(), lab = `${k.slice(0,4)}年${+k.slice(5)}月`;
+  document.querySelectorAll(".mLabel").forEach(e=>e.textContent = lab);
+  document.querySelectorAll(".mJump").forEach(e=>e.innerHTML = cur ? `<span class="now">今月</span>` : `<button class="jump" onclick="goThisMonth()">今月へ戻る</button>`);
+  ["P","H"].forEach(s=>{ $("mPrev"+s).disabled = k<=firstMonth(); $("mNext"+s).disabled = cur; }); }
 function pnlData(){ return (DATA && DATA.pnl) || {months:[], fixed:[], laborDaily:{}, costDaily:{}, expenses:[]}; }
 function incomeFor(key){ return ops().income.filter(i=>!i.from || i.from<=key).reduce((a,i)=>a+i.amount,0); }
 function renderDayPnl(d){
@@ -975,16 +998,19 @@ function renderDayPnl(d){
   ].map(a=>cell(...a)).join("");
 }
 function renderPnl(){
-  const p = pnlData(); const curKey = DATA.todayKey.slice(0,7);
+  renderMonthBars();
+  const p = pnlData(); const curKey = viewMonth(); const isCur = curKey===thisMonth(); const ml = +curKey.slice(5)+"月";
   const cur = p.months.find(m=>m.key===curKey) || null;
-  const fc = p.months.find(m=>m.key===curKey+" 着地予測") || null;
+  const fc = isCur ? (p.months.find(m=>m.key===curKey+" 着地予測") || null) : null;
+  $("pnlFcCard").classList.toggle("hide", !isCur);
+  $("pnlDaysT").textContent = `日別の粗利（${isCur?"今月":ml}）`; $("pnlExpT").textContent = `${isCur?"今月":ml}の経費（変動）`;
   const hist = p.months.filter(m=>!/着地予測/.test(m.key)).sort((a,b)=>a.key<b.key?1:-1);
   const openD = openDate();
   const loan = p.fixed.find(x=>/公庫|返済/.test(x.name)); const loanAmt = loan?loan.amount:0;
   const inc = incomeFor(curKey); const incNext = ops().income.filter(i=>i.from && i.from>curKey);
-  $("pnlTitle").innerHTML = curKey.replace("/","年")+"月の収支（暫定）<span class='r'><em class='tag j'>実績</em>=確定 <em class='tag g'>概算</em>=推計 <em class='tag k'>仮</em>=未確定</span>";
+  $("pnlTitle").innerHTML = (isCur ? "今月の収支（暫定）" : ml+"の収支") + "<span class='r' style='white-space:nowrap'><em class='tag j'>実績</em> <em class='tag g'>概算</em> <em class='tag k'>仮</em></span>";
   const buy = p.expenses.filter(e=>e.date.slice(0,7)===curKey && e.acct==="仕入高" && e.date>=openD).reduce((a,e)=>a+e.amount,0);
-  if(!cur){ $("pnlTop").innerHTML = ""; $("pnlLines").innerHTML = "<div class='sub'>今月の損益データがまだありません</div>"; }
+  if(!cur){ $("pnlTop").innerHTML = ""; $("pnlLines").innerHTML = "<div class='sub'>この月の損益データがまだありません</div>"; $("pnlNote").textContent = ""; }
   else {
     const net = cur.profit + inc - loanAmt;
     $("pnlTop").innerHTML = [
@@ -1038,7 +1064,7 @@ function renderPnl(){
     + (buy?`<div class="pl" style="color:var(--mute)"><span>参考：仕入高（原価側）</span><b>${num(buy)}円</b></div>`:"") + (preM?`<div class="pl" style="color:var(--mute)"><span>参考：開業前の仕入・消耗品（初期費用側）</span><b>${num(preM)}円</b></div>`:"")
     + (ops().receipts.unpaid?`<div class="pl neg"><span>うち未払い</span><b>${num(ops().receipts.unpaid)}円</b></div>`:"");
   // 月比較
-  $("pnlMonths").innerHTML = "<tr><th>月</th><th>食数/日</th><th>売上</th><th>原価率</th><th>人件費率</th><th>固定費</th><th>営業利益</th><th>手残り</th></tr>" + (hist.map(m=>{ const i = incomeFor(m.key); return `<tr><td>${m.key}</td><td>${m.days?(m.meals/m.days).toFixed(1):"-"}</td><td>${num(m.sales)}</td><td>${pct(m.costRate)}</td><td>${m.sales?pct(m.labor/m.sales):"-"}</td><td>${num(m.fixed)}</td><td>${signed(m.profit)}</td><td>${signed(m.profit+i-loanAmt)}</td></tr>`; }).join("") || "<tr><td colspan='8'>記録なし</td></tr>");
+  $("pnlMonths").innerHTML = "<tr><th>月</th><th>食数/日</th><th>売上</th><th>原価率</th><th>人件費率</th><th>固定費</th><th>営業利益</th><th>手残り</th></tr>" + (hist.map(m=>{ const i = incomeFor(m.key); return `<tr onclick="PM='${m.key}'===thisMonth()?null:'${m.key}';renderPnl();renderPeople();scrollTo(0,0)"><td>${m.key}</td><td>${m.days?(m.meals/m.days).toFixed(1):"-"}</td><td>${num(m.sales)}</td><td>${pct(m.costRate)}</td><td>${m.sales?pct(m.labor/m.sales):"-"}</td><td>${num(m.fixed)}</td><td>${signed(m.profit)}</td><td>${signed(m.profit+i-loanAmt)}</td></tr>`; }).join("") || "<tr><td colspan='8'>記録なし</td></tr>");
   renderInit(p, hist, fc, inc, loanAmt);
 }
 
@@ -1079,7 +1105,9 @@ function renderInit(p, hist, fc, inc, loanAmt){
 
 // ===== 人 =====
 function renderPeople(){
-  const p = pnlData(); const curKey = DATA.todayKey.slice(0,7); const o = ops();
+  renderMonthBars();
+  const p = pnlData(); const curKey = viewMonth(); const o = ops();
+  $("ppTitle").textContent = curKey===thisMonth() ? "今月の人件費" : `${+curKey.slice(5)}月の人件費`;
   const days = DATA.daily.filter(d=>d.date.slice(0,7)===curKey && d.count>0);
   let L=0, Min=0, S=0, M=0, n=0, staffSum=0;
   days.forEach(d=>{ const l = p.laborDaily[d.date]; if(l){ L+=l.cost; Min+=l.minutes; S+=d.sales; M+=d.meals; n++; staffSum+=l.staff; } });
