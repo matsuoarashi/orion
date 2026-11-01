@@ -459,6 +459,25 @@ function startExtract(body, subject){
   [["url","URL"],["rent","賃料"],["tsubo","坪"],["station","最寄駅"],["walk","徒歩分"],["address","住所"]].forEach(function(k){ if (out[k[0]] === "") out.missing.push(k[1]); });
   return out;
 }
+// orion.napolitan@gmail.com の収集スクリプト（collector.gs）経由の取り込み。mail.gs の osMailIngest_ から呼ぶ
+//  orion 側の Gmail フィルタ: 下の差出人ドメイン → ラベル「ORION/物件」・迷惑メールにしない・カテゴリ「メイン」（収集はプロモーションを除外するため）
+var START_MAIL_DOMAINS = ["inshokuten.com","i-tenpo.com","abc-tenpo.com","bukenavi.jp","homes.co.jp","athome.co.jp"];
+function startIsPropertyMail_(from){ var f = String(from||"").toLowerCase(); return START_MAIL_DOMAINS.some(function(d){ return f.indexOf("@" + d) >= 0 || f.indexOf("." + d) >= 0; }); }
+function startIngestMessages_(msgs, mailbox){
+  if (!PropertiesService.getScriptProperties().getProperty(START_PROP)) return 0; // START 未設定なら何もしない
+  var props = (msgs||[]).filter(function(m){ return startIsPropertyMail_(m.from); }); if (!props.length) return 0;
+  var known = {}; startRows_("lst").forEach(function(r){ if (r["メールID"]) known[String(r["メールID"])] = 1; });
+  var sh = startSheet_("lst"); var n = 0;
+  props.forEach(function(m){ if (known[m.id]) return; known[m.id] = 1;
+    var x = startExtract(m.body || "", m.subject || ""); var now = invNow_();
+    var link = mailbox ? "https://mail.google.com/mail/?authuser=" + encodeURIComponent(mailbox) + "#all/" + m.id : "https://mail.google.com/mail/u/0/#all/" + m.id;
+    invAppend_(sh, { listing_id: invId_("ls_"), property_id:"", "取込状態":"未確認", source: startSource_(m.from), source_url: x.url || "", "初出日": "'" + String(m.date||invToday_()).slice(0,10),
+      "最終確認日": "'" + invToday_(), "掲載状態":"掲載中", "賃料": x.rent, "坪": x.tsubo, "面積㎡": x.sqm, "最寄駅": x.station, "徒歩分": x.walk, "住所": x.address, "造作譲渡": x.transfer,
+      "抽出メモ": "件名: " + String(m.subject||""), "未確認項目": x.missing.join("・"), evidence_link: link, "メールID": m.id, "登録者":"メール取込(orion)", "登録日時":now, "更新日時":now });
+    n++; });
+  if (n) startLog_(null, "掲載", "", "mail_ingest", undefined, { added: n, mailbox: mailbox||"" });
+  return n;
+}
 // 1時間ごとの取り込みを設定（エディタから1回だけ）
 function startMailTriggerInstall(){
   ScriptApp.getProjectTriggers().forEach(function(tr){ if (tr.getHandlerFunction() === "startMailScan") ScriptApp.deleteTrigger(tr); });
