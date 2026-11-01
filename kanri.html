@@ -73,13 +73,24 @@ const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"
 let CUR = null;
 function ls(k, v){ try{ if(v===undefined) return localStorage.getItem(k); if(v===null) localStorage.removeItem(k); else localStorage.setItem(k, v); }catch(e){ return null; } }
 
+// 前回ログインした管理者なら確認を待たずにすぐ開く（確認は裏で。期限切れならログイン画面へ）
 async function boot(){
   const tok = ls("os-admin-token") || ls("os-token");
-  if (tok){ const me = await whoami(tok); if (me && me.role === "admin"){ enter(tok, me); return; } }
+  let cached = null; try{ cached = JSON.parse(ls("kanri-me")||"null"); }catch(e){}
+  if (tok && cached && cached.role === "admin"){
+    enter(tok, cached);
+    const me = await whoami(tok);
+    if (me === false){ ls("kanri-me", null); showLogin("ログインの期限が切れました。もう一度ログインしてください"); }
+    return;
+  }
+  if (tok){ $("vLogin").classList.remove("hide"); $("loginMsg").textContent = ""; $("staffSel").innerHTML = '<option value="">確認中…</option>';
+    const me = await whoami(tok); if (me && me.role === "admin"){ enter(tok, me); return; } }
   showLogin();
 }
+// 戻り値：管理者情報／false（ログイン無効）／null（通信できず＝判断しない）
 async function whoami(tok){
-  try{ const r = await fetch(STAFF_API, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({action:"home", token:tok})}).then(r=>r.json()); return r.ok ? r.staff : null; }catch(e){ return null; }
+  const c = new AbortController(); const t = setTimeout(()=>c.abort(), 15000);
+  try{ const r = await fetch(STAFF_API, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({action:"home", token:tok}), signal:c.signal, busy:false}).then(r=>r.json()); return r.ok ? r.staff : false; }catch(e){ return null; } finally{ clearTimeout(t); }
 }
 async function showLogin(msg){
   $("vApp").classList.add("hide"); $("vLogin").classList.remove("hide"); $("loginMsg").textContent = msg||"";
@@ -99,7 +110,7 @@ async function doLogin(){
 }
 function enter(tok, me){
   // 中の画面は同じ場所のログイン情報を読むので、両方の鍵に入れておく
-  ls("os-token", tok); ls("os-admin-token", tok);
+  ls("os-token", tok); ls("os-admin-token", tok); try{ ls("kanri-me", JSON.stringify({name:me.name, role:me.role, staff_id:me.staff_id})); }catch(e){}
   $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); $("who").textContent = me.name + "（管理者）";
   $("nav").innerHTML = SECTIONS.map(s=>`<button id="nb_${s.id}" onclick="show('${s.id}')">${esc(s.label)}</button>`).join("");
   const first = (location.hash||"").slice(1); show(SECTIONS.some(s=>s.id===first) ? first : (ls("kanri-tab")||"shime"));
@@ -108,10 +119,26 @@ function enter(tok, me){
 function show(id){
   const sec = SECTIONS.find(s=>s.id===id) || SECTIONS[0]; CUR = sec.id; ls("kanri-tab", CUR); history.replaceState(null, "", "#"+CUR);
   SECTIONS.forEach(s=>{ $("nb_"+s.id).classList.toggle("on", s.id===CUR); const f = $("fr_"+s.id); if (f) f.classList.toggle("hide", s.id!==CUR); });
-  if (!$("fr_"+CUR)){ const f = document.createElement("iframe"); f.id = "fr_"+CUR; f.src = sec.src; f.title = sec.label; $("frames").appendChild(f); }
+  if (!$("fr_"+CUR)){ const f = document.createElement("iframe"); f.id = "fr_"+CUR; f.src = sec.src; f.title = sec.label; f.onload = ()=>tidy(f); $("frames").appendChild(f); }
+}
+// 中の画面の見出し・ログイン表示は管理者アプリと重なるので隠す。中から別の画面を開くときは管理者アプリのタブで開く
+const HIDE_CSS = {
+  shime: ".app > header{display:none!important}",
+  keihi: "header{display:none!important}",
+  staff: "header{display:none!important}",
+  hacchu: ""
+};
+const OPEN_MAP = [[/(^|\/)admin\.html/, "staff"], [/hacchu\.html/, "hacchu"], [/keihi\.html/, "keihi"], [/dashboard\.html/, "shime"]];
+function tidy(f){
+  try{
+    const w = f.contentWindow, d = f.contentDocument, id = f.id.slice(3);
+    if (HIDE_CSS[id]){ const st = d.createElement("style"); st.textContent = HIDE_CSS[id]; d.head.appendChild(st); }
+    const orig = w.open.bind(w);
+    w.open = function(url){ const u = String(url||""); const m = OPEN_MAP.find(x=>x[0].test(u)); if (m){ show(m[1]); return null; } return orig.apply(w, arguments); };
+  }catch(e){}
 }
 function reloadCur(){ const f = $("fr_"+CUR); if (f) f.contentWindow.location.reload(); }
-function logout(){ if(!confirm("ログアウトしますか？")) return; ls("os-admin-token", null); ls("os-token", null); $("frames").innerHTML = ""; showLogin(); }
+function logout(){ if(!confirm("ログアウトしますか？")) return; ls("os-admin-token", null); ls("os-token", null); ls("kanri-me", null); $("frames").innerHTML = ""; showLogin(); }
 boot();
 </script>
 </body>
