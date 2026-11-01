@@ -296,6 +296,7 @@ function renderHome(){
         ${list.map(o=>`<div class="row" onclick="recvSheet('${o.id}')" style="cursor:pointer"><span class="l">${esc(o.name)}<small>×${o.qty}${esc(o.unit)}・発注 ${fmtD(o.orderedAt)}</small></span><span class="ar">›</span></div>`).join("")}
         <div style="display:flex;gap:8px;margin-top:8px"><button class="btn sm" style="flex:2" onclick="recvSup('${esc(sup)}')">全部届いた</button><button class="btn sm sec" style="flex:1" onclick="cancelSup('${esc(sup)}')">取消</button></div></div>`; }).join("")}
       ${!n3?`<div class="mini">届く予定の物はありません</div>`:""}
+      <button class="btn sm sec" style="width:100%;margin-top:10px" onclick="buySheet()">🛒 お店で買ってきた物を在庫に入れる</button>
     </div>
 
     <div class="links">
@@ -380,6 +381,41 @@ function recvSheet(id){ const o = (HOME.orders||[]).find(x=>x.id===id); if(!o) r
     <label>1${esc(o.unit)}あたりの入数（在庫の単位に換算。例：1箱＝24袋なら 24）</label><input type="number" inputmode="numeric" id="rcPer" value="1">
     <div style="height:14px"></div><button class="btn" onclick="recvDo('${id}')">納品済にして在庫に加える</button><button class="btn sec" style="margin-top:8px" onclick="closeOv()">やめる</button>`); }
 async function recvDo(id){ const r = await post("inv_order_update", {order_id:id, status:"納品済", received:Number($("rcQty").value)||0, perUnit:Number($("rcPer").value)||1}); if(r.error){ showMsg(r.error); return; } closeOv(); toast("納品を記録しました"); loadHome(); }
+// ===== お店で買ってきた物（ハナマサ・業務スーパーなど）を1回で在庫に入れる =====
+// 中身は「発注→納品済」を同時に記録するだけ（履歴は発注・在庫記録に残る）。数は在庫の単位で入れる
+let BUY = {};
+function buySheet(){
+  BUY = {};
+  const sups = [...new Set(MASTER.map(it=>it.supplier).filter(Boolean))];
+  sheet(`<h3>買ってきた物を在庫に入れる</h3>
+    <div class="mini">数は<b>在庫の単位</b>で入れます（例：ハンバーグ 1袋26個なら「26」）。数字をタップすると直接入力できます。レシートは経費アプリで登録してください</div>
+    <label>買ったお店</label><select id="byShop" onchange="buyList()">${sups.map(x=>`<option>${esc(x)}</option>`).join("")}<option value="">その他</option></select>
+    <label>品目をさがす</label><input id="byQ" placeholder="例：コロッケ" oninput="buyList()">
+    <div id="byList" style="max-height:46vh;overflow:auto;margin-top:8px"></div>
+    <div style="height:10px"></div><button class="btn" id="byOk" onclick="buyDo()">在庫に入れる</button><button class="btn sec" style="margin-top:8px" onclick="closeOv()">やめる</button>`);
+  buyList();
+}
+function buyList(){
+  const shop = $("byShop").value, q = ($("byQ").value||"").trim();
+  let L = MASTER.filter(it=>!q || it.name.indexOf(q)>=0);
+  if (!q) L = L.filter(it=>!shop || it.supplier===shop);
+  $("byList").innerHTML = L.length ? L.map(it=>`<div class="row"><span class="l">${esc(it.name)}<small>${esc(it.spec||"")}${it.stock!=null?`・いま ${it.stock}${esc(it.unit||"")}`:""}</small></span>
+    <span class="step"><button onclick="buyAdd('${it.id}',-1)">−</button><span class="v" id="by_${it.id}" onclick="buyAdd('${it.id}',0)" style="cursor:pointer">${BUY[it.id]||0}<small>${esc(it.unit||"")}</small></span><button onclick="buyAdd('${it.id}',1)">＋</button></span></div>`).join("") : `<div class="mini">見つかりません。名前の一部で探してください</div>`;
+}
+function buyAdd(id, d){ const it = MASTER.find(x=>x.id===id); let v = (BUY[id]||0) + d;
+  if (d === 0){ const n = prompt(`${it.name}：買った数（${it.unit||""}）`, String(BUY[id]||"")); if (n === null) return; v = Math.max(0, Number(n)||0); }
+  BUY[id] = Math.max(0, v); if (!BUY[id]) delete BUY[id]; const el = $("by_"+id); if (el) el.innerHTML = (BUY[id]||0) + "<small>" + esc(it.unit||"") + "</small>";
+  $("byOk").textContent = Object.keys(BUY).length ? `在庫に入れる（${Object.keys(BUY).length}品目）` : "在庫に入れる"; }
+async function buyDo(){
+  const ids = Object.keys(BUY); if (!ids.length){ toast("買った品目の数を入れてください"); return; }
+  const shop = $("byShop").value || "店頭";
+  const items = ids.map(id=>({item_id:id, qty:BUY[id], supplier:shop, unit:(MASTER.find(x=>x.id===id)||{}).unit, note:"店頭で購入"}));
+  $("byOk").disabled = true;
+  const c = await post("inv_order_create", {items, supplier:shop, status:"発注済", eta:"", note:"店頭で購入"});
+  if (c.error){ showMsg(c.error); $("byOk").disabled = false; return; }
+  for (let i=0;i<c.ids.length;i++){ const r = await post("inv_order_update", {order_id:c.ids[i], status:"納品済", received:items[i].qty, perUnit:1, note:"店頭で購入"}); if (r.error){ showMsg(r.error); break; } }
+  closeOv(); toast(`${ids.length}品目を在庫に入れました`); loadHome();
+}
 function manualOrder(){
   const opts = MASTER.map(it=>`<option value="${it.id}">${esc(it.name)}（${esc(it.supplier||"—")}）</option>`).join("");
   sheet(`<h3>手動で発注を記録</h3><label>品目</label><select id="moItem">${opts}</select><label>数量</label><input type="number" inputmode="numeric" id="moQty" value="1"><label>納品予定日（任意）</label><input id="moEta" placeholder="2026/10/29">
