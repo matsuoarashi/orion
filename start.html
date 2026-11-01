@@ -158,24 +158,47 @@ async function saveSrv(pid, propId){ const b = {project_id:pid, property_id:prop
   const r = await post("os_start_survey_save", b); if (r.error) return alert(r.error); openPrj(CUR); }
 
 // ---------- 物件Inbox ----------
+let SHOW_X = false;
+const GRADE_CSS = {"◎":"background:#dcefe0","△":"background:#f3ead2","×":"background:#ece7de;color:#6d6054"};
+const yen = v => Number(v) ? (Number(v)/10000).toFixed(1).replace(/\.0$/,"")+"万円" : "賃料?";
+function bookmarklet(){
+  // 開いている物件ページの表示テキストを START に送るだけ。サーバーから物件サイトへはアクセスしない
+  const code = `(function(){var t=(document.body.innerText||"").slice(0,60000);var b={type:"os_start_capture",token:${JSON.stringify(TOKEN)},url:location.href,title:document.title,text:t};`
+    + `var d=document.createElement("div");d.style.cssText="position:fixed;z-index:2147483647;right:16px;bottom:16px;background:#7a2f2f;color:#fff;padding:10px 14px;border-radius:10px;font:14px sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.3)";d.textContent="STARTに送信中…";document.body.appendChild(d);`
+    + `fetch(${JSON.stringify(SHEET_URL)},{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify(b)}).then(function(){d.textContent="STARTに取り込みました";}).catch(function(){d.textContent="送れませんでした";d.style.background="#b23b3b";}).finally(function(){setTimeout(function(){d.remove();},2500);});})();`;
+  return "javascript:" + encodeURIComponent(code);
+}
 async function loadInbox(){
   const v = $("v_inbox"); v.innerHTML = "<div class='sub'>読み込み中…</div>"; const r = await get("os_start_inbox"); if (r.error){ v.innerHTML = `<div class='warn'>${esc(r.error)}</div>`; return; }
   const props = r.properties;
-  let h = `<div class="card"><h2>物件を登録（URL＋分かる項目）</h2><div class="note">ページの自動取得はしません。分からない項目は空欄のまま（未確認として残ります）。URLが開けない物件は募集図面やスクショをDriveに置き、そのリンクを根拠に。</div>
-    <label>URL</label><input id="li_url" placeholder="https://">
-    <div class="grid2">${[["source","掲載元"],["賃料","賃料（円/月）"],["坪","坪"],["面積㎡","面積㎡"],["最寄駅","最寄駅"],["徒歩分","徒歩分"],["造作譲渡","造作譲渡（円）"],["契約形態","契約形態"]].map(([k,l])=>`<div><label>${l}</label><input id="li_${k}"></div>`).join("")}</div>
-    <label>住所</label><input id="li_住所"><label>根拠リンク（図面・スクショ）</label><input id="li_ev">
-    <div style="margin-top:8px"><button class="b" onclick="addListing()">Inboxに入れる</button></div></div>`;
-  h += `<div class="card"><h2>未確認 ${r.inbox.length}件</h2>${r.inbox.length?"":"<div class='sub'>ありません。Gmailで物件通知に「ORION/物件」ラベルを付けると1時間ごとに入ります</div>"}</div>`;
-  h += r.inbox.map(l=>`<div class="card"><div class="row"><b>${esc(l["最寄駅"]||"駅不明")}</b><span>${esc(l["坪"]||"?")}坪</span><span>${l["賃料"]?Number(l["賃料"]).toLocaleString()+"円":"賃料不明"}</span><span class="sub">${esc(l.source)} ${esc(l["初出日"])}</span></div>
-    ${l.source_url?`<div class="note"><a href="${esc(l.source_url)}" target="_blank" rel="noopener">${esc(l.source_url.slice(0,60))}</a></div>`:""}
-    ${l["未確認項目"]?`<div class="note">未確認: ${esc(l["未確認項目"])}</div>`:""}${l.evidence_link?`<div class="note"><a href="${esc(l.evidence_link)}" target="_blank" rel="noopener">元のメール・根拠</a></div>`:""}
+  const g = k => r.inbox.filter(l=>l["判定"]===k).length;
+  const list = r.inbox.filter(l=>SHOW_X || l["判定"]!=="×");
+  let h = `<div class="card"><h2>未確認 ◎${g("◎")}件・△${g("△")}件 <span class="sub">（×${g("×")}件）</span></h2>
+    <div class="note">◎＝坪単価3万円以内・1階・6〜12坪がそろっている／△＝基準外はないが分からない項目がある／×＝基準外（理由付きで残しています）。毎朝7時に、前日から増えた◎と△をメールで送ります。</div>
+    <div class="row" style="margin-top:6px"><button class="g" onclick="SHOW_X=!SHOW_X;loadInbox()">${SHOW_X?"×を隠す":"×も表示する"}</button></div></div>`;
+  h += list.map(l=>`<div class="card"><div class="row"><span class="pill" style="${GRADE_CSS[l["判定"]]||""};font-size:14px;font-weight:700">${esc(l["判定"]||"?")}</span><b>${esc(l["最寄駅"]||"駅不明")}${l["徒歩分"]!==""?" 徒歩"+esc(l["徒歩分"])+"分":""}</b><span>${yen(l["賃料"])}</span><span>${esc(l["坪"]||"?")}坪</span>${l["坪単価"]?`<span class="sub">坪${Number(l["坪単価"]).toLocaleString()}円</span>`:""}<span>${l["階"]!==""?esc(l["階"])+"階":"階?"}</span></div>
+    <div class="note">${esc(l["判定理由"]||"")}</div>
+    ${l["住所"]?`<div class="note">${esc(l["住所"])}</div>`:""}
+    ${l["不動産会社"]||l["電話"]?`<div class="note">${esc(l["不動産会社"]||"")} ${l["電話"]?`<a href="tel:${esc(l["電話"])}">${esc(l["電話"])}</a>`:""}</div>`:""}
+    ${l["前テナント"]||l["造作譲渡"]!==""?`<div class="note">${l["前テナント"]?"前: "+esc(l["前テナント"])+" ":""}${l["造作譲渡"]!==""?"造作 "+yen(l["造作譲渡"]):""}</div>`:""}
+    ${l["備考"]?`<div class="note">${esc(String(l["備考"]).slice(0,160))}</div>`:""}
+    <div class="note">${l.source_url?`<a href="${esc(l.source_url)}" target="_blank" rel="noopener">物件ページを開く</a> `:""}${l.evidence_link?`<a href="${esc(l.evidence_link)}" target="_blank" rel="noopener">元のメール</a> `:""}<span class="sub">${esc(l.source)} ${esc(l["初出日"])}${l["詳細取込日時"]?"・ページ取込済":""}</span></div>
     ${l.dups.length?`<div class="warn">同じ物件かも: ${l.dups.map(d=>`<button class="g" onclick="lset('${esc(l.listing_id)}','link','${esc(d.property_id)}')">${esc(d.property_id)}（${esc(d.why)}）に紐付け</button>`).join(" ")}</div>`:""}
-    <div class="row" style="margin-top:8px"><button class="b" onclick="lset('${esc(l.listing_id)}','new_property')">新しい物件として登録</button>
+    <div class="row" style="margin-top:8px"><button class="b" onclick="lset('${esc(l.listing_id)}','new_property')">候補にする（物件登録）</button>
       <select id="lk_${esc(l.listing_id)}"><option value="">既存物件に紐付け…</option>${props.map(p=>`<option value="${esc(p.property_id)}">${esc(p.property_id)} ${esc(p["名称"])}</option>`).join("")}</select>
       <button class="g" onclick="lset('${esc(l.listing_id)}','link',$('lk_${esc(l.listing_id)}').value)">紐付け</button>
       <button class="g" onclick="lset('${esc(l.listing_id)}','ignore')">対象外</button></div></div>`).join("");
-  v.innerHTML = h; $("inboxN").textContent = r.inbox.length ? "("+r.inbox.length+")" : "";
+  h += `<div class="card"><h2>ブックマーク「STARTに取り込む」</h2>
+    <div class="note">物件ページ（飲食店ドットコムなど）を開いた状態で押すと、画面に出ている住所・階・設備・不動産会社などがこの物件Inboxに足されます。ご自身が見ている画面の内容を記録するだけで、サーバーから物件サイトへは取りに行きません。</div>
+    <div class="row" style="margin-top:8px"><a class="b" style="text-decoration:none;display:inline-block;border-radius:8px;padding:8px 12px;background:var(--wine);color:#fff;font-weight:600" href="${bookmarklet()}" onclick="alert('このボタンをブックマークバーにドラッグしてください');return false;">STARTに取り込む</a>
+    <span class="sub">← PCのChromeで、このボタンをブックマークバーへドラッグ</span></div>
+    <div class="note">このブックマークにはログイン情報が入っています。人に渡さないでください。ログインし直したら、ここから入れ直してください。</div></div>`;
+  h += `<details class="card"><summary><b>手で登録する</b></summary><div class="note">URLが開けない物件は募集図面やスクショをDriveに置き、そのリンクを根拠に。</div>
+    <label>URL</label><input id="li_url" placeholder="https://">
+    <div class="grid2">${[["source","掲載元"],["賃料","賃料（円/月）"],["坪","坪"],["面積㎡","面積㎡"],["最寄駅","最寄駅"],["徒歩分","徒歩分"],["造作譲渡","造作譲渡（円）"],["契約形態","契約形態"]].map(([k,l])=>`<div><label>${l}</label><input id="li_${k}"></div>`).join("")}</div>
+    <label>住所</label><input id="li_住所"><label>根拠リンク（図面・スクショ）</label><input id="li_ev">
+    <div style="margin-top:8px"><button class="b" onclick="addListing()">Inboxに入れる</button></div></details>`;
+  v.innerHTML = h; $("inboxN").textContent = (g("◎")+g("△")) ? "("+(g("◎")+g("△"))+")" : "";
 }
 async function addListing(){ const b = {source_url:$("li_url").value.trim(), evidence_link:$("li_ev").value.trim(), "住所":$("li_住所").value.trim()}; ["source","賃料","坪","面積㎡","最寄駅","徒歩分","造作譲渡","契約形態"].forEach(k=>{ b[k] = $("li_"+k).value.trim(); });
   if (!b.source_url && !b.evidence_link) return alert("URLか根拠リンクのどちらかは必要です"); const r = await post("os_start_listing_add", b); if (r.error) return alert(r.error); if (r.existed) alert("同じURLが既にあります。最終確認日を更新しました"); loadInbox(); }
