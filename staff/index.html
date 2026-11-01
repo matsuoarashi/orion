@@ -974,7 +974,9 @@ async function sendFix(){
   if (FIX.want.in && FIX.want.out && toMinC(FIX.want.out) <= toMinC(FIX.want.in)){ toast("退勤は出勤より後にしてください"); return; }
   const reason = $("fxReason").value;
   if(!confirm(`${mdLabel(FIX.date)}：${reqs.map(r=>r.field+"→"+r.wanted+(r.field==="休憩"?"分":"")).join("、")} で申請します。よろしいですか？`)) return;
-  for (const q of reqs){ const r = await api("fix_request", {date:FIX.date, field:q.field, wanted:q.wanted, reason}); if(!r.ok){ showMsg($("msg"), r.error); closeOv(); return; } }
+  // 11/1: 途中で失敗したら、送れた項目は「現在の値」に反映して外し、シートは開いたまま（押し直しで二重申請にならない）
+  for (const q of reqs){ const r = await api("fix_request", {date:FIX.date, field:q.field, wanted:q.wanted, reason}); if(!r.ok){ toast(r.error + "　送れなかった分だけ、もう一度押してください"); return; }
+    if (q.field==="出勤") FIX.cur.in = q.wanted; else if (q.field==="退勤") FIX.cur.out = q.wanted; else if (q.field==="休憩") FIX.cur.brk = FIX.want.brk; }
   closeOv(); toast("申請しました。管理者の承認をお待ちください"); loadHist(); if(HOME && HOME.today===FIX.date) loadHome();
 }
 function openPass(){
