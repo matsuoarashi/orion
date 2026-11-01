@@ -173,7 +173,7 @@ async function doLogin(){
 }
 function logout(){ if(!confirm("ログアウトしますか？")) return; localStorage.removeItem("os-token"); TOKEN=""; showLogin(); }
 function enterApp(h){ $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); applyHome(h); go("add"); }
-function applyHome(h){ ME = h.me; YM = h.ym; LIST = h.list||[]; if(h.accounts) ACCOUNTS = h.accounts; $("hName").textContent = ME.name + (ME.role==="admin"?"（管理者）":"");
+function applyHome(h){ ME = h.me; YM = h.ym; LIST = h.list||[]; UNDATED = h.undated||[]; if(h.accounts) ACCOUNTS = h.accounts; $("hName").textContent = ME.name + (ME.role==="admin"?"（管理者）":"");
   const n = h.unchecked||0; $("bdList").textContent = n; $("bdList").classList.toggle("hide", !n); }
 function go(p){ PAGE = p; $("pAdd").classList.toggle("hide", p!=="add"); $("pList").classList.toggle("hide", p!=="list"); $("n_add").classList.toggle("on", p==="add"); $("n_list").classList.toggle("on", p==="list"); showMsg(""); closeOv();
   if(p==="add") renderAdd(); else renderList(); $("main").scrollTo(0,0); }
@@ -294,6 +294,7 @@ function renderList(){
   const L = LIST; const tot = L.reduce((a,x)=>a+x.amount,0); const byA = {}; L.forEach(x=>{ const k = x.kind==="初期" ? "初期費用" : x.account; byA[k]=(byA[k]||0)+x.amount; });
   const unc = L.filter(x=>x.status==="未確認").length;
   $("pList").innerHTML = `
+    ${UNDATED.length?`<div class="card" style="border-color:var(--red)"><h2 style="color:var(--red)">日付が入っていない登録 <small>${UNDATED.length}件</small></h2><div class="mini" style="margin-bottom:6px">日付がないとどの月にも入りません。タップして日付を入れてください</div>${UNDATED.map((x,k)=>`<button class="row" onclick="openItem(${-k-1})"><div class="l"><b>${esc(x.vendor)}</b><small>${esc(x.kind==="初期"?"初期費用":x.account)}・${esc(x.status)}</small></div><b>${yen(x.amount)}</b></button>`).join("")}</div>`:""}
     <div class="mon"><button onclick="shiftYM(-1)">◀</button><b>${YM.replace("/","年")}月</b><button onclick="shiftYM(1)">▶</button></div>
     <div class="card"><h2>${ME.role==="admin"?"登録の合計":"自分の登録"} <small>${L.length}件${unc?`・未確認${unc}件`:""}</small></h2>
       ${Object.entries(byA).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="sum"><span>${esc(k)}</span><b>${yen(v)}</b></div>`).join("") || `<div class="mini">まだ登録がありません</div>`}
@@ -303,7 +304,9 @@ function renderList(){
     </div>
     <div class="card"><h2>明細</h2>${L.map((x,i)=>`<button class="row" onclick="openItem(${i})"><div class="l"><b>${esc(x.vendor)}${x.memo?` <span class="mini">${esc(x.memo)}</span>`:""}</b><small>${x.date.slice(5).replace("/","/")}・${esc(x.kind==="初期"?"初期費用":x.account)}・${esc(x.pay)}${ME.role==="admin"?"・"+esc(x.by):""}</small></div><div class="r">${yen(x.amount)}<br>${x.status==="未確認"?`<span class="pill amber">未確認</span>`:`<span class="pill">確認済</span>`}${x.url?"":` <span class="pill" style="background:var(--cream-d);color:var(--mute)">写真なし</span>`}</div></button>`).join("") || `<div class="mini">この月の登録はありません</div>`}</div>`;
 }
-function openItem(i){ const x = LIST[i]; EDIT = true; F = { id:x.id, date:x.date.replace(/\//g,"-"), vendor:x.vendor, amount:x.amount, account:x.account, pay:x.pay, kind:x.kind, memo:x.memo, url:x.url, status:x.status, image:"", mime:"", thumb:"", ocr:"", reading:false };
+let UNDATED = [];
+// 日付が空の登録（どの月にも出ないので一覧の上に出す）は負の番号で開く
+function openItem(i){ const x = i < 0 ? UNDATED[-i-1] : LIST[i]; EDIT = true; F = { id:x.id, date:x.date.replace(/\//g,"-"), vendor:x.vendor, amount:x.amount, account:x.account, pay:x.pay, kind:x.kind, memo:x.memo, url:x.url, status:x.status, image:"", mime:"", thumb:"", ocr:"", reading:false };
   sheet(formHtml(F, true)); }
 async function del(id){ if(!confirm("この登録を削除しますか？（経費シートからも消えます）")) return; const r = await post("rc_delete", {id}); if(r.error){ toast(r.error); return; } toast("削除しました"); EDIT=false; F=null; closeOv(); reload(); }
 async function check(id){ const r = await post("rc_check", {id}); if(r.error){ toast(r.error); return; } toast("確認済にしました"); EDIT=false; F=null; closeOv(); reload(); }
