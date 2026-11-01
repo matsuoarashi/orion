@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>締め | 洋食オリオン</title>
+<style>
+:root{ --g:#2c4f39; --g-d:#1f3a2a; --g-l:#e4eee7; --cream:#faf6ee; --cream-d:#ece4d2; --ink:#2b2a26; --mute:#7a7265; --red:#a33c2e; --red-l:#f6e3df; --amber:#b7791f; --amber-l:#f7ebd3; --line:#d9d1bd; --r:14px; --sat:env(safe-area-inset-top); --sab:env(safe-area-inset-bottom); }
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:var(--cream);color:var(--ink);font-size:16px;line-height:1.5}
+.hide{display:none!important}
+header{position:sticky;top:0;z-index:5;background:var(--g);color:#fff;padding:calc(10px + var(--sat)) 12px 10px;display:flex;align-items:center;gap:10px}
+header button{background:rgba(255,255,255,.15);border:0;color:#fff;border-radius:8px;padding:6px 10px;font-size:13px}
+header .t{font-size:11px;letter-spacing:4px;opacity:.85} header .n{font-size:16px;font-weight:bold}
+main{padding:12px 12px calc(110px + var(--sab));max-width:560px;margin:0 auto}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+h2{font-size:16px;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+h2 .no{width:24px;height:24px;border-radius:50%;background:var(--g);color:#fff;font-size:13px;display:inline-flex;align-items:center;justify-content:center;flex:none}
+h2 small{font-weight:normal;color:var(--mute);font-size:12px}
+.mini{font-size:13px;color:var(--mute);line-height:1.5}
+.row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px dashed var(--line);gap:8px}
+.row:last-child{border-bottom:0}
+.row .l{flex:1}.row .l small{display:block;font-size:12px;color:var(--mute)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fm{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:10px;padding:6px 8px;background:var(--cream)}
+.fm span{font-size:14px}.fm small{display:block;font-size:11px;color:var(--mute)}
+input{font-family:inherit;font-size:18px;border:1px solid var(--line);border-radius:8px;padding:8px;width:84px;text-align:right;background:#fff}
+input.wide{width:100%;text-align:left}
+.lbl{font-size:13px;color:var(--mute);margin:10px 0 4px}
+.sum .row{font-size:15px}.ok{color:var(--g);font-weight:bold}.ng{color:var(--red);font-weight:bold}
+.big{font-size:22px;font-weight:bold}
+.bar{position:fixed;left:0;right:0;bottom:0;background:linear-gradient(transparent,var(--cream) 25%);padding:14px 12px calc(12px + var(--sab))}
+.btn{display:block;width:100%;max-width:560px;margin:0 auto;border:0;border-radius:var(--r);padding:16px;font-size:19px;font-weight:bold;color:#fff;background:var(--g)}
+.btn:disabled{opacity:.5}
+.msg{padding:12px 14px;border-radius:10px;font-size:14px;margin-bottom:12px;line-height:1.6}
+.msg.err{background:var(--red-l);color:var(--red)} .msg.ok{background:var(--g-l);color:var(--g)} .msg.warn{background:var(--amber-l);color:var(--amber)}
+.pill{display:inline-block;border-radius:999px;padding:1px 8px;font-size:12px;background:var(--g-l);color:var(--g)}
+</style>
+</head>
+<body>
+<header><button onclick="back()">‹ 勤怠</button><div style="flex:1"><div class="t">締 め</div><div class="n" id="who">-</div></div><button onclick="loadDay(true)">更新</button></header>
+<main>
+  <div id="msg"></div>
+  <div id="body" class="hide">
+    <div class="card">
+      <h2>今日のレジ記録 <small id="src"></small></h2>
+      <div class="row"><span class="l">売上（会計 <b id="cnt">-</b> 件）</span><b id="sales">-</b></div>
+      <div class="row"><span class="l">うち PayPay</span><b id="pp">-</b></div>
+      <div class="row"><span class="l">うち 現金</span><b id="cashSales">-</b></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="no">1</span>レジの現金を数える</h2>
+      <div class="grid" id="denoms"></div>
+      <div class="row" style="margin-top:8px"><span class="l">数えた現金</span><b class="big" id="cashTotal">0 円</b></div>
+      <div class="row"><span class="l">釣銭準備金<small>朝レジに入れていた額</small></span><input type="number" inputmode="numeric" id="prep" oninput="calc()"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="no">2</span>PayPay と業者払い</h2>
+      <div class="row"><span class="l">PayPay 画面の本日の取引額<small>店の端末の PayPay で確認</small></span><input type="number" inputmode="numeric" id="ppScreen" placeholder="0" oninput="calc()"></div>
+      <div class="row"><span class="l">業者に現金で払った額<small>納品のときにレジから払った分。なければ 0</small></span><input type="number" inputmode="numeric" id="vendor" placeholder="0" oninput="calc()"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="no">3</span>注文票の品数を数える</h2>
+      <div class="mini">注文票を見て数えて入れてください。（ ）はレジの記録。分からない欄は空のままで構いません</div>
+      <div id="slips"></div>
+    </div>
+
+    <div class="card sum">
+      <h2>結果</h2>
+      <div id="result"></div>
+    </div>
+  </div>
+</main>
+<div class="bar hide" id="bar"><button class="btn" id="saveBtn" onclick="save()">締めを記録する</button></div>
+
+<script>
+// スタッフの個人スマホで行う締め。売上・PayPay はサーバー（分析シート）の今日の記録から取り、締めた人の名前を残す
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbzFNl4UM3fkoANru-agWmuOox-h3cS1yJmx4UZxpGFemEBnAUv45Gdp1VOvtCqOVUg/exec";
+const STAFF_API = "https://script.google.com/macros/s/AKfycbwgGW6rXzAW2rHVicdoCMdHOT_E3egrXPsaEJerX-_brZr0mYF6Qo_tRorX8PgLc7c/exec";
+const DENOMS = [10000,5000,1000,500,100,50,10,5,1];
+const PREP_DEFAULT = 40000;
+const SLIP_GROUPS = [
+  { label:"店内", items:["オリオン","オリオン ハーフ","ナシナシ","ナシナシ ハーフ"] },
+  { label:"持ち帰り", short:true, items:["TGオリオン","TGオリオン ハーフ","TGナシナシ","TGナシナシ ハーフ"] },
+  { label:"副菜・ドリンク", items:["副菜追加","副菜値引き","ドリンク"] }
+];
+const SLIP_MENUS = SLIP_GROUPS.reduce((a,g)=>a.concat(g.items),[]);
+const DRINK_NAMES = ["コカ・コーラ","コカ・コーラ ゼロ","ジンジャーエール","キリンラガー 小瓶"];
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const yen = n => (Number(n)||0).toLocaleString() + " 円";
+let TOKEN = "", ME = null, DAY = null, R = null;
+function ls(k, v){ try{ if(v===undefined) return localStorage.getItem(k); if(v===null) localStorage.removeItem(k); else localStorage.setItem(k, v); }catch(e){ return null; } }
+function msg(t, cls){ $("msg").innerHTML = t ? `<div class="msg ${cls||"err"}">${t}</div>` : ""; }
+function back(){ location.href = "staff_index.html"; }
+async function fetchJ(url, opt, ms){ const c = new AbortController(); const t = setTimeout(()=>c.abort(), ms||20000); try{ const r = await fetch(url, Object.assign({signal:c.signal, cache:"no-store"}, opt||{})); return JSON.parse(await r.text()); } finally{ clearTimeout(t); } }
+function todayKey(){ const d = new Date(), p = n=>String(n).padStart(2,"0"); return d.getFullYear()+"/"+p(d.getMonth()+1)+"/"+p(d.getDate()); }
+function draftKey(){ return "shime-draft-" + todayKey(); }
+
+async function boot(){
+  TOKEN = ls("os-token") || "";
+  if (!TOKEN){ msg("勤怠アプリでログインしてから開いてください。<br><a href='staff_index.html'>勤怠アプリへ</a>"); return; }
+  msg("読み込み中…", "ok");
+  let h; try{ h = await fetchJ(STAFF_API, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({action:"home", token:TOKEN})}); }catch(e){ msg("通信できません。電波を確認して「更新」を押してください"); return; }
+  if (!h.ok){ msg("ログインの期限が切れました。勤怠アプリでログインし直してください。<br><a href='staff_index.html'>勤怠アプリへ</a>"); return; }
+  ME = h.staff; $("who").textContent = ME.name;
+  // 締められるのは今日のシフトに入っている人と管理者
+  if (!h.todayShift && ME.role !== "admin"){ msg("今日のシフトに入っていないため、締めはできません。締めが必要なら長下さんに連絡してください。"); return; }
+  build(); await loadDay(false);
+}
+function build(){
+  const d = JSON.parse(ls(draftKey()) || "{}");
+  $("denoms").innerHTML = DENOMS.map((v,i)=>`<div class="fm"><span>${v.toLocaleString()}円</span><span><input type="number" inputmode="numeric" id="dn${i}" placeholder="0" value="${d["dn"+i]??""}" oninput="calc()"> 枚</span></div>`).join("");
+  $("prep").value = d.prep ?? (ls("orion-prep2") || PREP_DEFAULT);
+  $("ppScreen").value = d.ppScreen ?? ""; $("vendor").value = d.vendor ?? "";
+  $("slips").innerHTML = SLIP_GROUPS.map(g=>`<div class="lbl">${g.label}</div><div class="grid">` + g.items.map(n=>{ const i = SLIP_MENUS.indexOf(n); const lab = g.short ? n.replace(/^TG/,"") : n;
+    return `<div class="fm"><span>${esc(lab)}<small id="sl${i}c"></small></span><span><input type="number" inputmode="numeric" id="sl${i}" placeholder="—" value="${d["sl"+i]??""}" oninput="calc()"></span></div>`; }).join("") + `</div>`).join("");
+}
+async function loadDay(manual){
+  try{
+    const j = await fetchJ(SHEET_URL + "?t=" + Date.now());
+    const t = (j.daily||[]).find(x=>x.date===j.todayKey) || { date:j.todayKey, count:0, sales:0, salesPaypay:0, items:{} };
+    DAY = { count:t.count||0, sum:t.sales||0, paypay:t.salesPaypay||0, items:t.items||{}, updated:j.updated, date:j.todayKey };
+    const done = (j.ops && j.ops.shime || []).filter(x=>x.date===j.todayKey);
+    $("src").textContent = "更新 " + (j.updated||"");
+    msg(done.length ? `今日はすでに ${done[done.length-1].time} に締めが記録されています${done[done.length-1].by?"（"+esc(done[done.length-1].by)+"）":""}。やり直す場合は記録し直してください（管理者が確認します）` : "", "warn");
+    $("body").classList.remove("hide"); $("bar").classList.remove("hide");
+    calc(); if (manual) msg("最新の記録を読み込みました", "ok");
+  }catch(e){ msg("今日の売上を読み込めませんでした。電波を確認して「更新」を押してください"); }
+}
+function itemQ(n){ const v = DAY.items ? DAY.items[n] : 0; return v && typeof v === "object" ? (v.q||0) : (Number(v)||0); }
+function appCount(n){ return n==="ドリンク" ? DRINK_NAMES.reduce((a,x)=>a+itemQ(x),0) : itemQ(n); }
+function num(id){ const v = parseInt($(id) && $(id).value); return isNaN(v) ? null : v; }
+function calc(){
+  if (!DAY) return;
+  const cash = DENOMS.reduce((s,d,i)=>s + d*(num("dn"+i)||0), 0);
+  const prep = num("prep") || 0, pp = DAY.paypay, vendor = num("vendor") || 0, ppScreen = num("ppScreen") || 0;
+  const expected = prep + DAY.sum - pp - vendor, diff = cash - expected, bank = Math.max(0, cash - PREP_DEFAULT);
+  $("sales").textContent = yen(DAY.sum); $("pp").textContent = yen(pp); $("cashSales").textContent = yen(DAY.sum - pp); $("cnt").textContent = DAY.count; $("cashTotal").textContent = yen(cash);
+  const slips = {}, app = {}; let slipOk = true, slipAny = false, slipRows = "";
+  SLIP_MENUS.forEach((n,i)=>{ const ac = appCount(n); app[n] = ac; $("sl"+i+"c").textContent = "（レジ " + ac + "）"; const sv = num("sl"+i); if (sv===null) return; slipAny = true; slips[n] = sv; const dl = sv - ac; if (dl) { slipOk = false; slipRows += `<div class="row"><span class="l">${esc(n)}</span><span class="ng">注文票 ${sv} ／ レジ ${ac}（${dl>0?"+":""}${dl}）</span></div>`; } });
+  const slips4 = {}, app4 = {};
+  ["オリオン","オリオン ハーフ","ナシナシ","ナシナシ ハーフ"].forEach(n=>{ const a = slips[n], b = slips["TG"+n]; if (a!==undefined || b!==undefined) slips4[n] = (a||0)+(b||0); app4[n] = app[n] + app["TG"+n]; });
+  const ppd = ppScreen ? ppScreen - pp : null;
+  $("result").innerHTML =
+    `<div class="row"><span class="l">あるべき現金<small>準備金 ${yen(prep)} ＋ 現金売上 ${yen(DAY.sum-pp)}${vendor?" − 業者払い "+yen(vendor):""}</small></span><b>${yen(expected)}</b></div>` +
+    `<div class="row"><span class="l">数えた現金</span><b>${yen(cash)}</b></div>` +
+    `<div class="row"><span class="l">現金の差</span><span class="${diff===0?"ok":"ng"}">${diff===0?"ぴったり":(diff>0?"+":"")+diff.toLocaleString()+" 円"}</span></div>` +
+    `<div class="row"><span class="l">PayPay 画面との差</span><span class="${ppd===null?"":(ppd===0?"ok":"ng")}">${ppd===null?"未入力":(ppd===0?"一致":(ppd>0?"+":"")+ppd.toLocaleString()+" 円")}</span></div>` +
+    `<div class="row"><span class="l">注文票の品数</span><span class="${!slipAny?"":(slipOk?"ok":"ng")}">${!slipAny?"未入力":(slipOk?"レジと一致":"差あり")}</span></div>` + slipRows +
+    `<div class="row"><span class="l"><b>回収する現金</b><small>数えた現金 − レジに残す ${yen(PREP_DEFAULT)}</small></span><b class="big">${yen(bank)}</b></div>`;
+  R = { prep, sales:DAY.sum, expected, cash, diff, paypay:pp, ppScreen, bank, vendor, slips:slips4, app:app4, slipDetail:{slips, app}, slipOk: slipAny ? slipOk : null };
+  const d = { prep:$("prep").value, ppScreen:$("ppScreen").value, vendor:$("vendor").value }; DENOMS.forEach((_,i)=>d["dn"+i]=$("dn"+i).value); SLIP_MENUS.forEach((_,i)=>d["sl"+i]=$("sl"+i).value);
+  ls(draftKey(), JSON.stringify(d)); ls("orion-prep2", prep);
+}
+async function save(){
+  calc(); const s = R; if (!s || !s.cash){ alert("現金の枚数を入れてください"); return; }
+  if (s.diff !== 0 && !confirm(`現金に ${s.diff>0?"+":""}${s.diff.toLocaleString()}円 の差があります。数え直しても合わなければ、このまま記録してください（管理者が翌朝確認します）。記録しますか？`)) return;
+  if (s.slipOk === null && !confirm("注文票の品数が未入力です。このまま記録しますか？")) return;
+  if (s.slipOk === false && !confirm("注文票の品数とレジの記録が合っていません。このまま記録すると管理者に届きます。記録しますか？")) return;
+  const now = new Date(), p = n=>String(n).padStart(2,"0");
+  const rec = { type:"shime", token:TOKEN, by:ME.name, src:"staff", date: DAY.date || todayKey(), time: p(now.getHours())+":"+p(now.getMinutes()),
+    prep:s.prep, sales:s.sales, expected:s.expected, cash:s.cash, diff:s.diff, paypay:s.paypay, keep:PREP_DEFAULT, bank:s.bank, vendor:s.vendor, slips:s.slips, app:s.app, slipOk:s.slipOk, slipDetail:s.slipDetail, ppScreen:s.ppScreen };
+  $("saveBtn").disabled = true; $("saveBtn").textContent = "記録しています…";
+  try{
+    const c = new AbortController(); const t = setTimeout(()=>c.abort(), 25000);
+    const r = await fetch(SHEET_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(rec), signal:c.signal}).then(r=>r.text()); clearTimeout(t);
+    if (r !== "ok" && r !== "dup") throw new Error(r.slice(0,80));
+    ls(draftKey(), null); window.scrollTo(0,0);
+    $("body").classList.add("hide"); $("bar").classList.add("hide");
+    msg((r==="dup" ? "同じ内容の締めがすでに記録されていました。" : "締めを記録しました。") + `<br>回収する現金：<b>${yen(s.bank)}</b>` + (s.diff!==0||s.slipOk===false ? "<br>差がある項目は管理者が翌朝確認します。注文票はそのまま保管してください。" : "<br>差はありません。おつかれさまでした。") + `<br><br><a href="staff_index.html">勤怠アプリに戻る（退勤の打刻を忘れずに）</a>`, (s.diff!==0||s.slipOk===false) ? "warn" : "ok");
+  }catch(e){ alert("記録できませんでした。電波を確認してもう一度押してください。入力した内容はこのスマホに残っています。"); }
+  finally{ $("saveBtn").disabled = false; $("saveBtn").textContent = "締めを記録する"; }
+}
+boot();
+</script>
+</body>
+</html>

@@ -446,10 +446,10 @@ function renderShime(days){
     const s = r.s, d = r.d; const settled = !!(r.acked || r.reason) || !r.issues.length;
     const isOpen = SHIME_OPEN[r.date] !== undefined ? SHIME_OPEN[r.date] : !settled;
     const bd = r.acked ? `<span class="bd ok">確認済み</span>` : r.reason ? `<span class="bd ok">理由あり</span>` : !r.issues.length ? `<span class="bd ok">一致</span>` : `<span class="bd ng">要確認</span>`;
-    const sm = s ? `売上 ${num(d.sales)}円・${d.mealsEatin+d.mealsTogo||0}食` : `売上 ${num(d.sales)}円`;
+    const sm = (s ? `売上 ${num(d.sales)}円・${d.mealsEatin+d.mealsTogo||0}食` : `売上 ${num(d.sales)}円`) + (s ? `・締め ${s.time||""} ${s.by||"レジ端末"}` : "");
     let body = "";
     if(isOpen){
-      if(!s){ body = `<div class="hint">この日のレジ締めが記録されていません。レジの「締め」から入力してください（翌日以降でも入力できます）。</div>`; }
+      if(!s){ body = `<div class="hint">この日の締めが記録されていません。スタッフアプリの「店の仕事 → 締め」（またはレジの「締め」）から入力してください。</div>`; }
       else {
         const slipIn = r.slipDiffs ? null : null;
         const sd = s.slipDetail || null;
