@@ -28,6 +28,14 @@
   }
   window.busyText = function(s){ var t = document.getElementById("bzText"); if (t) t.textContent = s || "処理中…"; };
   var orig = window.fetch.bind(window);
+  // シートの「時刻だけ」のセルは Google から「1899/12/30 15:00:00」の形で届く。どの画面でも「15:00」と出るように通信の段階で直す
+  function fixT(url, r){
+    if (!/script\.google(usercontent)?\.com/.test(url) || !r || !r.ok) return r;
+    return r.text().then(function(t){
+      var f = t.replace(/1899\/12\/30 (\d{1,2}):(\d{2})(?::\d{2})?/g, function(_, h, m){ return (h.length < 2 ? "0" + h : h) + ":" + m; });
+      return new Response(f, {status: r.status, statusText: r.statusText, headers: r.headers});
+    });
+  }
   window.fetch = function(input, init){
     init = init || {};
     var skip = init.busy === false; if ("busy" in init){ init = Object.assign({}, init); delete init.busy; }
@@ -37,10 +45,10 @@
     // 勤怠 API は読み取りも POST なので、action 名で読み取りを見分ける
     if (isWrite && typeof init.body === "string"){ var m = init.body.match(/"action"\s*:\s*"([^"]+)"/); if (m && /(^home$|list|_get$|^get|month|history|^comm$|^shifts$|today|summary|^diag$|log$)/.test(m[1])) isWrite = false; }
     if (/[?&]action=staff_list\b/.test(url)) skip = true; // ログイン画面の名前一覧は待たせない
-    if (skip) return orig(input, init);
+    if (skip) return orig(input, init).then(function(r){ return fixT(url, r); });
     if (isWrite) writes++; else reads++; upd();
     var done = function(){ if (isWrite) writes = Math.max(0, writes-1); else reads = Math.max(0, reads-1); upd(); };
-    return orig(input, init).then(function(r){ done(); return r; }, function(e){ done(); throw e; });
+    return orig(input, init).then(function(r){ done(); return fixT(url, r); }, function(e){ done(); throw e; });
   };
 })();
 
