@@ -254,10 +254,10 @@
     <div class="dtiles"><span>会計<b><span id="aCount">0</span><small style="font-size:11px;margin-left:2px;color:#e8d5ac">件</small></b></span><span>売上<b><span id="aSum">0</span><small style="font-size:11px;margin-left:2px;color:#e8d5ac">円</small></b></span><span>来店<b><span id="aVisit">0</span><small style="font-size:11px;margin-left:2px;color:#e8d5ac">人</small></b></span></div>
     <div class="grp">毎 日 の 締 め 作 業</div>
     <div class="menu">
-      <button class="mi" onclick="openStock()"><span class="t">備品チェック</span><span class="d">ホール担当。週1回、3択でタップ</span><span class="s" id="aStock">▶ 開く</span></button>
+      <!-- 備品チェック・出退勤は勤怠アプリ（スタッフ個人のスマホ）に一本化。関数は残してある -->
       <button class="mi" onclick="openShime()"><span class="t">レジ締め</span><span class="d">ホール担当。現金を数えて記録</span><span class="s">▶ 開く</span></button>
-      <button class="mi" onclick="openClock()"><span class="t">出退勤</span><span class="d">出勤・退勤の打刻</span><span class="s">▶ 開く</span></button>
       <button class="mi" onclick="openSummary()"><span class="t">日計</span><span class="d">本日の会計一覧・シートへ再送</span><span class="s" id="aQueue">▶ 開く</span></button>
+      <div class="mi wide" style="cursor:default"><span class="t">出退勤・備品チェック</span><span class="d">自分のスマホの「勤怠」アプリでお願いします（ホーム → 店の仕事）</span></div>
     </div>
     <div class="grp">記 録 と 設 定</div>
     <div class="menu">
