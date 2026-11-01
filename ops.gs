@@ -20,6 +20,8 @@ function buildOpsPayload_(){
   try { invRows_(invSheet_(INV_REPORT_SHEET, INV_REPORT_COLS)).forEach(function(r){ if (r["状態"] === "対応済") return; out.reports.push({ name:String(r["品目"]), kind:String(r["種別"]), qty:String(r["数量"]||""), memo:String(r["メモ"]||""), by:String(r["記録者"]||""), at:String(r["日時"]||"").slice(0,16) }); }); } catch(e){ out.reportsError = String(e); }
   try { invMaster_().forEach(function(it){ if (it.stock === null || it.min === null) return; if (it.stock <= it.min) out.stockLow.push({ name:it.name, stock:it.stock, min:it.min, unit:it.unit, supplier:it.supplier, owner:it.owner }); }); } catch(e){ out.stockError = String(e); }
   try { invRows_(rcSheet_()).forEach(function(r){ if (r["状態"] === "削除") return; if (r["状態"] === "未確認") out.receipts.unchecked++; if (/未払い/.test(String(r["支払元"]||""))){ var amt = Number(r["金額"])||0; out.receipts.unpaid += amt; out.receipts.unpaidList.push({ date:dateKey_(r["日付"]), vendor:String(r["店名"]), amount:amt }); } }); } catch(e){ out.receiptsError = String(e); }
+  // PayPay 取引通知メールの日別合計（締めの PayPay 画面入力の裏付け）
+  try { var pp = {}; invRows_(invSheet_("PayPay取引", ["取引番号","決済日時","日付","時刻","金額","端末ID","店舗","種類","メールID","登録日時"])).forEach(function(r){ var d = dateKey_(r["日付"]); if (!d) return; var a = Number(r["金額"])||0; if (String(r["種類"]) === "返金") a = -a; pp[d] = (pp[d]||0) + a; }); out.ppMail = pp; } catch(e){ out.ppMailError = String(e); }
   // 確認済み（要確認から外したもの）・取消された会計の数
   try { out.acks = fxAcks_(); } catch(e){ out.acks = []; }
   // その他収入：固定費シートで科目に「収入」を含む行。メモの yyyy/MM 以降の月に適用

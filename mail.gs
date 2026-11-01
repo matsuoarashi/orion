@@ -10,6 +10,8 @@ var OS_MAILRULE = "メール取引先"; var OS_MAILRULE_COLS = ["名前","差出
 // 種別: PayPay入金 / TOHO注文 / TOHO納品 / 請求書 / 取引先連絡 / その他   扱い: 定型 / 要確認 / 無視
 var OS_MAILCAND = "メール候補"; var OS_MAILCAND_COLS = ["cand_id","受信日時","差出人","件名","取引先","種別","扱い","抽出","金額","日付","状態","確認者","確認日時","反映先","メールID","リンク","登録日時"];
 var OS_MAIL_LABEL = "ORION/取込済";
+// PayPay の取引ごとの通知メール → 決済イベント台帳（候補ではなく自動記録。取引番号で重複なし）
+var OS_PPTX = "PayPay取引"; var OS_PPTX_COLS = ["取引番号","決済日時","日付","時刻","金額","端末ID","店舗","種類","メールID","登録日時"];
 
 function osMailWho(){ return Session.getEffectiveUser().getEmail(); }
 
@@ -53,6 +55,11 @@ function osMailTake_(m, rules, sh, known, mailbox){
   var r = osMailMatch_(m, rules); if (!r) return false;
   if (r["扱い"] === "無視") return true;
   var ex = osMailExtract_(m, String(r["種別"]));
+  if (ex.kind === "PayPay入金" && ex.txNo){ // 取引通知 → PayPay取引 に記録して終わり（候補には入れない）
+    var psh = osSheet_(OS_PPTX, OS_PPTX_COLS); var dup = invRows_(psh).some(function(x){ return String(x["取引番号"]) === ex.txNo; });
+    if (!dup) invAppend_(psh, { "取引番号":"'" + ex.txNo, "決済日時":ex.datetime, "日付":"'" + ex.date, "時刻":ex.time, "金額":ex.amount, "端末ID":ex.terminal||"", "店舗":"kanda", "種類":ex.refund ? "返金" : "決済", "メールID":m.id, "登録日時":invNow_() });
+    known[m.id] = 1; return true;
+  }
   var link = mailbox ? "https://mail.google.com/mail/?authuser=" + encodeURIComponent(mailbox) + "#all/" + m.id : "https://mail.google.com/mail/u/0/#all/" + m.id;
   invAppend_(sh, { cand_id:invId_("mc_"), "受信日時":m.date, "差出人":m.from, "件名":m.subject, "取引先":String(r["名前"]), "種別":String(r["種別"]), "扱い":String(r["扱い"]), "抽出":JSON.stringify(ex), "金額":ex.amount||"", "日付":ex.date||"", "状態":"未確認", "確認者":"", "確認日時":"", "反映先":"", "メールID":m.id, "リンク":link, "登録日時":invNow_() });
   known[m.id] = 1; return true;
@@ -62,7 +69,7 @@ function osMailIngest_(d){
   var key = PropertiesService.getScriptProperties().getProperty("OS_INGEST_KEY");
   if (!key || String(d.key||"") !== key) return { error: "key" };
   var rules = osMailRules_(); var sh = osSheet_(OS_MAILCAND, OS_MAILCAND_COLS);
-  var known = {}; invRows_(sh).forEach(function(r){ known[String(r["メールID"])] = 1; });
+  var known = {}; invRows_(sh).forEach(function(r){ if (String(r["状態"]) !== "再取込") known[String(r["メールID"])] = 1; }); // 状態「再取込」の候補は取り直す
   var lock = LockService.getScriptLock(); lock.waitLock(10000); var n = 0;
   try { (d.messages||[]).forEach(function(m){ if (osMailTake_(m, rules, sh, known, String(d.mailbox||""))) n++; }); } finally { lock.releaseLock(); }
   return { ok:true, taken:n, received:(d.messages||[]).length };
@@ -91,8 +98,15 @@ function osMailExtract_(m, kind){
   var yen = function(re){ var x = body.match(re); return x ? Number(String(x[1]).replace(/[,，]/g, "")) : ""; };
   var dt = function(re){ var x = body.match(re); return x ? x[1].replace(/年|月/g, "/").replace(/日/g, "") : ""; };
   if (kind === "PayPay入金"){
-    out.amount = yen(/(?:入金|振込|お支払い|決済)?金額[^\d]{0,10}([\d,，]+)\s*円/) || yen(/([\d,，]+)\s*円/);
-    out.date = dt(/(\d{4}[\/年]\d{1,2}[\/月]\d{1,2})/);
+    // 取引通知：「決済が完了しました / 1100円 / 取引番号 0510… / 決済日時 2026年10月30日13時03分」
+    out.txNo = (body.match(/取引番号[\s\S]{0,20}?(\d{12,24})/) || [])[1] || (String(m.subject||"").match(/取引番号[：:]\s*(\d{12,24})/) || [])[1] || "";
+    out.amount = yen(/(?:金額[^\d]{0,10})?([\d,，]+)\s*円/);
+    out.terminal = (body.match(/端末ID\s*([\w-]+)/) || [])[1] || "";
+    var dm = body.match(/(\d{4})年(\d{1,2})月(\d{1,2})日\s*(\d{1,2})時(\d{1,2})分/);
+    if (dm){ out.date = dm[1] + "/" + ("0"+dm[2]).slice(-2) + "/" + ("0"+dm[3]).slice(-2); out.time = ("0"+dm[4]).slice(-2) + ":" + ("0"+dm[5]).slice(-2); out.datetime = out.date + " " + out.time; }
+    else out.date = dt(/(\d{4}[\/年]\d{1,2}[\/月]\d{1,2})/);
+    out.refund = /返金|取消|キャンセル/.test(String(m.subject||"") + body.slice(0, 300));
+    if (!out.txNo) out.report = /週間レポート|月間レポート|レポート/.test(String(m.subject||"")) ? "レポート" : "";
   } else if (kind === "TOHO注文" || kind === "TOHO納品"){
     out.orderNo = (body.match(/(?:注文番号|受注番号|伝票番号)[^\w]{0,5}([\w-]+)/) || [])[1] || "";
     out.amount = yen(/(?:合計|総額|ご請求額)[^\d]{0,10}([\d,，]+)\s*円/);
