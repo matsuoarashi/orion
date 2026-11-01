@@ -21,8 +21,10 @@ function invPriceSave_(d, me){
   var price = Number(d.price) || 0; if (!price) return { error: "価格を入れてください" };
   var c = prCalc_(d.qty, d.unit, price); var now = invNow_();
   var obj = { "品目": item, "仕入先": String(d.supplier || ""), "商品名・規格": String(d.spec || ""), "内容量": d.qty === "" || d.qty === undefined ? "" : Number(d.qty), "単位": String(d.unit || ""), "税込価格": price,
-    "基準": c.base, "基準単価": c.per, "調査日": "'" + (String(d.date || invToday_()).replace(/-/g, "/")), "出典": String(d.src || me.name), "メモ": String(d.memo || ""), "状態": "active", "更新日時": now };
+    "基準": c.base, "基準単価": c.per, "調査日": "'" + (String(d.date || invToday_()).replace(/-/g, "/")), "出典": String(d.src || me.name), "メモ": String(d.memo || ""), "状態": "active", "更新日時": now,
+    "単価状態": String(d.status || "確定"), "税抜価格": (d.exTax === undefined || d.exTax === "" || d.exTax === null) ? "" : Number(d.exTax) }; // 11/1: レシート等で確かめた価格は「確定」
   if (d.id){ var r = invRows_(sh).filter(function(x){ return x.price_id === d.id; })[0]; if (!r) return { error: "見つかりません" }; obj.price_id = d.id;
+    if (d.exTax === undefined && r["税抜価格"] !== undefined) obj["税抜価格"] = r["税抜価格"];
     var lc = sh.getLastColumn(); var hdr = sh.getRange(1,1,1,lc).getValues()[0].map(String); sh.getRange(r._row, 1, 1, lc).setValues([hdr.map(function(h){ return obj[h] !== undefined ? obj[h] : ""; })]); return { ok: true, id: d.id }; }
   obj.price_id = invId_("pr_"); invAppend_(sh, obj); return { ok: true, id: obj.price_id };
 }

@@ -134,6 +134,8 @@ function handleInvPost(d){
       else if (d.type === "inv_report") res = invReport_(d, me);
       else if (d.type === "inv_report_done") res = invReportDone_(d, me);
       else if (d.type === "inv_master_save") res = invMasterSave_(d, me);
+      else if (d.type === "inv_price_save") res = invPriceSave_(d, me);     // 11/1: 発注アプリの価格追加・編集（取り付け漏れを修正、v59）
+      else if (d.type === "inv_price_delete") res = invPriceDelete_(d, me);
       else res = { error: "type" };
     } finally { lock.releaseLock(); }
   } catch(err){ res = { error: String(err) }; }
