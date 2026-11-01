@@ -409,7 +409,7 @@ async function api(action, body){
   try{
     body = Object.assign({action, token: TOKEN}, body||{});
     // 15秒で打ち切り。読み取りは自動でもう1回（Google側の起動待ちや一時エラーで止まらないように）
-    const once = async ()=>{ const c = new AbortController(); const t = setTimeout(()=>c.abort(), 15000); try{ const res = await fetch(API_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(body), signal:c.signal}); const txt = await res.text(); try{ return JSON.parse(txt); }catch(e){ throw new Error("badjson"); } } finally{ clearTimeout(t); } };
+    const once = async ()=>{ const c = new AbortController(); const t = setTimeout(()=>c.abort(), 15000); try{ const res = await fetch(API_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(body), signal:c.signal}); const txt = (await res.text()).replace(/1899\/12\/30 (\d{1,2}):(\d{2})(?::\d{2})?/g, (_, h, m)=>h.padStart(2,"0")+":"+m); try{ return JSON.parse(txt); }catch(e){ throw new Error("badjson"); } } finally{ clearTimeout(t); } };
     let j; try{ j = await once(); }catch(e){ if (isWrite) throw e; await new Promise(r=>setTimeout(r,1200)); j = await once(); }
     if (!j.ok && j.code==="noauth"){ localStorage.removeItem("os-token"); TOKEN=""; cclear(); showLogin("ログインの期限が切れました"); }
     return j;
