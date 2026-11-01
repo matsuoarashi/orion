@@ -181,6 +181,7 @@ body.lock::after{content:"処理中…";position:fixed;left:50%;top:calc(12px + 
 body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lock .tools button{pointer-events:none;opacity:.55}
 #punchArea .btn{margin-bottom:12px}
 .stale{opacity:.6}
+.stale .btn{pointer-events:none} /* 前回の内容を表示中は打刻ボタンを押せない（最新に更新されたら押せる） */
 .link{background:none;border:0;color:var(--g);text-decoration:underline;font-size:14px;padding:8px 0}
 .editrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
 .editrow button{border:2px solid var(--line);background:#fff;border-radius:12px;padding:8px 4px;min-height:64px;text-align:center}
@@ -542,7 +543,13 @@ function loadFail(r, hasCache){
 }
 // 1分以上バックグラウンドにいた後に開き直したら、その画面を読み直す（ホーム画面アプリが固まったままにならないように）
 let HIDDEN_AT = 0;
-document.addEventListener("visibilitychange", ()=>{ if (document.hidden){ HIDDEN_AT = Date.now(); return; } if (HIDDEN_AT && Date.now()-HIDDEN_AT > 60000 && TOKEN && !$("vApp").classList.contains("hide")) go(CUR_PAGE); HIDDEN_AT = 0; });
+document.addEventListener("visibilitychange", ()=>{ if (document.hidden){ HIDDEN_AT = Date.now(); return; } if (HIDDEN_AT && Date.now()-HIDDEN_AT > 60000 && TOKEN && !$("vApp").classList.contains("hide")){ resumeRefresh(); } HIDDEN_AT = 0; });
+// 入力中のシート（衛生チェック・ふりかえり等）や未提出の希望シフトがあるときは消さずに、裏の読み直しだけ行う
+function resumeRefresh(){
+  const busy = $("ov") && $("ov").innerHTML.trim() !== "";
+  if (busy || (CUR_PAGE==="wish" && WISH.dirty)){ if (CUR_PAGE==="home") api("home").then(r=>{ if(r.ok){ cset("home", r); } }); return; }
+  go(CUR_PAGE);
+}
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 
 // ───── ホーム・打刻 ─────
@@ -550,7 +557,7 @@ async function loadHome(){
   const c = cget("home"); if (c && c.today===todayStr()) renderHome(c, true);
   const cc = cget("comm"); if (cc) renderCommHome(cc);
   const [r, k] = await Promise.all([api("home"), api("comm")]); if(!r.ok){ loadFail(r, !!c); return; }
-  cset("home", r); renderHome(r, false);
+  cset("home", r); renderHome(r, false); hygFlush();
   if (k.ok){ cset("comm", k); renderCommHome(k); }
   osGet("os_myq").then(r=>{ if (r && r.list){ cset("ask_mine", r.list); askBadge(r.list); } });
 }
@@ -736,7 +743,7 @@ function punchSheet(type){
     <div class="chips c4" id="brkChips">${[0,15,30,45].map(n=>`<button class="chip ${n===0?"on":""}" onclick="setBrk(${n})">${n}分</button>`).join("")}</div>
     <input type="hidden" id="brk" value="0">`}
     <div style="height:12px"></div>
-    <button class="btn ${isIn?"":"out"}" id="punchGo" ${isPilot()?"disabled":""} onclick="var b=Number(($('brk')||{}).value)||0;var t=$('pt').value;var c=[...document.querySelectorAll('#gChips .chip.on, #hygBox .hi.on[data-g=groom]')].map(x=>x.dataset.k||x.textContent);var h=hygCollect();if($('moodNote'))MOOD.note=$('moodNote').value.trim();closeOv();punch('${type}', b, t, c, h)">${isIn?"出勤":"退勤"}を記録する</button>
+    <button class="btn ${isIn?"":"out"}" id="punchGo" ${isPilot()?"disabled":""} onclick="var b=Number(($('brk')||{}).value)||0;var t=$('pt').value;var c=[...document.querySelectorAll('#gChips .chip.on, #hygBox .hi.on[data-g=groom]')].map(x=>x.dataset.k||x.textContent);var h=hygCollect();if($('moodNote'))MOOD.note=$('moodNote').value.trim();punch('${type}', b, t, c, h)">${isIn?"出勤":"退勤"}を記録する</button>
     ${isPilot()?`<div class="mini center" id="punchHint" style="margin-top:6px">${isIn?"出勤チェック":"衛生チェックとふりかえり"}がすべて済むと押せます</div>`:""}
     <button class="btn sec" style="margin-top:10px" onclick="closeOv()">やめる</button>`);
   hygValidate();
@@ -801,14 +808,22 @@ function ptSet(v){ $("pt").value=v; ptSync(); }
 function ptSync(){ const v=$("pt").value; if(v) $("ptd").textContent=v; }
 function ptAdd(n){ const el=$("pt"); if(!el.value) return; let m=toMinC(el.value)+n; m=(m+1440)%1440; ptSet(pad2(Math.floor(m/60))+":"+pad2(m%60)); }
 function setBrk(n){ document.querySelectorAll("#brkChips .chip").forEach((b,i)=>b.classList.toggle("on",[0,15,30,45][i]===n)); $("brk").value=n; }
+// 衛生記録（HACCP）が送れなかったときは端末に残し、次にホームを開いたときに送り直す
+function hygQueue(h){ try{ const q = JSON.parse(localStorage.getItem("hyg-pending")||"[]"); q.push(h); localStorage.setItem("hyg-pending", JSON.stringify(q)); }catch(e){} }
+async function hygFlush(){ let q; try{ q = JSON.parse(localStorage.getItem("hyg-pending")||"[]"); }catch(e){ q = []; } if (!q.length) return;
+  const left = []; for (const h of q){ const r = await api("hyg_save", h); if (!r.ok) left.push(h); }
+  try{ if (left.length) localStorage.setItem("hyg-pending", JSON.stringify(left)); else localStorage.removeItem("hyg-pending"); }catch(e){}
+  if (!left.length) toast("保留していた衛生記録を送りました"); }
 async function punch(type, breakMin, time, check, hyg){
   if (busy) return; busy = true;
-  const btns = document.querySelectorAll("#punchArea .btn"); btns.forEach(b=>b.disabled=true);
+  const btns = document.querySelectorAll("#punchArea .btn, #punchGo"); btns.forEach(b=>b.disabled=true);
   try{
     const r = await api("punch", {type, breakMin, time, check: check||[]});
-    if(!r.ok){ showMsg($("msg"), r.error); loadHome(); return; }
+    // 失敗したらシートは閉じない（衛生チェック・温度・ふりかえりの入力をそのまま残して押し直せる）
+    if(!r.ok){ const open = $("ov") && $("ov").innerHTML.trim() !== ""; if (open){ toast(r.error + "　入力はそのままです。もう一度押してください"); btns.forEach(b=>b.disabled=false); } else { showMsg($("msg"), r.error); loadHome(); } return; }
+    closeOv();
     toast(type==="in" ? `出勤 ${r.time} を記録しました` : `退勤 ${r.time} を記録しました（実労働 ${fmtMin(r.workMin)}）`);
-    if (hyg){ const h = await api("hyg_save", hyg); if(!h.ok) toast("衛生記録の保存に失敗: "+h.error); }
+    if (hyg){ const h = await api("hyg_save", hyg); if(!h.ok){ hygQueue(hyg); toast("衛生記録は電波が戻ったら自動で送ります"); } }
     if (type==="out" && isPilot() && moodReady()) await moodSaveAfterOut();
     loadHome();
   }catch(e){ showMsg($("msg"), "通信エラーです。電波のある場所でもう一度押してください（二重には記録されません）"); btns.forEach(b=>b.disabled=false); }
@@ -819,6 +834,7 @@ async function punch(type, breakMin, time, check, hyg){
 // 使い方：モード（○ / 時間 / 休）を選び、日をタップで付け外し。白＝出られない日。最後に提出。
 let WISH = {month:null, days:{}, locked:false, openDays:[], mode:"ok", note:""};
 async function loadWish(month){
+  if (WISH.dirty && WISH.month && !month) return; // 未提出の入力があるときは描き直さない（提出か月の移動で解除）
   const key = "wish:"+(month||"next"); const c = cget(key); if (c){ renderWish(c); }
   else { $("wishMonth").textContent = month ? monthLabel(month) : "…"; $("wishInfo").textContent = "読み込み中…"; }
   WISH.dirty = false;
@@ -977,7 +993,11 @@ async function changePass(){
 (async function(){
   if ("serviceWorker" in navigator){ try{ navigator.serviceWorker.register("sw.js"); }catch(e){} }
   if (!TOKEN){ showLogin(); return; }
-  try{ const r = await api("home"); if(r.ok){ HOME=r; ME=r.staff; SET=r.settings; enterApp(); } else if(r.code!=="noauth"){ showLogin(r.error); } }
+  $("vLogin").classList.add("hide");
+  // 前回の内容があれば確認を待たずにすぐホームを出す（裏で最新を取り直す。ログイン切れならログイン画面へ）
+  const c = cget("home");
+  if (c && c.ok && c.staff){ HOME=c; ME=c.staff; SET=c.settings; enterApp(); return; }
+  try{ const r = await api("home"); if(r.ok){ cset("home", r); HOME=r; ME=r.staff; SET=r.settings; enterApp(); } else if(r.code!=="noauth"){ showLogin(r.error); } }
   catch(e){ showLogin("通信できません"); }
 })();
 </script>
