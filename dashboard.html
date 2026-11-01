@@ -108,6 +108,8 @@
   .grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 10px}
   .sheet label{display:block;font-size:12px;color:var(--mute);margin:8px 0 2px}
   .sheet select,.sheet input,.sheet textarea{width:100%;font-size:16px;padding:8px;border:1px solid #c9b891;border-radius:8px;background:#fff;color:var(--ink)}
+  .pill{display:inline-block;border-radius:999px;padding:1px 8px;font-size:11px;background:#eef;color:#346;margin-left:4px}
+  #osQ .btn, #osM .btn{padding:10px 14px;border-radius:10px;border:none;background:var(--midori);color:#fff;font-size:14px;font-weight:bold}
   .sheet .btn{width:100%;margin-top:12px;padding:12px;border-radius:10px;border:none;background:var(--midori);color:#fff;font-size:15px;font-weight:bold}
   .sheet .btn:disabled{opacity:.5}
   .srow{display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px dotted var(--line);font-size:13px}
@@ -344,6 +346,9 @@
       <div class="card wide"><h2>週ごとの人件費率</h2>
         <div class="scroll"><table class="daygrid" id="ppWeeks"></table></div></div>
       <div class="card wide"><h2>勤怠の確認</h2><div id="ppOps"></div></div>
+      <div class="card wide"><h2>契約・許認可の期限 <small id="osctN"></small></h2><div class="sub" style="margin-bottom:8px">契約台帳の終了日・更新期限が 90 日以内のもの</div><div id="osCt">読み込み中…</div></div>
+      <div class="card wide"><h2>メールからの候補 <small id="osmN"></small></h2><div class="sub" style="margin-bottom:8px">店の Gmail（PayPay・トーホー・取引先）から自動で拾ったもの。確認して「反映済」か「不要」に</div><div id="osM">読み込み中…</div></div>
+      <div class="card wide"><h2>スタッフからの質問 <small id="osqN"></small></h2><div class="sub" style="margin-bottom:8px">勤怠アプリ「聞く」で答えられなかった質問。回答すると Knowledge に入り、次からアプリが答えます</div><div id="osQ">読み込み中…</div></div>
     </div>
   </div>
 
@@ -1080,9 +1085,35 @@ function renderPeople(){
   const first = mondayOf(DATA.daily[0].date); const weeks = []; for(let m=mondayOf(DATA.todayKey); m>=first; m=dateAdd(m,-7)) weeks.push(m); weeks.splice(8);
   $("ppWeeks").innerHTML = "<tr><th>週</th><th>営業</th><th>売上</th><th>人件費</th><th>率</th><th>時間</th><th>人時売上</th></tr>" + weeks.map(m=>{ const x = sumDays(weekDays(m)); return `<tr><td>${m.slice(5)}〜</td><td>${x.days}日${x.laborDays<x.days?`<small>(勤怠${x.laborDays})</small>`:""}</td><td>${num(x.sales)}</td><td>${num(x.labor)}</td><td>${x.labor?pct(x.labor/x.sales):"-"}</td><td>${(x.minutes/60).toFixed(1)}h</td><td>${x.minutes?num(Math.round(x.sales/(x.minutes/60))):"-"}</td></tr>`; }).join("");
   const miss = days.filter(d=>!p.laborDaily[d.date] && d.date<DATA.todayKey);
+  renderOsQ(); renderOsM();
   $("ppOps").innerHTML = (o.unclosed.length ? o.unclosed.map(u=>`<div class="pl"><span><b class="neg">未退勤</b> ${u.name} ${u.date.slice(5)} 出勤 ${u.in}</span></div>`).join("") : "") + (miss.length ? `<div class="pl"><span>勤怠のない営業日：${miss.map(d=>d.date.slice(5)).join("・")}</span></div>` : "") + (!o.unclosed.length && !miss.length ? "<div class='sub'>勤怠に問題はありません</div>" : "");
 }
 
+// スタッフからの未回答質問（ORION OS）。管理者だけ
+async function renderOsQ(){
+  const el = $("osQ"); if (!el) return;
+  if (!ME || ME.role !== "admin"){ el.innerHTML = "<div class='sub'>管理者でログインすると表示されます</div>"; return; }
+  const r = await fxGet("os_home"); if (r.error){ el.innerHTML = `<div class='sub'>${esc(r.error)}</div>`; return; }
+  const un = (r.unanswered||[]).filter(x=>x.status!=="回答済");
+  const ca = r.contractAlerts||[]; $("osctN").textContent = ca.length ? `${ca.length}件` : ""; $("osCt").innerHTML = ca.length ? ca.map(a=>`<div class="pl"><span>${a.overdue?"<b class='neg'>期限超過</b> ":""}${esc(a.name)}<small>（${esc(a.kind)}）</small> ${esc(a.col)} ${esc(a.date)}${a.auto?` / 自動更新:${esc(a.auto)}`:""}</span></div>`).join("") : "<div class='sub'>90 日以内の期限はありません（終了日・更新期限が未記入の契約は出ません）</div>";
+  $("osqN").textContent = un.length ? `未回答 ${un.length}` : "";
+  el.innerHTML = un.length ? un.map(x=>`<div class="pl" style="display:block" id="osq_${esc(x.id)}"><div><b>${esc(x.q)}</b> <small>${esc(x.who)}・${esc(String(x.at).slice(0,16))}</small></div><textarea rows="3" style="width:100%;margin:6px 0;font-size:14px;padding:8px;border:1px solid var(--line);border-radius:8px" placeholder="回答（スタッフにそのまま見えます）"></textarea><button class="btn" onclick="osAnswer('${esc(x.id)}')">回答して Knowledge に入れる</button></div>`).join("") : "<div class='sub'>未回答の質問はありません</div>";
+}
+async function osAnswer(id){
+  const box = $("osq_"+id); const a = box.querySelector("textarea").value.trim(); if(!a){ alert("回答を入れてください"); return; }
+  const b = box.querySelector("button"); b.disabled = true;
+  const r = await fxPost("os_answer", {id, a}); if (r.error){ alert(r.error); b.disabled = false; return; }
+  box.innerHTML = `<div><b>回答しました</b>（Knowledge ${esc(r.k_id||"")}）</div>`; setTimeout(renderOsQ, 1500);
+}
+// メール候補（ORION OS）。管理者だけ
+async function renderOsM(){
+  const el = $("osM"); if (!el) return;
+  if (!ME || ME.role !== "admin"){ el.innerHTML = "<div class='sub'>管理者でログインすると表示されます</div>"; return; }
+  const r = await fxGet("os_mail"); if (r.error){ el.innerHTML = `<div class='sub'>${esc(r.error)}</div>`; return; }
+  const L = r.list||[]; $("osmN").textContent = L.length ? `未確認 ${L.length}` : "";
+  el.innerHTML = L.length ? L.map(x=>`<div class="pl" style="display:block" id="osm_${esc(x.cand_id)}"><div><b>${esc(x["取引先"])}</b> <span class="pill">${esc(x["種別"])}</span> <small>${esc(x["受信日時"])}</small></div><div>${esc(x["件名"])}${x["金額"]?` ― <b>${num(Number(x["金額"]))}円</b>`:""}${x["日付"]?` / ${esc(x["日付"])}`:""} <a href="${esc(x["リンク"])}" target="_blank">メールを開く</a></div><div style="margin-top:6px"><button class="btn" onclick="osMailSet('${esc(x.cand_id)}','反映済')">反映済</button> <button class="btn" style="background:#888" onclick="osMailSet('${esc(x.cand_id)}','不要')">不要</button></div></div>`).join("") : "<div class='sub'>未確認の候補はありません</div>";
+}
+async function osMailSet(id, status){ const box = $("osm_"+id); box.querySelectorAll("button").forEach(b=>b.disabled=true); const r = await fxPost("os_mail_set", {id, status}); if (r.error){ alert(r.error); box.querySelectorAll("button").forEach(b=>b.disabled=false); return; } box.remove(); renderOsM(); }
 function renderAll(){
   if(!viewDate || !dayByDate(viewDate)) viewDate = DATA.todayKey;
   if(!viewWeek) viewWeek = mondayOf(DATA.todayKey);
@@ -1094,14 +1125,18 @@ async function load(keep){
   if(_loading) return; _loading = true;
   try{
     $("err").style.display = "none";
-    const res = await fetch(SHEET_URL + "?t=" + Date.now(), {cache:"no-store"});
-    DATA = await res.json();
+    // 前回の内容を先に出す（初回のみ）。通信は20秒で打ち切り、失敗したら自動でもう1回
+    if(!DATA && !keep){ try{ const c = JSON.parse(localStorage.getItem("dash-data")||"null"); if(c && c.daily){ DATA = c; renderAll(); $("ts").textContent = "前回の内容（" + c.updated + "）を表示中。更新しています…"; } }catch(e){} }
+    const once = async ()=>{ const ac = new AbortController(); const t = setTimeout(()=>ac.abort(), 20000); try{ const res = await fetch(SHEET_URL + "?t=" + Date.now(), {cache:"no-store", signal:ac.signal}); return JSON.parse(await res.text()); } finally{ clearTimeout(t); } };
+    let j; try{ j = await once(); }catch(e){ await new Promise(r=>setTimeout(r,1500)); j = await once(); }
+    if(!j || !j.daily) throw new Error("bad payload");
+    DATA = j; try{ localStorage.setItem("dash-data", JSON.stringify(j)); }catch(e){}
     if(!keep){ viewDate = null; viewWeek = null; }
     renderAll();
     $("ts").textContent = "最終更新 " + DATA.updated + (keep ? "（自動）" : "");
   }catch(e){
     if(!keep){ $("err").style.display = "block";
-      $("err").textContent = "データを取得できませんでした。通信状態と、Apps Scriptの再デプロイ(新バージョン)を確認してください。"; }
+      $("err").innerHTML = (DATA ? "前回の内容を表示しています。更新できませんでした（Google側の応答待ちか通信エラー）。" : "データを取得できませんでした。通信状態を確認してください。") + ' <button onclick="load()">もう一度読み込む</button>'; }
     console.error(e);
   }finally{ _loading = false; }
 }

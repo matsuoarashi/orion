@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>勤怠 | 洋食オリオン</title>
+<style>
+:root{ --g:#2c4f39; --g-d:#1f3a2a; --g-l:#e4eee7; --cream:#faf6ee; --cream-d:#ece4d2; --ink:#2b2a26; --mute:#7a7265; --red:#a33c2e; --red-l:#f6e3df; --amber:#b7791f; --amber-l:#f7ebd3; --blue:#3b5a9a; --blue-l:#e6ebf7; --line:#d9d1bd; --r:14px; --sat:env(safe-area-inset-top); --sab:env(safe-area-inset-bottom); }
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+body{font-family:-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:var(--cream);color:var(--ink);font-size:16px;line-height:1.5}
+button{font-family:inherit;color:inherit;cursor:pointer}
+.app{position:fixed;top:0;bottom:0;left:0;right:0;max-width:520px;margin:0 auto;display:flex;flex-direction:column;background:var(--cream)}
+header{flex:none;background:var(--g);color:#fff;padding:calc(10px + var(--sat)) 16px 10px;display:flex;justify-content:space-between;align-items:center}
+header .t{font-size:11px;letter-spacing:4px;opacity:.8}
+header .n{font-size:17px;font-weight:bold}
+header button{background:rgba(255,255,255,.15);border:0;color:#fff;border-radius:8px;padding:7px 12px;font-size:13px}
+main{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px 24px}
+nav{flex:none;background:#fff;border-top:1px solid var(--line);display:flex;padding-bottom:var(--sab)}
+html.iosgap,html.iosgap body{background:#fff} html.iosgap nav{padding-bottom:2px}
+nav button{flex:1;border:0;background:none;padding:8px 2px 6px;font-size:11px;color:var(--mute);min-height:56px}
+nav button i{display:block;font-style:normal;font-size:20px;line-height:1.2;margin-bottom:1px}
+nav button.on{color:var(--g);font-weight:bold}
+nav button .bd{display:inline-block;min-width:16px;padding:0 4px;border-radius:999px;background:var(--red);color:#fff;font-size:10px;line-height:16px;margin-left:3px;vertical-align:top}
+.hide{display:none !important}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.card h2{font-size:12px;letter-spacing:3px;color:var(--g);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.card h2 small{letter-spacing:0;color:var(--mute);font-weight:normal;font-size:12px}
+.big{font-size:30px;font-weight:bold;line-height:1.2;font-variant-numeric:tabular-nums}
+.sub{font-size:13px;color:var(--mute);margin-top:4px}
+.mini{font-size:13px;color:var(--mute);line-height:1.5}
+.btn{display:block;width:100%;border:0;border-radius:var(--r);padding:18px 12px;font-size:21px;font-weight:bold;color:#fff;background:var(--g);letter-spacing:2px;line-height:1.3}
+.btn.out{background:var(--red)}
+.btn.sec{background:var(--cream-d);color:var(--ink);font-size:16px;padding:14px 12px;letter-spacing:0}
+.btn.sm{font-size:15px;padding:12px}
+.btn:disabled{opacity:.45}
+.btn + .btn{margin-top:10px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line);font-size:15px}
+.row:last-child{border-bottom:0}
+.row b{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.row .l{min-width:0}
+.pill{display:inline-block;border-radius:999px;padding:2px 10px;font-size:12px;background:var(--g-l);color:var(--g);white-space:nowrap}
+.pill.red{background:var(--red-l);color:var(--red)} .pill.amber{background:var(--amber-l);color:var(--amber)} .pill.blue{background:var(--blue-l);color:var(--blue)}
+.status{display:flex;align-items:center;gap:10px;font-size:15px;color:var(--mute)}
+.dot{width:10px;height:10px;border-radius:50%;background:#c8c0ae;flex:none}
+.dot.on{background:#2e8b57;box-shadow:0 0 0 4px rgba(46,139,87,.18)}
+.dot.done{background:var(--g)}
+.login{padding:calc(36px + var(--sat)) 22px 40px;overflow-y:auto;height:100%}
+.login h1{font-size:14px;letter-spacing:6px;color:var(--g);text-align:center;margin-bottom:6px}
+.login .store{text-align:center;color:var(--mute);font-size:13px;margin-bottom:14px}
+/* 3行の約束 */
+.credo{display:flex;flex-direction:column;gap:3px;text-align:center;color:var(--g);font-size:14px;font-weight:bold;letter-spacing:1px;line-height:1.5}
+.login .credo{margin:0 0 26px;padding:12px 8px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.credo-card{background:var(--g);color:#fff;border-radius:var(--r);padding:12px 14px;margin-bottom:12px}
+.credo-card .credo{color:#fff;font-size:14px}
+.credo-card .cs{display:block;text-align:center;font-size:10px;letter-spacing:3px;opacity:.75;margin-bottom:6px}
+.motto{display:block;text-align:center;font-size:13px;letter-spacing:1px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.25);opacity:.95}
+.motto-l{text-align:center;color:var(--g);font-size:13px;font-weight:bold;letter-spacing:1px;margin:8px 0 0}
+.tip{border-left:4px solid var(--g)}
+.ntc{border-left:4px solid var(--line)} .ntc.unread{border-left-color:var(--amber);background:#fffdf5} .ntc.imp.unread{border-left-color:var(--red)}
+.ntc .nh{display:flex;justify-content:space-between;align-items:flex-start;gap:8px} .ntc .nt{font-size:15px;font-weight:bold;line-height:1.4} .ntc .nd{font-size:12px;color:var(--mute);margin-top:2px}
+.ntc .nb{font-size:14px;line-height:1.7;white-space:pre-wrap;margin-top:8px;display:none} .ntc.open .nb{display:block}
+.note{padding:10px 0;border-bottom:1px dashed var(--line)} .note:last-child{border-bottom:0} .note .nb{font-size:14px;line-height:1.6;white-space:pre-wrap} .note .nd{font-size:12px;color:var(--mute);margin-top:4px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.note.done .nb{color:var(--mute);text-decoration:line-through}
+.note .dn{border:1px solid var(--line);background:#fff;border-radius:999px;padding:3px 10px;font-size:12px;color:var(--g)}
+.hcomm{display:grid;grid-template-columns:1fr 1fr;gap:8px} .hcomm button{border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px 8px;text-align:left} .hcomm .k{font-size:11px;letter-spacing:1px;color:var(--mute)} .hcomm .v{display:block;font-size:15px;font-weight:bold;margin-top:2px;line-height:1.3} .hcomm .amber{color:var(--amber)} .hcomm .red{color:var(--red)}
+.tip .tl{font-size:11px;letter-spacing:2px;color:var(--mute);margin-bottom:4px}
+.tip .tb{font-size:15px;line-height:1.6}
+.tip .tb .ng{color:var(--red);text-decoration:line-through;margin-right:6px}
+.tip .tb .ok{color:var(--g);font-weight:bold}
+.tip .tk{display:inline-block;font-size:11px;background:var(--g-l);color:var(--g);border-radius:999px;padding:2px 8px;margin-top:6px}
+.mood h3{font-size:16px;color:var(--g);text-align:center;letter-spacing:2px;margin:0 0 4px}
+.mood .ml{font-size:13px;color:var(--mute);text-align:center;margin-bottom:12px;line-height:1.5}
+.mood .mq{margin-bottom:12px} .mood .mq .t{font-size:14px;font-weight:bold;margin-bottom:6px} .mood .mq .t small{font-weight:normal;color:var(--mute);margin-left:6px}
+.mood .mo{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mood .mo button{border:2px solid var(--line);background:#fff;border-radius:12px;padding:10px 4px 8px;font-size:13px;color:var(--mute);line-height:1.2}
+.mood .mo button i{display:block;font-style:normal;font-size:26px;margin-bottom:2px}
+.mood .mo button.on{border-color:var(--g);background:var(--g-l);color:var(--g);font-weight:bold}
+.mood-nudge{border-left:4px solid var(--amber)}
+.mood .rq{font-size:15px;font-weight:bold;color:var(--g);background:var(--g-l);border-radius:10px;padding:8px 10px;margin-bottom:6px;line-height:1.5}
+.mood .mo button{padding:8px 4px 6px} .mood .mo button i{font-size:22px}
+.whyc .chip,#nextChips .chip{min-height:40px;padding:8px 8px;font-size:14px;font-weight:normal} .whyc .chip.on,#nextChips .chip.on{font-weight:bold}
+.thx{border-left:4px solid var(--g)} .thx .tb{font-size:15px;line-height:1.6}
+.hyg{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:12px}
+.hyg .hh{display:flex;justify-content:space-between;align-items:center;font-size:12px;letter-spacing:2px;color:var(--g);margin-bottom:6px}
+.hyg .seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden} .hyg .seg button{border:0;background:#fff;padding:4px 10px;font-size:12px;color:var(--mute)} .hyg .seg button.on{background:var(--g);color:#fff}
+.hyg .hi{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px dashed var(--line);font-size:14px;line-height:1.3} .hyg .hi:last-child{border-bottom:0}
+.hyg .hi .bx{width:24px;height:24px;border:2px solid var(--line);border-radius:7px;flex:none;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px} .hyg .hi.on .bx{background:var(--g);border-color:var(--g)}
+.hyg .tp{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px} .hyg .tp label{margin:0 0 2px;font-size:12px} .hyg .tp select{font-size:18px;padding:10px 8px;text-align:center;text-align-last:center;width:100%;border:2px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);-webkit-appearance:none;appearance:none} .hyg .tp select.ng{border-color:var(--red);background:var(--red-l);color:var(--red);font-weight:bold} .hyg .tp select.set{border-color:var(--g)}
+.hyg .hn{font-size:12px;color:var(--mute);margin-top:6px}
+.hyg .gl{font-size:13px;font-weight:bold;color:var(--g);margin:4px 2px 6px;letter-spacing:1px}
+.hyg .gl small{font-weight:normal;color:var(--mute);letter-spacing:0;margin-left:6px}
+.hyg .gg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
+.hyg .gg .hi{border:1.5px solid var(--line);border-radius:10px;padding:9px 8px;gap:6px;font-size:14px;font-weight:bold;justify-content:flex-start}
+.hyg .gg .hi:last-child{border-bottom:1.5px solid var(--line)} .hyg .gg .hi.on{border-color:var(--g);background:var(--g-l)}
+.hyg .gg .hi .bx{width:20px;height:20px;font-size:13px}
+.hyg .cnt{font-size:12px;color:var(--mute);letter-spacing:0} .hyg .cnt.ok{color:var(--g);font-weight:bold}
+.gcheck{background:var(--cream);border:1px solid var(--line);border-radius:12px;padding:10px 10px 6px;margin-bottom:12px}
+.gcheck .gh{font-weight:bold;color:var(--g);font-size:14px;margin-bottom:8px;text-align:center;letter-spacing:1px}
+.gcheck .chips{margin-bottom:4px}
+.gcheck .chip{min-height:44px;padding:8px 2px;font-size:14px}
+.guide h3{font-size:16px;color:var(--g);margin:0 0 10px;text-align:center;letter-spacing:2px}
+.guide h4{font-size:14px;color:var(--g);margin:16px 0 6px;border-left:4px solid var(--g);padding-left:8px}
+.guide p,.guide li{font-size:14px;line-height:1.7;margin:0 0 4px}
+.guide ul{padding-left:18px;margin:0 0 6px}
+.guide table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:6px}
+.guide td,.guide th{border:1px solid var(--line);padding:5px 6px;text-align:left;vertical-align:top}
+.guide th{background:var(--cream)}
+.guide .lead{background:var(--cream);border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.7}
+.guide .fin{background:var(--g);color:#fff;border-radius:10px;padding:12px;text-align:center;font-weight:bold;line-height:1.7;margin:14px 0 10px}
+.sel{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.sel button{border:2px solid var(--line);background:#fff;border-radius:12px;padding:16px 6px;font-size:17px;font-weight:bold;min-height:60px}
+.sel button.on{border-color:var(--g);background:var(--g-l)}
+input,select,textarea{width:100%;font-size:17px;padding:12px;border:2px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);font-family:inherit;min-height:50px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--g)}
+label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
+.msg{padding:12px 14px;border-radius:10px;font-size:14px;margin-bottom:12px;line-height:1.5}
+.msg.err{background:var(--red-l);color:var(--red)} .msg.ok{background:var(--g-l);color:var(--g)}
+.toast{position:fixed;left:50%;top:calc(64px + var(--sat));transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:9;max-width:92vw;text-align:center}
+.toast.show{opacity:1}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:8}
+.sheet{background:var(--cream);border-radius:18px 18px 0 0;padding:16px 16px calc(22px + var(--sab));width:100%;max-width:520px;max-height:92vh;max-height:92dvh;overflow-y:auto}
+.sheet h3{font-size:17px;margin-bottom:6px}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 12px}
+/* 時刻入力（表示は24時間、タップで端末のドラムピッカー） */
+.timebox{display:grid;grid-template-columns:60px 1fr 60px;gap:8px;align-items:stretch;margin:12px 0 8px}
+.timebox button{border:2px solid var(--line);background:#fff;border-radius:12px;font-size:15px;font-weight:bold;min-height:64px}
+.tdisp{position:relative;border:2px solid var(--line);border-radius:12px;background:#fff;text-align:center;font-size:40px;font-weight:bold;padding:6px 4px 4px;font-variant-numeric:tabular-nums;letter-spacing:1px;line-height:1.1}
+.tdisp small{display:block;font-size:11px;font-weight:normal;color:var(--mute);letter-spacing:0;line-height:1.4}
+.tdisp input{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:16px;min-height:0}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.chips.c3{grid-template-columns:repeat(3,1fr)} .chips.c4{grid-template-columns:repeat(4,1fr)}
+.chip{border:2px solid var(--line);background:#fff;border-radius:12px;padding:10px 4px;font-size:15px;font-weight:bold;min-height:52px;line-height:1.3}
+.chip.on{border-color:var(--g);background:var(--g-l)}
+.chip:disabled{opacity:.4}
+.chip small{display:block;font-weight:normal;font-size:11px;color:var(--mute)}
+/* 希望カレンダー */
+.modes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:10px 0}
+.modes button{border:2px solid var(--line);background:#fff;border-radius:12px;padding:8px 2px;font-size:13px;font-weight:bold;min-height:54px;line-height:1.3}
+.modes button small{display:block;font-weight:normal;font-size:10px;color:var(--mute)}
+.modes button.on.ok{border-color:var(--g);background:var(--g-l);color:var(--g)}
+.modes button.on.time{border-color:var(--amber);background:var(--amber-l);color:var(--amber)}
+.modes button.on.off{border-color:var(--blue);background:var(--blue-l);color:var(--blue)}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:6px}
+.cal .h{text-align:center;font-size:11px;color:var(--mute);padding:2px 0}
+.cal .d{border:1.5px solid var(--line);border-radius:9px;height:58px;padding:3px 2px;font-size:12px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;overflow:hidden;cursor:pointer;user-select:none}
+.cal .d.closed{background:var(--cream-d);color:#b5ad9c;cursor:default}
+.cal .d .n{font-weight:bold;line-height:1.2}
+.cal .d .k{font-size:10px;line-height:1.2;border-radius:5px;padding:2px 2px;width:100%;text-align:center;white-space:nowrap;overflow:hidden}
+.cal .d.ok{background:var(--g-l);border-color:var(--g)} .cal .d.ok .k{color:var(--g)}
+.cal .d.time{background:var(--amber-l);border-color:var(--amber)} .cal .d.time .k{color:var(--amber)}
+.cal .d.off{background:var(--blue-l);border-color:var(--blue)} .cal .d.off .k{color:var(--blue)}
+.cal .d.sun .n{color:var(--red)} .cal .d.sat .n{color:var(--blue)}
+.cal .d.closed .n{color:#b5ad9c}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--mute);margin-top:8px}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px;border:1px solid var(--line)}
+.legend .ok::before{background:var(--g-l);border-color:var(--g)} .legend .time::before{background:var(--amber-l);border-color:var(--amber)} .legend .off::before{background:var(--blue-l);border-color:var(--blue)} .legend .closed::before{background:var(--cream-d)}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0}
+.summary div{background:var(--cream);border-radius:10px;padding:8px 4px;text-align:center}
+.summary b{display:block;font-size:20px;line-height:1.2}
+.summary span{font-size:11px;color:var(--mute)}
+.tools{display:flex;gap:8px;margin-top:8px}
+.tools button{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 4px;font-size:13px;min-height:44px}
+.askin{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px;font-size:17px;font-family:inherit;background:#fff;margin-bottom:10px;resize:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px} .chips button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font-size:13px;color:var(--ink)}
+.ans{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px} .ans .q{font-size:13px;color:var(--mute);margin-bottom:6px} .ans .a{font-size:17px;line-height:1.7;white-space:pre-wrap}
+.ans.none{background:var(--amber-l);border-color:transparent} .ans .src{margin-top:10px;font-size:13px;color:var(--mute)} .ans .src b{display:block;color:var(--ink);margin-top:4px}
+.rate{display:flex;gap:8px;margin-top:10px} .rate button{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px;font-size:14px} .rate button.on{background:var(--g-l);border-color:var(--g);color:var(--g)}
+.myq{padding:10px 0;border-top:1px solid var(--line)} .myq:first-child{border-top:0} .myq .q{font-size:15px} .myq .st{font-size:12px;color:var(--mute)} .myq .a{font-size:15px;line-height:1.6;margin-top:4px;white-space:pre-wrap;color:var(--ink)}
+.monthnav{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.monthnav button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 16px;font-size:16px;min-height:44px}
+.monthnav b{font-size:17px}
+.foot{margin:4px 0 8px}
+#bar{position:fixed;top:0;left:0;right:0;height:3px;z-index:20;background:linear-gradient(90deg,transparent 0%,#e9b949 40%,#e9b949 60%,transparent 100%);background-size:200% 100%;opacity:0;transition:opacity .2s;pointer-events:none}
+#bar.on{opacity:1;animation:slide 1s linear infinite}
+@keyframes slide{from{background-position:200% 0}to{background-position:-200% 0}}
+body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lock .tools button{pointer-events:none;opacity:.55}
+#punchArea .btn{margin-bottom:12px}
+.stale{opacity:.6}
+.link{background:none;border:0;color:var(--g);text-decoration:underline;font-size:14px;padding:8px 0}
+.editrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.editrow button{border:2px solid var(--line);background:#fff;border-radius:12px;padding:8px 4px;min-height:64px;text-align:center}
+.editrow button small{display:block;font-size:11px;color:var(--mute)}
+.editrow button b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
+.editrow button.changed{border-color:var(--amber);background:var(--amber-l)}
+.editrow button.changed b{color:var(--amber)}
+.num{font-variant-numeric:tabular-nums}
+.center{text-align:center}
+#ld{position:fixed;inset:0;z-index:30;background:rgba(250,246,238,.72);display:none;align-items:center;justify-content:center;backdrop-filter:blur(1px)}
+#ld.on{display:flex}
+#ld .box{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px 24px;display:flex;align-items:center;gap:12px;font-size:15px;color:var(--ink);box-shadow:0 6px 24px rgba(0,0,0,.12)}
+#ld .sp{width:22px;height:22px;border:3px solid var(--line);border-top-color:var(--g);border-radius:50%;animation:spin .8s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+<meta name="theme-color" content="#2c4f39">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="勤怠">
+<link rel="apple-touch-icon" sizes="180x180" href="../icon-staff-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="../icon-staff-192.png">
+<link rel="manifest" href="manifest.json">
+</head>
+<body>
+<div class="app">
+  <!-- ログイン -->
+  <div id="vLogin" class="login">
+    <h1>ORION STAFF</h1>
+    <div class="store" id="loginStore">洋食オリオン</div>
+    <div class="credo"><span>古いけれど、清潔。</span><span>下町だけれど、丁寧。</span><span>親しみやすいけれど、雑ではない。</span></div><div class="motto-l">愛嬌よく、明るく。お店もお客様も、朗らかに。</div>
+    <div id="loginMsg"></div>
+    <div class="mini" style="margin-bottom:6px">名前を選んでください</div>
+    <div class="sel" id="staffSel"></div>
+    <label>パスコード（数字）</label>
+    <input type="password" inputmode="numeric" pattern="[0-9]*" id="passIn" placeholder="●●●●●●" autocomplete="off">
+    <div style="height:18px"></div>
+    <button class="btn" id="loginBtn" onclick="doLogin()">ログイン</button>
+    <p class="mini center" style="margin-top:16px">パスコードを忘れたときは管理者に連絡してください</p>
+  </div>
+
+  <!-- 本体 -->
+  <div id="vApp" class="hide" style="display:flex;flex-direction:column;flex:1;min-height:0">
+    <header>
+      <div><div class="t">ORION STAFF</div><div class="n" id="hName">-</div></div>
+      <button onclick="doLogout()">ログアウト</button>
+    </header>
+    <main id="main">
+      <div id="msg"></div>
+
+      <!-- ホーム -->
+      <section id="pHome">
+        <div class="credo-card"><span class="cs">オリオンの約束</span><div class="credo"><span>古いけれど、清潔。</span><span>下町だけれど、丁寧。</span><span>親しみやすいけれど、雑ではない。</span></div><span class="motto">愛嬌よく、明るく。お店もお客様も、朗らかに。</span></div>
+        <div class="card">
+          <h2>本日 <small id="hToday"></small></h2>
+          <div class="big" id="hShift">-</div>
+          <div class="sub" id="hShiftSub"></div>
+        </div>
+        <div id="punchArea"></div>
+        <div class="card">
+          <div class="row"><span class="l">次回の勤務</span><b id="hNext">-</b></div>
+          <div class="row" id="hWishRow"><span class="l">来月の希望</span><b id="hWish"></b></div>
+        </div>
+        <div class="card mood-nudge hide" id="hMoodCard"><div class="row"><span class="l">今日のふりかえりが未送信です<br><span class="mini">10秒で終わります</span></span><button class="btn sm" style="width:auto;padding:10px 16px" onclick="openMood()">答える</button></div></div>
+        <div class="card thx hide" id="hThx"><div class="tl mini">届いた「ありがとう」</div><div class="tb" id="hThxBody"></div></div>
+        <div class="card" id="hCommCard"><h2>連絡 <small id="hCommSub"></small></h2>
+          <div class="hcomm"><button onclick="go('comm')"><span class="k">運営からのお知らせ</span><span class="v" id="hNotice">-</span></button><button onclick="go('comm','notes')"><span class="k">引き継ぎノート</span><span class="v" id="hNotes">-</span></button></div>
+        </div>
+        <div class="card tip"><div class="tl">今日のひとこと</div><div class="tb" id="tipBody"></div></div>
+        <div class="card">
+          <div class="row"><span class="l">接客・身だしなみガイド</span><b id="hGuide" class="mini">-</b></div>
+          <button class="btn sec sm" style="margin-top:8px" onclick="openGuide()">ガイドを読む</button>
+        </div>
+        <button class="btn sec" id="hWishBtn" onclick="go('wish')">来月の希望を入力する</button>
+      </section>
+
+      <!-- 希望シフト -->
+      <section id="pWish" class="hide">
+        <div class="card">
+          <div class="monthnav"><button onclick="wishMove(-1)">◀</button><b id="wishMonth"></b><button onclick="wishMove(1)">▶</button></div>
+          <div class="mini" id="wishInfo"></div>
+          <div id="wishBody">
+            <div class="modes" id="modes">
+              <button class="ok on" onclick="setMode('ok')">○ 出られる<small>タップで付け外し</small></button>
+              <button class="time" onclick="setMode('time')">時間を指定<small id="modeTimeLabel">11:00〜14:00</small></button>
+              <button class="off" onclick="setMode('off')">休み希望<small>この日は避けたい</small></button>
+            </div>
+            <div id="timePick" class="hide">
+              <div class="chips c3" id="timePresets"></div>
+              <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center">
+                <input type="time" id="wStart" value="11:00" onchange="syncTimeLabel()"><span>〜</span><input type="time" id="wEnd" value="14:00" onchange="syncTimeLabel()">
+              </div>
+              <div class="mini" style="margin-top:4px">この時間で、日をタップしてください</div>
+            </div>
+            <div class="cal" id="wishCal"></div>
+            <div class="legend"><span class="ok">出られる</span><span class="time">時間指定</span><span class="off">休み希望</span><span class="closed">定休日</span><span>白＝出られない</span></div>
+            <div class="tools"><button onclick="selectAllOpen()">営業日をぜんぶ○にする</button><button onclick="clearAll()">すべて消す</button></div>
+          </div>
+        </div>
+        <div id="wishFoot">
+          <div class="card" style="padding:10px 14px">
+            <div class="summary" id="wishSummary"></div>
+            <label style="margin-top:0">ひとこと（任意）</label>
+            <input type="text" id="wNote" maxlength="80" placeholder="例: 第2週は試験のため少なめ希望">
+          </div>
+          <div class="foot"><button class="btn" id="wishSaveBtn" onclick="saveWish()">この内容で提出する</button></div>
+        </div>
+      </section>
+
+      <!-- 連絡 -->
+      <section id="pComm" class="hide">
+        <div class="card" id="noticeCard">
+          <h2>運営からのお知らせ <small id="noticeSub"></small></h2>
+          <div class="mini" style="margin-bottom:8px">タップで本文が開きます。読んだら「確認しました」を押してください</div>
+          <div id="noticeList"><div class="mini">読み込み中…</div></div>
+        </div>
+        <div class="card" id="notesCard">
+          <h2>引き継ぎノート <small id="notesSub"></small></h2>
+          <div class="mini">次に出勤する人に伝えたいことを書いてください（例: 卵が残り10個・○○様から予約の電話・レジ袋が少ない）</div>
+          <textarea id="noteIn" rows="3" maxlength="400" placeholder="例: 14時ごろ、常連の田中様から「明日3人で来る」と連絡あり" style="margin-top:8px"></textarea>
+          <button class="btn sm" style="margin-top:8px" onclick="noteAdd()">書き込む</button>
+          <div id="noteList" style="margin-top:10px"><div class="mini">読み込み中…</div></div>
+        </div>
+      </section>
+
+      <!-- 確定シフト -->
+      <section id="pShift" class="hide">
+        <div class="card">
+          <div class="monthnav"><button onclick="shiftMove(-1)">◀</button><b id="shiftMonth"></b><button onclick="shiftMove(1)">▶</button></div>
+          <div id="shiftList"></div>
+        </div>
+      </section>
+
+      <!-- 勤務履歴 -->
+      <section id="pHist" class="hide">
+        <div class="card">
+          <div class="monthnav"><button onclick="histMove(-1)">◀</button><b id="histMonth"></b><button onclick="histMove(1)">▶</button></div>
+          <div class="summary" style="grid-template-columns:1fr 1fr"><div><b id="histDays">-</b><span>勤務日数</span></div><div><b id="histHours">-</b><span>労働時間</span></div></div>
+          <div class="mini" style="margin:4px 0 6px">時刻が違う日は、その行をタップして修正を申請できます</div>
+          <div id="histList"></div>
+        </div>
+        <div class="card" id="fixCard">
+          <h2>修正申請の状況</h2>
+          <div id="fixList"></div>
+        </div>
+        <div class="card">
+          <h2>パスコード</h2>
+          <button class="btn sec sm" onclick="openPass()">パスコードを変更する</button>
+        </div>
+      </section>
+
+      <!-- オリオンに聞く -->
+      <section id="pAsk" class="hide">
+        <div class="card">
+          <h2>オリオンに聞く</h2>
+          <div class="mini" style="margin-bottom:8px">店のルール・やり方・困ったときの対応を聞けます。答えが見つからない質問は管理者に届き、回答がつくとここに出ます。</div>
+          <textarea id="askIn" class="askin" rows="2" placeholder="例：PayPayが使えないときは？　異物混入と言われたら？"></textarea>
+          <button class="btn" id="askBtn" onclick="doAsk()">聞く</button>
+          <div class="chips" id="askChips"></div>
+        </div>
+        <div id="askOut"></div>
+        <div class="card" id="askMineCard">
+          <h2>自分の質問</h2>
+          <div id="askMine" class="mini">まだありません</div>
+        </div>
+      </section>
+    </main>
+    <nav>
+      <button id="n_home" class="on" onclick="go('home')"><i>⌂</i>ホーム</button>
+      <button id="n_comm" onclick="go('comm')"><i>✉</i>連絡<span class="bd hide" id="bdComm">!</span></button>
+      <button id="n_wish" onclick="go('wish')"><i>✎</i>希望<span class="bd hide" id="bdWish">!</span></button>
+      <button id="n_shift" onclick="go('shift')"><i>▦</i>シフト</button>
+      <button id="n_hist" onclick="go('hist')"><i>≡</i>履歴</button>
+      <button id="n_ask" onclick="go('ask')"><i>?</i>聞く<span class="bd hide" id="bdAsk">!</span></button>
+    </nav>
+  </div>
+</div>
+<div id="bar"></div>
+<div id="ld"><div class="box"><span class="sp"></span><span id="ldt">読み込み中…</span></div></div>
+<div class="toast" id="toast"></div>
+<div id="ov"></div>
+
+<script>
+// iOSのホーム画面アプリでは、表示領域が画面の下端まで届かないことがある（下に隙間ができる）。
+// その場合は隙間をメニューと同じ白で塗り、メニューの下の余白を詰めて、一続きに見せる
+(function(){
+  const ios = /iP(hone|od|ad)/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+  const standalone = navigator.standalone === true || (window.matchMedia && matchMedia("(display-mode: standalone)").matches);
+  function fit(){
+    if (!(ios && standalone)) return;
+    const portrait = window.innerWidth < window.innerHeight; if (!portrait) return;
+    const full = Math.max(screen.width, screen.height), gap = full - window.innerHeight;
+    const t = document.createElement("div"); t.style.cssText = "position:fixed;top:0;padding-top:env(safe-area-inset-top);visibility:hidden"; document.body.appendChild(t); const sat = parseFloat(getComputedStyle(t).paddingTop)||0; t.remove();
+    document.documentElement.classList.toggle("iosgap", sat > 20 && gap > 20 && gap < 120);
+  }
+  window.addEventListener("resize", fit); document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) setTimeout(fit, 100); });
+  document.addEventListener("DOMContentLoaded", fit); setTimeout(fit, 500);
+})();
+const API_URL = "https://script.google.com/macros/s/AKfycbwgGW6rXzAW2rHVicdoCMdHOT_E3egrXPsaEJerX-_brZr0mYF6Qo_tRorX8PgLc7c/exec";
+const $ = id => document.getElementById(id);
+let TOKEN = localStorage.getItem("os-token") || "";
+let ME = null, SET = null, HOME = null;
+let busy = false;
+
+function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2400); }
+function showMsg(el, text, cls){ el.innerHTML = text ? `<div class="msg ${cls||"err"}">${text}</div>` : ""; }
+// 書き込み系は同時に1つだけ（二重タップ防止）。進行中は上部に黄色いバー。
+const WRITES = new Set(["punch","wishes_save","fix_request","change_pass","login","logout","notice_read","note_add","note_done","guide_read","mood_save","hyg_save"]);
+let inflight = 0;
+async function api(action, body){
+  const isWrite = WRITES.has(action);
+  if (isWrite && document.body.classList.contains("lock")) return {ok:false, error:"処理中です。少しお待ちください", code:"busy"};
+  inflight++; $("bar").classList.add("on"); if (isWrite) document.body.classList.add("lock");
+  const LDMSG = {punch:"記録しています…",wishes_save:"提出しています…",fix_request:"申請しています…",change_pass:"変更しています…",login:"ログインしています…",logout:"ログアウト中…"}; if (!window._ldT) window._ldT = setTimeout(()=>{ $("ldt").textContent = (isWrite ? (LDMSG[action]||"処理しています…") : "読み込み中…"); $("ld").classList.add("on"); }, 200); else if (isWrite) $("ldt").textContent = LDMSG[action]||"処理しています…";
+  try{
+    body = Object.assign({action, token: TOKEN}, body||{});
+    // 15秒で打ち切り。読み取りは自動でもう1回（Google側の起動待ちや一時エラーで止まらないように）
+    const once = async ()=>{ const c = new AbortController(); const t = setTimeout(()=>c.abort(), 15000); try{ const res = await fetch(API_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(body), signal:c.signal}); const txt = await res.text(); try{ return JSON.parse(txt); }catch(e){ throw new Error("badjson"); } } finally{ clearTimeout(t); } };
+    let j; try{ j = await once(); }catch(e){ if (isWrite) throw e; await new Promise(r=>setTimeout(r,1200)); j = await once(); }
+    if (!j.ok && j.code==="noauth"){ localStorage.removeItem("os-token"); TOKEN=""; cclear(); showLogin("ログインの期限が切れました"); }
+    return j;
+  }catch(e){ const to = e && e.name==="AbortError"; return {ok:false, error: (to ? "応答がありません（Google側が混み合っています）。" : "通信エラーです。電波を確認して") + "もう一度お試しください", code:"net", retry:true}; }
+  finally{ inflight--; if (inflight<=0){ inflight=0; $("bar").classList.remove("on"); clearTimeout(window._ldT); window._ldT=null; $("ld").classList.remove("on"); } if (isWrite) document.body.classList.remove("lock"); }
+}
+// 画面ごとの前回結果を端末に残し、まず表示してから裏で更新
+let CACHE = (()=>{ try{ return JSON.parse(localStorage.getItem("os-cache")||"{}"); }catch(e){ return {}; } })();
+function cget(k){ return CACHE[k]; }
+function cset(k,v){ CACHE[k]=v; try{ localStorage.setItem("os-cache", JSON.stringify(CACHE)); }catch(e){} }
+function cclear(){ CACHE={}; try{ localStorage.removeItem("os-cache"); }catch(e){} }
+function todayStr(){ const d=new Date(); return d.getFullYear()+"/"+pad2(d.getMonth()+1)+"/"+pad2(d.getDate()); }
+function pad2(n){ return String(n).padStart(2,"0"); }
+function ymAdd(ym, n){ let [y,m]=ym.split("/").map(Number); m+=n; while(m>12){m-=12;y++;} while(m<1){m+=12;y--;} return y+"/"+pad2(m); }
+function thisMonth(){ const d=new Date(); return d.getFullYear()+"/"+pad2(d.getMonth()+1); }
+const YO = ["日","月","火","水","木","金","土"];
+function youbi(ds){ const [y,m,d]=ds.split("/").map(Number); return YO[new Date(y,m-1,d).getDay()]; }
+function fmtMin(m){ return Math.floor(m/60)+"時間"+pad2(m%60)+"分"; }
+function nowHM(){ const d=new Date(); return pad2(d.getHours())+":"+pad2(d.getMinutes()); }
+function round5(hm){ let [h,m]=hm.split(":").map(Number); m=Math.round(m/5)*5; if(m===60){m=0;h=(h+1)%24;} return pad2(h)+":"+pad2(m); }
+function toMinC(hm){ const [h,m]=String(hm).split(":").map(Number); return h*60+m; }
+function shortT(t){ return String(t).replace(/^0/,"").replace(/:00$/,""); }
+function mdLabel(ds){ return ds.slice(5)+"("+youbi(ds)+")"; }
+function monthLabel(ym){ return ym.replace("/","年")+"月"; }
+function closeOv(){ $("ov").innerHTML = ""; }
+function sheet(html){ $("ov").innerHTML = `<div class="overlay" onclick="if(event.target===this)closeOv()"><div class="sheet"><div class="grab"></div>${html}</div></div>`; }
+
+// ───── ログイン ─────
+async function showLogin(msg){
+  $("vLogin").classList.remove("hide"); $("vApp").classList.add("hide");
+  showMsg($("loginMsg"), msg||"", "err");
+  try{
+    const r = await fetch(API_URL+"?action=staff_list").then(r=>r.json());
+    $("loginStore").textContent = r.store_name || "洋食オリオン";
+    $("staffSel").innerHTML = (r.staff||[]).map(s=>`<button data-id="${s.staff_id}" onclick="pickStaff(this)">${s.name}</button>`).join("");
+    const last = localStorage.getItem("os-staff"); if (last){ const b=[...document.querySelectorAll("#staffSel button")].find(x=>x.dataset.id===last); if(b) b.classList.add("on"); }
+  }catch(e){ showMsg($("loginMsg"), "通信できません。電波を確認してもう一度開いてください", "err"); }
+}
+function pickStaff(b){ document.querySelectorAll("#staffSel button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); $("passIn").focus(); }
+async function doLogin(){
+  const b = document.querySelector("#staffSel button.on"); if(!b){ showMsg($("loginMsg"),"名前を選んでください"); return; }
+  const pass = $("passIn").value.trim(); if(!pass){ showMsg($("loginMsg"),"パスコードを入力してください"); return; }
+  $("loginBtn").disabled = true;
+  try{
+    const r = await api("login", {staff_id:b.dataset.id, passcode:pass, ua:navigator.userAgent});
+    if(!r.ok){ showMsg($("loginMsg"), r.error); return; }
+    TOKEN = r.token; localStorage.setItem("os-token", TOKEN); localStorage.setItem("os-staff", b.dataset.id); cclear();
+    ME = r.staff; SET = r.settings; $("passIn").value="";
+    enterApp();
+  }catch(e){ showMsg($("loginMsg"), "通信エラー。もう一度お試しください"); }
+  finally{ $("loginBtn").disabled = false; }
+}
+async function doLogout(){ if(!confirm("ログアウトしますか？")) return; await api("logout"); localStorage.removeItem("os-token"); TOKEN=""; cclear(); showLogin(); }
+
+
+// ───── オリオンに聞く（ORION OS：Knowledge 検索＋AI。レジ・分析と同じ GAS） ─────
+const OS_API = "https://script.google.com/macros/s/AKfycbzFNl4UM3fkoANru-agWmuOox-h3cS1yJmx4UZxpGFemEBnAUv45Gdp1VOvtCqOVUg/exec";
+const ASK_CHIPS = ["開店時に最初に何をする？","閉店時に何を確認する？","PayPayが使えないときは？","現金が合わないときは？","急に休むときは？","売り切れたら？","異物混入と言われたら？","アレルギーを聞かれたら？"];
+async function osFetch(url, opt, retry){ const c = new AbortController(); const t = setTimeout(()=>c.abort(), 20000); try{ const r = await fetch(url, Object.assign({signal:c.signal}, opt)); return JSON.parse(await r.text()); }catch(e){ if (retry){ await new Promise(r=>setTimeout(r,1200)); return osFetch(url, opt, false); } return {error:"net"}; } finally{ clearTimeout(t); } }
+async function osGet(mode){ return osFetch(OS_API+"?mode="+mode+"&t="+Date.now()+"&token="+encodeURIComponent(TOKEN), {cache:"no-store"}, true); }
+async function osPost(body){ return osFetch(OS_API, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(Object.assign({token:TOKEN}, body))}, false); }
+function loadAsk(){
+  $("askChips").innerHTML = ASK_CHIPS.map(q=>`<button onclick="askQuick(this.textContent)">${esc(q)}</button>`).join("");
+  const c = cget("ask_mine"); if (c) renderAskMine(c);
+  osGet("os_myq").then(r=>{ if (r && r.list){ cset("ask_mine", r.list); renderAskMine(r.list); } });
+}
+function askQuick(q){ $("askIn").value = q; doAsk(); }
+async function doAsk(){
+  const q = $("askIn").value.trim(); if(!q){ toast("質問を入れてください"); return; }
+  const b = $("askBtn"); b.disabled = true; b.textContent = "探しています…"; $("bar").classList.add("on");
+  try{
+    const r = await osPost({type:"os_ask", q});
+    if (r.error){ $("askOut").innerHTML = `<div class="msg err">${esc(r.error==="net"?"通信エラーです。電波を確認してもう一度お試しください":r.error)}</div>`; return; }
+    if (r.answer){
+      const srcs = (r.sources||[]).slice(0,2).map(s=>`<b>${esc(s.q)}</b>`).join("");
+      $("askOut").innerHTML = `<div class="ans"><div class="q">${esc(q)}</div><div class="a">${esc(r.answer)}</div>${srcs?`<div class="src">もとにした決まりごと${srcs}</div>`:""}<div class="rate" data-log="${esc(r.log_id||"")}"><button onclick="rateAsk(this,'役に立った')">役に立った</button><button onclick="rateAsk(this,'違う')">実際と違う</button></div></div>`;
+    } else {
+      $("askOut").innerHTML = `<div class="ans none"><div class="q">${esc(q)}</div><div class="a">まだ決まりごとがありません。管理者に届けました。回答がつくと下の「自分の質問」に出ます。急ぎのときは長下さんに連絡してください。</div></div>`;
+      loadAsk();
+    }
+    $("askIn").value = ""; $("main").scrollTo({top:0, behavior:"smooth"});
+  } finally { b.disabled = false; b.textContent = "聞く"; $("bar").classList.remove("on"); }
+}
+async function rateAsk(btn, v){
+  const box = btn.parentElement; [...box.children].forEach(x=>x.classList.remove("on")); btn.classList.add("on");
+  const r = await osPost({type:"os_rate", log_id: box.dataset.log, v});
+  toast(v==="違う" ? "管理者に伝えました。決まりごとを見直します" : "ありがとうございます");
+}
+function renderAskMine(list){
+  const el = $("askMine"); if (!list || !list.length){ el.innerHTML = "まだありません"; return; }
+  el.innerHTML = list.map(x=>`<div class="myq"><div class="q">${esc(x.q)}</div><div class="st">${esc(String(x.at||"").slice(0,16))}　${x.status==="回答済"?"回答あり":"回答待ち"}</div>${x.a?`<div class="a">${esc(x.a)}</div>`:""}</div>`).join("");
+  askBadge(list); try{ localStorage.setItem("os-ask-seen", list.reduce((m,x)=>x.answeredAt>m?x.answeredAt:m, "")); }catch(e){}
+}
+// 回答がついた質問がまだ見られていなければ「聞く」に印
+function askBadge(list){ const seen = localStorage.getItem("os-ask-seen")||""; const n = (list||[]).filter(x=>x.status==="回答済" && x.answeredAt > seen).length; $("bdAsk").classList.toggle("hide", !n); }
+
+// ───── 画面遷移 ─────
+function enterApp(){ $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); go("home"); }
+function go(p, sub){
+  ["home","comm","wish","shift","hist","ask"].forEach(x=>{ $("p"+x[0].toUpperCase()+x.slice(1)).classList.toggle("hide", x!==p); $("n_"+x).classList.toggle("on", x===p); });
+  showMsg($("msg"), ""); closeOv(); CUR_PAGE = p;
+  if(p==="home") loadHome(); if(p==="comm") loadComm(sub); if(p==="wish") loadWish(); if(p==="shift") loadShift(); if(p==="hist") loadHist(); if(p==="ask") loadAsk();
+  $("main").scrollTo(0,0);
+  if(p==="comm" && sub==="notes") setTimeout(()=>$("notesCard").scrollIntoView({behavior:"smooth"}), 150);
+}
+// 読み込み失敗：前回の内容があればその旨を、なければ再読み込みボタンを出す（空白で止まらない）
+let CUR_PAGE = "home";
+function loadFail(r, hasCache){
+  const btn = `<button class="btn sec sm" style="margin-top:8px" onclick="go(CUR_PAGE)">もう一度読み込む</button>`;
+  showMsg($("msg"), (hasCache ? "前回の内容を表示しています。更新できませんでした。" : esc(r.error||"読み込めませんでした")) + btn, hasCache ? "ok" : "err");
+}
+// 1分以上バックグラウンドにいた後に開き直したら、その画面を読み直す（ホーム画面アプリが固まったままにならないように）
+let HIDDEN_AT = 0;
+document.addEventListener("visibilitychange", ()=>{ if (document.hidden){ HIDDEN_AT = Date.now(); return; } if (HIDDEN_AT && Date.now()-HIDDEN_AT > 60000 && TOKEN && !$("vApp").classList.contains("hide")) go(CUR_PAGE); HIDDEN_AT = 0; });
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+// ───── ホーム・打刻 ─────
+async function loadHome(){
+  const c = cget("home"); if (c && c.today===todayStr()) renderHome(c, true);
+  const cc = cget("comm"); if (cc) renderCommHome(cc);
+  const [r, k] = await Promise.all([api("home"), api("comm")]); if(!r.ok){ loadFail(r, !!c); return; }
+  cset("home", r); renderHome(r, false);
+  if (k.ok){ cset("comm", k); renderCommHome(k); }
+  osGet("os_myq").then(r=>{ if (r && r.list){ cset("ask_mine", r.list); askBadge(r.list); } });
+}
+// ───── 連絡（お知らせ・引き継ぎ） ─────
+let COMM = null;
+let DIAG_SENT = false;
+function sendDiag(){
+  if (DIAG_SENT || !ME || ME.staff_id !== "s_48230c3becee") return; DIAG_SENT = true;
+  setTimeout(()=>{ try{
+    const t = document.createElement("div"); t.style.cssText="position:fixed;top:0;left:0;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0;visibility:hidden"; document.body.appendChild(t); const cs = getComputedStyle(t); const sat = cs.paddingTop, sab = cs.paddingBottom; t.remove();
+    const nav = document.querySelector("nav").getBoundingClientRect(), app = document.querySelector(".app").getBoundingClientRect(), vv = window.visualViewport;
+    const d = {ih:innerHeight, oh:outerHeight, iw:innerWidth, sh:screen.height, sw:screen.width, dpr:devicePixelRatio, ch:document.documentElement.clientHeight, vvh: vv?Math.round(vv.height):null, vvt: vv?Math.round(vv.offsetTop):null, sat, sab, navTop:Math.round(nav.top), navBottom:Math.round(nav.bottom), appH:Math.round(app.height), standalone: navigator.standalone===true, dm: matchMedia("(display-mode: standalone)").matches, gap: document.documentElement.classList.contains("iosgap"), ua: navigator.userAgent.replace(/[^\w .;\/()]/g,"").slice(0,160)};
+    fetch(API_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({action:"diag", token:TOKEN, d: JSON.stringify(d)})});
+  }catch(e){} }, 1500);
+}
+function renderCommHome(k){
+  COMM = k; sendDiag();
+  const latest = k.notices[0];
+  $("hNotice").innerHTML = k.unread>0 ? `<span class="amber">未読 ${k.unread}件</span>` : (latest ? `<span style="font-weight:normal;font-size:13px">${esc(latest.title)}</span>` : "なし");
+  $("hNotes").innerHTML = k.openCount>0 ? `<span class="red">${k.openCount}件 未対応</span>` : "なし";
+  $("hCommSub").textContent = k.unread>0 ? "未読のお知らせがあります" : "";
+  const th = []; $("hThx").classList.toggle("hide", !th.length); if (th.length) $("hThxBody").innerHTML = th.map(t=>`${esc(t.from)}さんから「ありがとう」<span class="mini">（${t.date.slice(5)}）</span>`).join("<br>");
+  const a = HOME && HOME.att; $("hMoodCard").classList.toggle("hide", !(k.pilot && a && a.status==="done" && k.moodToday===false));
+  $("bdComm").classList.toggle("hide", !(k.unread>0 || k.openCount>0)); $("bdComm").textContent = k.unread>0 ? k.unread : "!";
+}
+async function loadComm(sub){
+  const c = cget("comm"); if (c) renderComm(c);
+  const k = await api("comm"); if(!k.ok){ loadFail(k, !!c); return; }
+  cset("comm", k); renderComm(k); renderCommHome(k);
+}
+function renderComm(k){
+  COMM = k;
+  $("noticeSub").textContent = k.unread>0 ? `未読 ${k.unread}件` : "すべて確認済み";
+  $("noticeList").innerHTML = k.notices.length ? k.notices.map(n=>`
+    <div class="card ntc ${n.read?"":"unread"} ${n.important?"imp":""}" id="ntc_${n.notice_id}" onclick="ntcToggle('${n.notice_id}')">
+      <div class="nh"><div><div class="nt">${n.important?'<span class="pill red" style="margin-right:6px">重要</span>':""}${esc(n.title)}</div><div class="nd">${n.at.slice(0,10)}　${esc(n.by)}</div></div><span class="pill ${n.read?"":"amber"}">${n.read?"確認済":"未読"}</span></div>
+      <div class="nb">${esc(n.body)}${n.read ? "" : `<button class="btn sm" style="margin-top:12px" onclick="event.stopPropagation();noticeRead('${n.notice_id}')">確認しました</button>`}</div>
+    </div>`).join("") : `<div class="mini">お知らせはありません</div>`;
+  $("notesSub").textContent = k.openCount>0 ? `未対応 ${k.openCount}件` : "";
+  $("noteList").innerHTML = k.notes.length ? k.notes.map(n=>`
+    <div class="note ${n.status==="open"?"":"done"}"><div class="nb">${esc(n.body)}</div>
+      <div class="nd"><span>${n.at.slice(5)}　${esc(n.by)}${n.status==="open"?"":`　→ ${esc(n.doneBy)} 対応済`}</span>${n.status==="open" ? `<button class="dn" onclick="noteDone('${n.note_id}',false)">対応した</button>` : `<button class="dn" style="color:var(--mute)" onclick="noteDone('${n.note_id}',true)">戻す</button>`}</div>
+    </div>`).join("") : `<div class="mini">まだ書き込みはありません</div>`;
+}
+// ───── 今日のふりかえり（退勤ボタンの前） ─────
+// 人ではなく「場面」を聞く：お客様／厨房とホール／在庫や運営／次の一手。厨房からもホールからも同じ言葉で答えられる
+const FQ = [
+  {k:"customer", t:"今日のお客様の雰囲気は？", o:[{v:3,i:"☀️",l:"朗らか"},{v:2,i:"⛅",l:"ふつう"},{v:1,i:"☁️",l:"ピリついていた"}], why:["混雑・待ち時間","難しいお客様","オーダーの間違い"]},
+  {k:"staff", t:"厨房とホールの連携は？", o:[{v:3,i:"◎",l:"スムーズ"},{v:2,i:"○",l:"少し引っかかった"},{v:1,i:"△",l:"やりにくかった"}], why:["伝え方（言い方・トーン）","タイミング（声かけ・返事）","情報（オーダー・指示）"]},
+  {k:"ops", t:"在庫や運営まわりで困ったことは？", o:[{v:3,i:"◎",l:"なし"},{v:2,i:"○",l:"少しあった"},{v:1,i:"△",l:"困った"}], why:["食材・在庫","備品・消耗品","シフト・人数","運営からの指示・連絡"]},
+];
+const Q4 = ["準備・仕込み","役割分担","声かけ・確認","備品・道具","特になし"];
+let MOOD = {};
+function moodBlock(){
+  MOOD = {why:{customer:[], staff:[], ops:[]}, next:""};
+  return `<div class="hyg mood" id="moodBox">
+    <div class="hh"><span>今日のふりかえり <span class="cnt" id="moodCnt">0/4</span></span><span class="mini" style="letter-spacing:0">運営だけが見ます</span></div>
+    <div class="motto-l" style="margin:0 0 8px">愛嬌よく、明るく。お店もお客様も、朗らかに。</div>
+    ${FQ.map(q=>`<div class="mq"><div class="t">${q.t}</div><div class="mo" id="mo_${q.k}">${q.o.map(o=>`<button onclick="moodPick('${q.k}',${o.v},this)"><i>${o.i}</i>${o.l}</button>`).join("")}</div>
+      <div id="why_${q.k}" class="hide" style="margin-top:6px"><div class="mini">どこが近い？（任意・いくつでも）</div><div class="chips whyc">${q.why.map(w=>`<button class="chip" style="text-align:left" onclick="whyPick('${q.k}',this)">${w}</button>`).join("")}</div></div></div>`).join("")}
+    <div class="mq"><div class="t">次のシフトで一つ変えるとしたら？</div><div class="chips c3" id="nextChips">${Q4.map(n=>`<button class="chip" onclick="nextPick('${n}',this)">${n}</button>`).join("")}</div>
+      <input type="text" id="moodNote" maxlength="120" placeholder="一言（任意）例: 14時台に皿が足りなくなった" style="margin-top:4px"></div>
+  </div>`;
+}
+function moodPick(k, v, btn){ MOOD[k]=v; [...btn.parentNode.children].forEach(b=>b.classList.remove("on")); btn.classList.add("on"); const w=$("why_"+k); if(w){ w.classList.toggle("hide", v===3); if(v===3){ MOOD.why[k]=[]; w.querySelectorAll(".chip").forEach(b=>b.classList.remove("on")); } } hygValidate(); }
+function whyPick(k, btn){ btn.classList.toggle("on"); MOOD.why[k] = [...$("why_"+k).querySelectorAll(".chip.on")].map(b=>b.textContent.split("（")[0]); }
+function nextPick(n, btn){ document.querySelectorAll("#nextChips .chip").forEach(b=>b.classList.remove("on")); btn.classList.add("on"); MOOD.next=n; hygValidate(); }
+function moodReady(){ return !!(MOOD.customer && MOOD.staff && MOOD.ops && MOOD.next); }
+async function moodSaveAfterOut(){
+  const r = await api("mood_save", {customer:MOOD.customer, staff:MOOD.staff, ops:MOOD.ops, whyCustomer:MOOD.why.customer.join("・"), why:MOOD.why.staff.join("・"), whyOps:MOOD.why.ops.join("・"), next:MOOD.next, toOps:MOOD.note||""});
+  if(!r.ok){ toast("ふりかえりの保存に失敗: "+r.error); return; }
+  cset("comm", Object.assign(cget("comm")||{}, {moodToday:true}));
+}
+// 退勤後に未回答だった場合（通信エラー等）だけ、ホームから答えられる
+function openMood(){
+  sheet(`<h3 style="text-align:center;color:var(--g)">今日のふりかえり</h3>${moodBlock()}<button class="btn" id="punchGo" disabled onclick="MOOD.note=($('moodNote')||{}).value||'';moodSaveAfterOut().then(()=>{closeOv();toast('ありがとうございます。お疲れさまでした');loadHome();})">送る</button><button class="btn sec" style="margin-top:8px" onclick="closeOv()">閉じる</button>`);
+}
+function ntcToggle(id){ const el = $("ntc_"+id); if(!el) return; el.classList.toggle("open"); }
+async function noticeRead(id){ const r = await api("notice_read", {notice_id:id}); if(!r.ok){ toast(r.error); return; } toast("確認を記録しました"); loadComm(); }
+async function noteAdd(){ const body = $("noteIn").value.trim(); if(!body){ toast("内容を入力してください"); return; } const r = await api("note_add", {body}); if(!r.ok){ toast(r.error); return; } $("noteIn").value=""; toast("書き込みました"); loadComm(); }
+async function noteDone(id, undo){ const r = await api("note_done", {note_id:id, undo}); if(!r.ok){ toast(r.error); return; } loadComm(); }
+function renderHome(r, stale){
+  HOME = r; ME = r.staff; SET = r.settings; $("pHome").classList.toggle("stale", !!stale);
+  $("hName").textContent = ME.name + (ME.role==="admin" ? "（管理者）" : "");
+  $("hToday").textContent = mdLabel(r.today);
+  if (r.todayShift){ $("hShift").textContent = r.todayShift.start+" 〜 "+r.todayShift.end; $("hShiftSub").textContent = "本日の勤務予定"; }
+  else { $("hShift").textContent = "予定なし"; $("hShiftSub").textContent = "予定外に働く場合もそのまま出勤を押せます"; }
+  $("hNext").textContent = r.next ? `${mdLabel(r.next.date)} ${r.next.start}〜${r.next.end}` : "未定";
+  const done = r.wishCount>0;
+  $("hWish").innerHTML = `${monthLabel(r.wishMonth).slice(5)}分 ${done ? `<span class="pill">提出済み ${r.wishCount}日</span>` : `<span class="pill amber">未提出</span>`}`;
+  $("hWishBtn").classList.toggle("hide", done); $("bdWish").classList.toggle("hide", done);
+  renderPunch(r);
+  const g = $("hGuide"); if (g) g.textContent = r.guideRead ? "読了 "+r.guideRead : "未読";
+  renderTip();
+}
+// ───── 今日のひとこと（ガイドから1項目ずつ日替わり） ─────
+const TIPS = [
+  {k:"丁寧", ng:"ちょっと待って", ok:"少々お待ちください"},
+  {k:"丁寧", ng:"そこ座ってください", ok:"こちらのお席へどうぞ"},
+  {k:"丁寧", ng:"ないです", ok:"申し訳ありません、こちらはご用意がありません"},
+  {k:"丁寧", ng:"わかんないです", ok:"確認しますので、少々お待ちください"},
+  {k:"丁寧", ng:"はいはい", ok:"はい、承知しました"},
+  {k:"親しみ", t:"自然な会話や笑顔は大歓迎。ただし常連のお客様でも、基本的な丁寧語は崩しすぎない"},
+  {k:"親しみ", t:"お客様の話をさえぎらず、まず聞く"},
+  {k:"親しみ", t:"会話を切り上げる時も「ありがとうございます、少々お待ちください」など感じよく"},
+  {k:"丁寧", t:"商品提供は「お待たせしました。○○です」。忙しい時ほど短くても丁寧に"},
+  {k:"丁寧", t:"スタッフ同士でも「お願いします」「ありがとうございます」を基本にする"},
+  {k:"丁寧", t:"お客様の前で愚痴・不満・悪口・必要以上の私語をしない"},
+  {k:"清潔", t:"オープンキッチンでは、調理中の姿も接客の一部。腕を組む・もたれる姿勢は避ける"},
+  {k:"清潔", t:"営業中に私用スマートフォンを触らない"},
+  {k:"清潔", t:"手が空いたら、厨房・食器・食材を整える、客席を見る。厨房の清潔さも接客の一部"},
+  {k:"清潔", t:"強い香水・香りの強い整髪料は避ける。爪は短く清潔に"},
+  {k:"親しみ", t:"お客様をいじる、強く否定する、上から目線になる言い方は避ける"},
+  {k:"丁寧", ng:"○○持ってきて", ok:"○○お願いします"},
+  {k:"朗らか", t:"愛嬌よく、明るく。お店もお客様も、朗らかに"},
+  {k:"朗らか", t:"呼ばれたら、厨房もホールもまず「はい！」"},
+  {k:"丁寧", t:"頼まれたら「はい、○○ですね」と復唱。伝え漏れがなくなる"},
+  {k:"朗らか", t:"忙しい時ほど、明るく短く。笑顔と声のトーンはお客様にも伝わる"},
+  {k:"朗らか", t:"スタッフ同士の気持ちいい声掛けは、それだけでお店を明るく見せる"},
+  {k:"丁寧", t:"「ありがとうございます」「助かります」は1日に何度言ってもいい"},
+];
+function renderTip(){
+  const el = $("tipBody"); if(!el) return;
+  const d = new Date(); const doy = Math.floor((d - new Date(d.getFullYear(),0,1)) / 86400000);
+  const t = TIPS[doy % TIPS.length];
+  el.innerHTML = (t.ng ? `<span class="ng">${t.ng}</span><span class="ok">${t.ok}</span>` : t.t) + `<br><span class="tk">${t.k}</span>`;
+}
+// ───── 接客・身だしなみガイド（全文） ─────
+function openGuide(){
+  const read = HOME && HOME.guideRead;
+  sheet(`<div class="guide">
+    <h3>接客・身だしなみガイド</h3>
+    <div class="lead">古い店だからこそ、清潔に。下町の店だからこそ、親しみやすく丁寧に。<br>洋食オリオンは、昔からそこにあるような少し古くて雑多な雰囲気も魅力のひとつです。ただし、「古いこと」と「不潔であること」は全く別です。下町らしい距離の近さは大切にしますが、雑・乱暴・ぶっきらぼうな接客はオリオンの接客ではありません。</div>
+    <h4>1｜身だしなみ</h4>
+    <ul><li>清潔な服・エプロンを着用する</li><li>汚れ・シミ・強いシワのある服は避ける</li><li>髪は清潔にし、長い場合はまとめる</li><li>髭は清潔に整える</li><li>爪は短く清潔にし、派手なネイルは避ける</li><li>大きなアクセサリーは避ける</li><li>強い香水・香りの強い整髪料は避ける</li><li>靴も汚れたままにしない</li></ul>
+    <p>出勤時に一度、自分の服・髪・髭・爪・靴・エプロンを確認してください。オープンキッチンでは、調理中の姿も接客の一部です。</p>
+    <h4>2｜オリオンの接客</h4>
+    <p>高級店のような堅い接客は必要ありません。お客様との会話も歓迎です。ただし、親しみやすさと雑さは別です。<br>「親しみがあるけれど、ちゃんとしている」「気軽だけれど、感じがいい」。このバランスをオリオンの接客の基本とします。</p>
+    <h4>3｜基本の言葉</h4>
+    <table><tr><th>場面</th><th>基本の言葉</th></tr><tr><td>ご来店</td><td>いらっしゃいませ</td></tr><tr><td>お待たせした時</td><td>お待たせいたしました</td></tr><tr><td>少し待っていただく時</td><td>少々お待ちください</td></tr><tr><td>商品提供</td><td>お待たせしました。○○です</td></tr><tr><td>お会計</td><td>ありがとうございます</td></tr><tr><td>お帰り</td><td>ありがとうございました</td></tr></table>
+    <h4>4｜言い方を少し丁寧に</h4>
+    <table><tr><th>避けたい言い方</th><th>おすすめ</th></tr><tr><td>ちょっと待って</td><td>少々お待ちください</td></tr><tr><td>そこ座ってください</td><td>こちらのお席へどうぞ</td></tr><tr><td>ないです</td><td>申し訳ありません、こちらはご用意がありません</td></tr><tr><td>わかんないです</td><td>確認しますので、少々お待ちください</td></tr><tr><td>はいはい</td><td>はい、承知しました</td></tr></table>
+    <h4>5｜お客様との会話</h4>
+    <ul><li>自然な会話や笑顔は大歓迎です</li><li>常連のお客様でも、基本的な丁寧語は崩しすぎない</li><li>お客様の話をさえぎらず、まず聞く</li><li>お客様をいじる、強く否定する、上から目線になる言い方は避ける</li><li>会話を切り上げる時も「ありがとうございます、少々お待ちください」など感じよく</li></ul>
+    <h4>6｜朗らかなお店をつくる（厨房とホールの連携）</h4>
+    <p><b>愛嬌よく、明るく。お店もお客様も、朗らかに。</b>これがオリオンの目指す空気です。9席のオープンキッチンでは、厨房とホールのやりとりもお客様に全部見えています。スタッフ同士が気持ちよく声を掛け合っていると、それだけでお店は明るく見えます。</p>
+    <table><tr><th>こんな時</th><th>こう言う</th></tr><tr><td>呼ばれた</td><td>「はい！」</td></tr><tr><td>何かを頼む</td><td>「○○お願いします」</td></tr><tr><td>頼まれた</td><td>「はい、○○ですね」（復唱）</td></tr><tr><td>助けてもらった</td><td>「ありがとうございます」「助かります」</td></tr><tr><td>料理が出る</td><td>「○○あがります、お願いします」</td></tr></table>
+    <ul><li>呼ばれたら、厨房もホールもまず「はい」と返事をする</li><li>頼む時は「お願いします」、受けたら復唱。これだけで伝え漏れがなくなる</li><li>忙しい時ほど、明るく短く。笑顔と声のトーンは、お客様にも伝わる</li><li>「ありがとう」「助かります」は1日に何度言ってもいい</li></ul>
+    <h4>7｜厨房での立ち振る舞い</h4>
+    <ul><li>腕を組む、壁やカウンターにもたれるなど、だらしなく見える姿勢は避ける</li><li>営業中に私用スマートフォンを触らない</li><li>大きなため息・舌打ち・お客様の前での飲食はしない</li><li>手が空いたら、厨房・食器・食材を整える、客席を見る</li><li>厨房内の清潔さも接客の一部と考える</li></ul>
+    <div class="fin">古いけれど、清潔。<br>下町だけれど、丁寧。<br>親しみやすいけれど、雑ではない。</div>
+    <p class="mini center">料理と同じくらい、身だしなみ・言葉遣い・感じのよさを大切にしましょう。</p>
+    ${read ? `<p class="mini center">読了 ${read}</p>` : `<button class="btn" onclick="guideRead()">読みました</button>`}
+    <button class="btn sec" style="margin-top:10px" onclick="closeOv()">閉じる</button>
+  </div>`);
+}
+async function guideRead(){ const r = await api("guide_read", {}); if(!r.ok){ showMsg($("msg"), r.error); return; } closeOv(); toast("ガイドの読了を記録しました"); loadHome(); }
+function renderPunch(r){
+  const a = r.att; let html = "";
+  if (!a){ html = `<div class="card"><div class="status"><span class="dot"></span>まだ出勤していません</div></div><button class="btn" onclick="punchSheet('in')">出勤する</button>`; }
+  else if (a.status==="working"){ html = `<div class="card"><div class="status"><span class="dot on"></span>勤務中</div><div class="row"><span>出勤</span><b>${a.in}</b></div><div class="row"><span>経過</span><b>${fmtMin(Math.max(0,toMinC(nowHM())-toMinC(a.in)))}</b></div></div><button class="btn out" onclick="punchSheet('out')">退勤する</button>`; }
+  else { html = `<div class="card"><div class="status"><span class="dot done"></span>本日の勤務は完了</div><div class="row"><span>出勤</span><b>${a.in}</b></div><div class="row"><span>退勤</span><b>${a.out}</b></div>${a.breakMin?`<div class="row"><span>休憩</span><b>${a.breakMin}分</b></div>`:""}<div class="row"><span>実労働</span><b>${fmtMin(a.workMin)}</b></div><button class="link" onclick="openFix(HOME.today)">時刻が違うときは修正を申請する</button></div>`; }
+  $("punchArea").innerHTML = html;
+}
+function punchSheet(type){
+  const isIn = type==="in", sh = HOME && HOME.todayShift, now = nowHM();
+  const planned = sh ? (isIn ? sh.start : sh.end) : null;
+  const near = planned && Math.abs(toMinC(planned)-toMinC(now)) <= 30;
+  const def = near ? planned : round5(now);
+  sheet(`
+    <h3>${isIn?"出勤":"退勤"}時刻を確認してください</h3>
+    ${isIn && !isPilot()?`<div class="gcheck"><div class="gh">古いけれど、清潔。</div><div class="chips c3" id="gChips">${["服","髪","髭","爪","靴","エプロン"].map(x=>`<button class="chip" onclick="this.classList.toggle('on')">${x}</button>`).join("")}</div><div class="mini center">確認できたものをタップ（全部でなくても出勤は押せます）</div></div>`:""}
+    ${hygBlock(isIn)}
+    ${(!isIn && isPilot()) ? moodBlock() : ""}
+    <div class="mini">時刻をタップすると選び直せます（未来の時刻は不可）</div>
+    <div class="timebox"><button onclick="ptAdd(-5)">−5分</button><div class="tdisp"><span id="ptd">${def}</span><small>タップで時刻を選ぶ</small><input type="time" id="pt" value="${def}" step="300" onchange="ptSync()"></div><button onclick="ptAdd(5)">+5分</button></div>
+    <div class="chips">
+      <button class="chip" onclick="ptSet('${now}')">今の時刻<small>${now}</small></button>
+      ${planned?`<button class="chip" onclick="ptSet('${planned}')">シフト通り<small>${planned}</small></button>`:`<button class="chip" disabled>シフト通り<small>本日の予定なし</small></button>`}
+    </div>
+    ${isIn?"":`<label>休憩（取った場合だけ）</label>
+    <div class="chips c4" id="brkChips">${[0,15,30,45].map(n=>`<button class="chip ${n===0?"on":""}" onclick="setBrk(${n})">${n}分</button>`).join("")}</div>
+    <input type="hidden" id="brk" value="0">`}
+    <div style="height:12px"></div>
+    <button class="btn ${isIn?"":"out"}" id="punchGo" ${isPilot()?"disabled":""} onclick="var b=Number(($('brk')||{}).value)||0;var t=$('pt').value;var c=[...document.querySelectorAll('#gChips .chip.on, #hygBox .hi.on[data-g=groom]')].map(x=>x.dataset.k||x.textContent);var h=hygCollect();if($('moodNote'))MOOD.note=$('moodNote').value.trim();closeOv();punch('${type}', b, t, c, h)">${isIn?"出勤":"退勤"}を記録する</button>
+    ${isPilot()?`<div class="mini center" id="punchHint" style="margin-top:6px">${isIn?"出勤チェック":"衛生チェックとふりかえり"}がすべて済むと押せます</div>`:""}
+    <button class="btn sec" style="margin-top:10px" onclick="closeOv()">やめる</button>`);
+  hygValidate();
+}
+// ───── 衛生記録（HACCP）: 出勤時=健康チェック(+厨房は庫内温度)、退勤時=担当別チェック ─────
+const HYG = {
+  groom: ["服","髪","髭","爪","靴","エプロン"],
+  health: ["体調に異常なし（発熱・下痢・嘔吐なし）","手指に傷・化膿なし"],
+  temps: [{k:"fridge",l:"冷蔵庫",max:10},{k:"freezer",l:"冷凍庫",max:-15},{k:"combo_r",l:"冷蔵冷凍庫（冷蔵室）",max:10},{k:"combo_f",l:"冷蔵冷凍庫（冷凍室）",max:-15}],
+  kitchen: ["仕込んだソース・茹で麺を速やかに冷まして冷蔵した","提供時に十分に再加熱した（ソースは沸騰・麺は中まで）","加熱して提供した（目玉焼き・ハンバーグ・コロッケは中まで）","調理器具・まな板の洗浄と殺菌","冷蔵庫内の整理（生の食材と調理済みを分ける・期限・ラップ・床置きなし）","厨房の清掃・ゴミ出し","手洗い（作業前・トイレ後・生ものの後）"],
+  hall: ["トイレ清掃・消毒・ペーパー補充","テーブル・卓上調味料の拭き上げ","客席・床の清掃","手洗い場の石けん・ペーパー補充","食器の洗浄・乾燥・収納"],
+};
+let HYGAREA = null;
+function hygArea(){ if (HYGAREA) return HYGAREA; return (COMM && COMM.kitchen) ? "kitchen" : "hall"; }
+function isPilot(){ return !!(COMM && COMM.pilot); }
+function hygBlock(isIn){
+  if (!isPilot()) return "";
+  const area = hygArea();
+  const seg = `<span class="seg"><button class="${area==="kitchen"?"on":""}" onclick="hygSetArea('kitchen')">厨房</button><button class="${area==="hall"?"on":""}" onclick="hygSetArea('hall')">客席</button></span>`;
+  const item = (t,i,grp) => `<div class="hi" data-g="${grp}" data-k="${t}" onclick="this.classList.toggle('on');hygValidate()"><span class="bx">✓</span><span>${t}</span></div>`;
+  if (isIn){
+    return `<div class="hyg" id="hygBox"><div class="hh"><span>出勤チェック <span class="cnt" id="hygCnt">0/8</span></span>${seg}</div>
+      <div class="gl">古いけれど、清潔。<small>身だしなみ</small></div>
+      <div class="gg">${HYG.groom.map((t,i)=>item(t,i,"groom")).join("")}</div>
+      <div class="gl">体調<small>衛生管理の記録として残ります</small></div>
+      ${HYG.health.map((t,i)=>item(t,i,"health")).join("")}
+      ${area==="kitchen"?`<div class="hh" style="margin-top:10px"><span>庫内温度（℃）</span><span class="mini" style="letter-spacing:0">冷蔵10℃以下・冷凍−15℃以下</span></div><div class="tp">${HYG.temps.map(t=>`<div><label>${t.l}</label><select id="tp_${t.k}" data-max="${t.max}" onchange="hygValidate()">${tempOpts(t.max>0)}</select></div>`).join("")}</div>
+      <div id="hygAct" class="hide" style="margin-top:8px"><label style="color:var(--red);margin:0 0 4px">基準外の温度があります。何をしたか書いてください</label><input type="text" id="hygActIn" maxlength="200" placeholder="例: 扉が半開きだった。閉めて1時間後に再確認 −18℃。食材の状態は問題なし" oninput="hygValidate()"></div>`:""}
+    </div>`;
+  }
+  const list = area==="kitchen" ? HYG.kitchen : HYG.hall;
+  return `<div class="hyg" id="hygBox"><div class="hh"><span>衛生チェック（${area==="kitchen"?"厨房":"客席"}）</span>${seg}</div>${list.map((t,i)=>item(t,i,"out")).join("")}<div class="hn">済んだものをタップ。まだのものがあれば、済ませてから退勤してください</div></div>`;
+}
+// 庫内温度はドラム（select）で選ぶ。冷蔵 −2〜15℃、冷凍 −30〜−5℃（1℃刻み）
+function tempOpts(isFridge){
+  const lo = isFridge ? -2 : -30, hi = isFridge ? 15 : -5, max = isFridge ? 10 : -15;
+  let o = `<option value="">選ぶ</option>`;
+  for (let v = hi; v >= lo; v--) o += `<option value="${v}">${v>0?"+":""}${v}℃${v>max?"（基準外）":""}</option>`;
+  return o;
+}
+function hygSetArea(a){ HYGAREA = a; const isIn = !!document.querySelector("#brkChips") === false; const box = $("hygBox"); if(!box) return; box.outerHTML = hygBlock(isIn); hygValidate(); }
+function hygValidate(){
+  const box = $("hygBox") || $("moodBox"), go = $("punchGo"); if(!box || !go) return;
+  const hb = $("hygBox"); const items = hb ? [...hb.querySelectorAll(".hi")] : []; let okAll = items.every(x=>x.classList.contains("on"));
+  const cnt = $("hygCnt"); if (cnt){ const n = items.filter(x=>x.classList.contains("on")).length; cnt.textContent = n+"/"+items.length; cnt.classList.toggle("ok", n===items.length); }
+  let anyBad = false;
+  (hb||box).querySelectorAll("[id^=tp_]").forEach(i=>{ const v = i.value.trim(); const max = Number(i.dataset.max); const bad = v!=="" && Number(v) > max; if (bad) anyBad = true; i.classList.toggle("ng", bad); i.classList.toggle("set", v!=="" && !bad); if (v==="") okAll = false; });
+  const act = $("hygAct"); if (act){ act.classList.toggle("hide", !anyBad); if (anyBad && $("hygActIn").value.trim().length < 4) okAll = false; }
+  const mb = $("moodBox"); if (mb){ const n = ["customer","staff","ops","next"].filter(k=>MOOD[k]).length; const c=$("moodCnt"); if(c){ c.textContent=n+"/4"; c.classList.toggle("ok", n===4); } if (n<4) okAll = false; }
+  go.disabled = !okAll;
+  const hint = $("punchHint"); if (hint) hint.style.display = okAll ? "none" : "";
+}
+function hygCollect(){
+  const box = $("hygBox"); if(!box) return null;
+  const isIn = !!box.querySelector("[data-g=health]");
+  const items = [...box.querySelectorAll(".hi.on")].map(x=>x.dataset.k);
+  const temps = {}; box.querySelectorAll("[id^=tp_]").forEach(i=>{ if(i.value.trim()!=="") temps[i.id.slice(3)] = Number(i.value); });
+  const actEl = $("hygAct"), action = (actEl && !actEl.classList.contains("hide")) ? $("hygActIn").value.trim() : "";
+  return {kind: isIn?"in":"out", area: hygArea(), items, temps, fix: action};
+}
+function ptSet(v){ $("pt").value=v; ptSync(); }
+function ptSync(){ const v=$("pt").value; if(v) $("ptd").textContent=v; }
+function ptAdd(n){ const el=$("pt"); if(!el.value) return; let m=toMinC(el.value)+n; m=(m+1440)%1440; ptSet(pad2(Math.floor(m/60))+":"+pad2(m%60)); }
+function setBrk(n){ document.querySelectorAll("#brkChips .chip").forEach((b,i)=>b.classList.toggle("on",[0,15,30,45][i]===n)); $("brk").value=n; }
+async function punch(type, breakMin, time, check, hyg){
+  if (busy) return; busy = true;
+  const btns = document.querySelectorAll("#punchArea .btn"); btns.forEach(b=>b.disabled=true);
+  try{
+    const r = await api("punch", {type, breakMin, time, check: check||[]});
+    if(!r.ok){ showMsg($("msg"), r.error); loadHome(); return; }
+    toast(type==="in" ? `出勤 ${r.time} を記録しました` : `退勤 ${r.time} を記録しました（実労働 ${fmtMin(r.workMin)}）`);
+    if (hyg){ const h = await api("hyg_save", hyg); if(!h.ok) toast("衛生記録の保存に失敗: "+h.error); }
+    if (type==="out" && isPilot() && moodReady()) await moodSaveAfterOut();
+    loadHome();
+  }catch(e){ showMsg($("msg"), "通信エラーです。電波のある場所でもう一度押してください（二重には記録されません）"); btns.forEach(b=>b.disabled=false); }
+  finally{ busy = false; }
+}
+
+// ───── 希望シフト ─────
+// 使い方：モード（○ / 時間 / 休）を選び、日をタップで付け外し。白＝出られない日。最後に提出。
+let WISH = {month:null, days:{}, locked:false, openDays:[], mode:"ok", note:""};
+async function loadWish(month){
+  const key = "wish:"+(month||"next"); const c = cget(key); if (c){ renderWish(c); }
+  else { $("wishMonth").textContent = month ? monthLabel(month) : "…"; $("wishInfo").textContent = "読み込み中…"; }
+  WISH.dirty = false;
+  const r = await api("wishes_get", {month}); if(!r.ok){ loadFail(r, !!c); return; }
+  cset(key, r); if (WISH.dirty && c) return; // 編集中なら上書きしない
+  renderWish(r);
+}
+function renderWish(r){
+  WISH.month = r.month; WISH.locked = r.locked; WISH.openDays = r.openDays; WISH.days = {}; WISH.note = "";
+  r.days.forEach(d=>{ if (d.kind==="ng") return; WISH.days[d.date] = d; if (d.note && !WISH.note) WISH.note = d.note; });
+  $("wNote").value = WISH.note;
+  $("wishMonth").textContent = monthLabel(r.month);
+  $("wishInfo").innerHTML = r.locked
+    ? `<span class="pill red">締切済み（${r.deadline.slice(5)}）</span> この月の希望は締め切りました。変更は松尾さん・長下さんに直接伝えてください。`
+    : `締切 <b>${r.deadline.slice(5)}(${youbi(r.deadline)})</b>。出られる日をタップして○を付け、最後に「提出する」。締切までは何度でも直せます。`;
+  $("wishBody").classList.toggle("hide", r.locked); $("wishFoot").classList.toggle("hide", r.locked);
+  renderPresets(); setMode("ok"); renderWishCal();
+}
+function wishMove(n){ loadWish(ymAdd(WISH.month, n)); }
+function renderPresets(){
+  const ps = (SET && SET.presets && SET.presets.length) ? SET.presets : ["10:15-15:15","11:00-14:00","10:15-14:00"];
+  $("timePresets").innerHTML = ps.slice(0,3).map(p=>{ const [a,b]=p.split("-"); return `<button class="chip" onclick="setPreset('${a}','${b}')">${shortT(a)}〜${shortT(b)}</button>`; }).join("");
+}
+function setPreset(a,b){ $("wStart").value=a; $("wEnd").value=b; syncTimeLabel(); }
+function syncTimeLabel(){ const a=$("wStart").value, b=$("wEnd").value; if(a&&b) $("modeTimeLabel").textContent = a+"〜"+b; document.querySelectorAll("#timePresets .chip").forEach(c=>c.classList.toggle("on", c.textContent===shortT(a)+"〜"+shortT(b))); }
+function setMode(m){ WISH.mode = m; document.querySelectorAll("#modes button").forEach(b=>b.classList.toggle("on", b.classList.contains(m))); $("timePick").classList.toggle("hide", m!=="time"); syncTimeLabel(); }
+function renderWishCal(){
+  const [y,m] = WISH.month.split("/").map(Number); const first = new Date(y,m-1,1).getDay();
+  let html = YO.map(x=>`<div class="h">${x}</div>`).join("");
+  for (let i=0;i<first;i++) html += `<div></div>`;
+  WISH.openDays.forEach(d=>{
+    const dn = Number(d.date.slice(8)); const dow = new Date(y,m-1,dn).getDay(); const w = WISH.days[d.date];
+    const cls = ["d", d.open?"":"closed", dow===0?"sun":dow===6?"sat":"", w?w.kind:""].join(" ");
+    const k = !w ? "" : w.kind==="ok" ? "○" : w.kind==="off" ? "休" : shortT(w.start)+"-"+shortT(w.end);
+    html += `<div class="${cls}" onclick="tapDay('${d.date}')"><span class="n">${dn}</span>${k?`<span class="k">${k}</span>`:""}</div>`;
+  });
+  $("wishCal").innerHTML = html;
+  const c = {ok:0,time:0,off:0}; Object.values(WISH.days).forEach(w=>{ c[w.kind]=(c[w.kind]||0)+1; });
+  $("wishSummary").innerHTML = `<div><b>${c.ok}</b><span>出られる日</span></div><div><b>${c.time}</b><span>時間指定</span></div><div><b>${c.off}</b><span>休み希望</span></div>`;
+}
+function tapDay(ds){
+  WISH.dirty = true;
+  if (WISH.locked){ toast("締切を過ぎています。管理者に伝えてください"); return; }
+  const od = WISH.openDays.find(x=>x.date===ds); if (od && !od.open){ toast("定休日です"); return; }
+  const cur = WISH.days[ds]; const m = WISH.mode;
+  if (m==="time"){ const a=$("wStart").value, b=$("wEnd").value; if(!a||!b){ toast("時間を入れてください"); return; } if(toMinC(a)>=toMinC(b)){ toast("終了は開始より後にしてください"); return; }
+    if (cur && cur.kind==="time" && cur.start===a && cur.end===b) delete WISH.days[ds]; else WISH.days[ds] = {date:ds, kind:"time", start:a, end:b}; }
+  else { if (cur && cur.kind===m) delete WISH.days[ds]; else WISH.days[ds] = {date:ds, kind:m}; }
+  renderWishCal();
+}
+function selectAllOpen(){ WISH.dirty = true; WISH.openDays.filter(d=>d.open).forEach(d=>{ if(!WISH.days[d.date]) WISH.days[d.date]={date:d.date, kind:"ok"}; }); renderWishCal(); toast("営業日をすべて○にしました。出られない日をタップして外してください"); }
+function clearAll(){ if(!confirm("この月の入力をすべて消しますか？（提出するまで保存はされません）")) return; WISH.dirty = true; WISH.days={}; renderWishCal(); }
+async function saveWish(){
+  const note = $("wNote").value.trim();
+  const days = Object.values(WISH.days).map((w,i)=>Object.assign({}, w, {note: i===0 ? note : ""}));
+  if(!days.length && !confirm("1日も○が付いていません。「出られる日なし」で提出しますか？")) return;
+  $("wishSaveBtn").disabled = true;
+  const r = await api("wishes_save", {month:WISH.month, days});
+  $("wishSaveBtn").disabled = false;
+  if(!r.ok){ showMsg($("msg"), r.error); return; }
+  WISH.dirty = false; const ck = cget("wish:"+WISH.month) || cget("wish:next"); if (ck){ ck.days = days; cset("wish:"+WISH.month, ck); if (cget("wish:next") && cget("wish:next").month===WISH.month) cset("wish:next", ck); }
+  const hc = cget("home"); if (hc && hc.wishMonth===WISH.month){ hc.wishCount = days.length; cset("home", hc); }
+  toast(`${r.saved}日分を提出しました`); showMsg($("msg"), `${monthLabel(WISH.month)}分の希望を提出しました（${r.saved}日分）。締切までは何度でも直せます。`, "ok");
+  $("main").scrollTo({top:0, behavior:"smooth"}); $("bdWish").classList.add("hide");
+}
+
+// ───── 確定シフト ─────
+let SHM = thisMonth();
+function shiftMove(n){ SHM = ymAdd(SHM, n); loadShift(); }
+async function loadShift(){
+  const key = "shift:"+SHM; const c = cget(key); if (c) renderShift(c); else { $("shiftMonth").textContent = monthLabel(SHM); $("shiftList").innerHTML = `<div class="sub">読み込み中…</div>`; }
+  const r = await api("shifts", {month:SHM}); if(!r.ok){ loadFail(r, !!c); return; }
+  cset(key, r); if (r.month===SHM) renderShift(r);
+}
+function renderShift(r){
+  $("shiftMonth").textContent = monthLabel(r.month);
+  if (!r.shifts.length){ $("shiftList").innerHTML = `<div class="sub">確定したシフトはまだありません</div>`; return; }
+  const totalMin = r.shifts.reduce((s,x)=>s+(toMinC(x.end)-toMinC(x.start)),0);
+  const today = HOME ? HOME.today : "";
+  $("shiftList").innerHTML = `<div class="summary" style="grid-template-columns:1fr 1fr"><div><b>${r.shifts.length}日</b><span>勤務日数</span></div><div><b>${fmtMin(totalMin)}</b><span>予定時間</span></div></div>` +
+    r.shifts.map(s=>`<div class="row" ${s.date===today?'style="background:var(--g-l);margin:0 -6px;padding:10px 6px;border-radius:8px"':""}><span class="l">${mdLabel(s.date)}<br><span class="mini">${(r.others[s.date]||[]).length?"一緒: "+(r.others[s.date]||[]).join("、"):"ひとり"}</span></span><b>${s.start}〜${s.end}</b></div>`).join("");
+}
+
+// ───── 履歴・修正・パス変更 ─────
+let HM = thisMonth(); let HIST = null;
+function histMove(n){ HM = ymAdd(HM, n); loadHist(); }
+async function loadHist(){
+  const key = "hist:"+HM; const c = cget(key); if (c) renderHist(c); else { $("histMonth").textContent = monthLabel(HM); $("histList").innerHTML = `<div class="sub">読み込み中…</div>`; }
+  const r = await api("history", {month:HM}); if(!r.ok){ loadFail(r, !!c); return; }
+  cset(key, r); if (r.month===HM) renderHist(r);
+}
+function renderHist(r){
+  HIST = r;
+  $("histMonth").textContent = monthLabel(r.month);
+  $("histDays").textContent = r.days+"日"; $("histHours").textContent = fmtMin(r.totalMin);
+  $("histList").innerHTML = r.list.map(a=>`<div class="row" onclick="openFix('${a.date}')" style="cursor:pointer"><span class="l">${mdLabel(a.date)}${a.note?`<br><span class="mini">${a.note}</span>`:""}</span><b>${a.in||"--:--"}〜${a.out||"<span style='color:var(--red)'>未退勤</span>"}${a.breakMin?`<br><span class="mini">休憩${a.breakMin}分</span>`:""}<br><span class="mini">${a.status==="done"?fmtMin(a.workMin):""}</span></b></div>`).join("") || `<div class="sub">記録がありません</div>`;
+  const ST = {pending:"<span class='pill amber'>確認中</span>", approved:"<span class='pill'>承認</span>", rejected:"<span class='pill red'>却下</span>"};
+  $("fixList").innerHTML = r.fixes.length ? r.fixes.map(f=>`<div class="row"><span class="l">${f.date.slice(5)} ${f.field}<br><span class="mini">${f.current} → ${f.wanted}</span></span>${ST[f.status]||f.status}</div>`).join("") : `<div class="sub">申請はありません</div>`;
+}
+// 修正申請：その日の記録を表示し、直したい値をタップして選ぶ（時刻は端末のピッカー）
+let FIX = null;
+function openFix(date){
+  const a = (HIST && HIST.list.find(x=>x.date===date)) || (HOME && HOME.att && HOME.today===date ? HOME.att : null);
+  FIX = {date, cur:{in:a?a.in:"", out:a?a.out:"", brk:a?a.breakMin:0}, want:{in:a?a.in:"", out:a?a.out:"", brk:a?a.breakMin:0}};
+  sheet(`
+    <h3>${mdLabel(date)} の打刻を修正</h3>
+    <div class="mini">直したい項目をタップして、正しい値を選んでください</div>
+    <div class="editrow" style="margin:12px 0">
+      <button id="fxIn" onclick="pickTime('in')"><small>出勤</small><b>${FIX.cur.in||"--:--"}</b></button>
+      <button id="fxOut" onclick="pickTime('out')"><small>退勤</small><b>${FIX.cur.out||"--:--"}</b></button>
+      <button id="fxBrk" onclick="pickBrk()"><small>休憩</small><b>${FIX.cur.brk}分</b></button>
+    </div>
+    <div id="fxPick"></div>
+    <label>理由</label>
+    <select id="fxReason"><option>打刻を忘れた</option><option>押すのが遅れた</option><option>早く押しすぎた</option><option>休憩の入力を間違えた</option><option>その他</option></select>
+    <div style="height:12px"></div>
+    <button class="btn" onclick="sendFix()">この内容で申請する</button>
+    <button class="btn sec" style="margin-top:10px" onclick="closeOv()">やめる</button>`);
+}
+function pickTime(f){
+  const v = FIX.want[f] || FIX.cur[f] || (f==="in" ? "10:15" : "15:15");
+  $("fxPick").innerHTML = `<div class="mini">${f==="in"?"出勤":"退勤"}の正しい時刻</div><div class="timebox"><button onclick="fxAdd('${f}',-5)">−5分</button><div class="tdisp"><span id="fxd">${v}</span><small>タップで時刻を選ぶ</small><input type="time" id="fxt" value="${v}" step="300" onchange="fxSet('${f}', this.value)"></div><button onclick="fxAdd('${f}',5)">+5分</button></div>`;
+  fxSet(f, v);
+}
+function fxSet(f, v){ if(!v) return; FIX.want[f]=v; const d=$("fxd"); if(d) d.textContent=v; const t=$("fxt"); if(t) t.value=v; const b=$(f==="in"?"fxIn":"fxOut"); b.querySelector("b").textContent=v; b.classList.toggle("changed", v!==FIX.cur[f]); }
+function fxAdd(f,n){ let m=toMinC(FIX.want[f]||FIX.cur[f]||"10:00")+n; m=(m+1440)%1440; fxSet(f, pad2(Math.floor(m/60))+":"+pad2(m%60)); }
+function pickBrk(){
+  $("fxPick").innerHTML = `<div class="mini">休憩の正しい分数</div><div class="chips c4" style="margin-top:6px">${[0,15,30,45,60,75,90,120].map(n=>`<button class="chip ${FIX.want.brk===n?"on":""}" onclick="fxBrk(${n})">${n}分</button>`).join("")}</div>`;
+}
+function fxBrk(n){ FIX.want.brk=n; document.querySelectorAll("#fxPick .chip").forEach(c=>c.classList.toggle("on", c.textContent===n+"分")); const b=$("fxBrk"); b.querySelector("b").textContent=n+"分"; b.classList.toggle("changed", n!==FIX.cur.brk); }
+async function sendFix(){
+  const reqs = [];
+  if (FIX.want.in && FIX.want.in!==FIX.cur.in) reqs.push({field:"出勤", wanted:FIX.want.in});
+  if (FIX.want.out && FIX.want.out!==FIX.cur.out) reqs.push({field:"退勤", wanted:FIX.want.out});
+  if (FIX.want.brk!==FIX.cur.brk) reqs.push({field:"休憩", wanted:String(FIX.want.brk)});
+  if (!reqs.length){ toast("変更がありません。直したい項目をタップしてください"); return; }
+  if (FIX.want.in && FIX.want.out && toMinC(FIX.want.out) <= toMinC(FIX.want.in)){ toast("退勤は出勤より後にしてください"); return; }
+  const reason = $("fxReason").value;
+  if(!confirm(`${mdLabel(FIX.date)}：${reqs.map(r=>r.field+"→"+r.wanted+(r.field==="休憩"?"分":"")).join("、")} で申請します。よろしいですか？`)) return;
+  for (const q of reqs){ const r = await api("fix_request", {date:FIX.date, field:q.field, wanted:q.wanted, reason}); if(!r.ok){ showMsg($("msg"), r.error); closeOv(); return; } }
+  closeOv(); toast("申請しました。管理者の承認をお待ちください"); loadHist(); if(HOME && HOME.today===FIX.date) loadHome();
+}
+function openPass(){
+  sheet(`<h3>パスコードを変更</h3><div class="mini">4桁以上の数字。次回から新しいパスコードでログインします。</div>
+    <label>新しいパスコード</label><input type="password" inputmode="numeric" id="npass" placeholder="●●●●●●">
+    <label>もう一度</label><input type="password" inputmode="numeric" id="npass2" placeholder="●●●●●●">
+    <div style="height:12px"></div><button class="btn" onclick="changePass()">変更する</button><button class="btn sec" style="margin-top:10px" onclick="closeOv()">やめる</button>`);
+}
+async function changePass(){
+  const p = $("npass").value.trim(), p2 = $("npass2").value.trim();
+  if(!/^\d{4,}$/.test(p)){ toast("4桁以上の数字にしてください"); return; } if(p!==p2){ toast("2回の入力が一致しません"); return; }
+  const r = await api("change_pass", {newpass:p}); if(!r.ok){ showMsg($("msg"), r.error); return; } closeOv(); toast("パスコードを変更しました");
+}
+
+// ───── 起動 ─────
+(async function(){
+  if ("serviceWorker" in navigator){ try{ navigator.serviceWorker.register("sw.js"); }catch(e){} }
+  if (!TOKEN){ showLogin(); return; }
+  try{ const r = await api("home"); if(r.ok){ HOME=r; ME=r.staff; SET=r.settings; enterApp(); } else if(r.code!=="noauth"){ showLogin(r.error); } }
+  catch(e){ showLogin("通信できません"); }
+})();
+</script>
+</body>
+</html>
