@@ -43,3 +43,28 @@
     return orig(input, init).then(function(r){ done(); return r; }, function(e){ done(); throw e; });
   };
 })();
+
+// 旧アイコン（分析・発注・経費・管理）をホーム画面から開いたときだけ、まとめ先を案内する（埋め込み・スタッフ経由・普通のブラウザでは出さない）
+(function(){
+  try{
+    var p = location.pathname, q = location.search;
+    if (/embed=1|from=staff/.test(q)) return;
+    if (window.self !== window.top) return;
+    var standalone = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+    if (!standalone) return;
+    var m = p.match(/\/(dashboard|hacchu|keihi|admin)\.html$/); if (!m) return;
+    var sec = {dashboard:"shime", hacchu:"hacchu", keihi:"keihi", admin:"staff"}[m[1]];
+    var base = /\/staff\/admin\.html$/.test(p) ? "../" : "";
+    var show = function(){
+      if (document.getElementById("bzMove")) return;
+      var d = document.createElement("div"); d.id = "bzMove";
+      d.style.cssText = "position:fixed;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:99997;background:#1f3a2a;color:#fff;border-radius:14px;padding:12px 14px;font:14px -apple-system,'Hiragino Sans',sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.2);line-height:1.5";
+      var staffBtn = sec === "hacchu" ? '<a href="' + base + 'staff/" style="flex:1;text-align:center;background:rgba(255,255,255,.15);color:#fff;border-radius:10px;padding:9px;text-decoration:none">スタッフは勤怠アプリへ</a>' : "";
+      d.innerHTML = '<b>アプリを1つにまとめました</b><br>この画面は「管理者」アプリの中に入りました。このアイコンは削除して、管理者アプリをホーム画面に追加してください。' +
+        '<div style="display:flex;gap:8px;margin-top:10px"><a href="' + base + 'kanri.html#' + sec + '" style="flex:1;text-align:center;background:#e8c26a;color:#1f3a2a;font-weight:bold;border-radius:10px;padding:9px;text-decoration:none">管理者アプリを開く</a>' + staffBtn +
+        '<button onclick="this.closest(\'#bzMove\').remove()" style="border:0;background:none;color:#fff;opacity:.7;padding:0 6px">閉じる</button></div>';
+      document.body.appendChild(d);
+    };
+    if (document.body) show(); else document.addEventListener("DOMContentLoaded", show);
+  }catch(e){}
+})();
