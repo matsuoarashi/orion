@@ -37,6 +37,7 @@ function handleOsGet(e){
   if (mode === "os_mail"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_({ list: osRows_(OS_MAILCAND, OS_MAILCAND_COLS).filter(function(r){ return String(r["状態"]) === "未確認"; }).slice(-100).reverse().map(function(r){ var o = {}; OS_MAILCAND_COLS.forEach(function(c){ o[c] = String(r[c]===undefined?"":r[c]); }); return o; }) }); }
   var lg = osLedgerGet_(mode, me); if (lg) return invOut_(lg);
   if (mode === "os_snapshot_run"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_(osSnapshot(String(p.ym||""), me)); }
+  if (mode === "os_ai_diag"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_(osAiDiag_(me)); }
   if (mode === "os_seed_mail"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_({ result: osMailSeedRules(), rules: osMailRules_().length }); }
   if (mode === "os_seed_ledgers"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_(osSeedLedgers20261101()); }
   if (mode === "os_ailog"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_({ list: osRows_(OS_AILOG, OS_AILOG_COLS).slice(-200).reverse() }); }
@@ -109,13 +110,17 @@ function osAsk_(d, me){
   var q = String(d.q||"").trim(); if (!q) return { error: "質問を入れてください" };
   var t0 = Date.now();
   var know = osRows_(OS_KNOW, OS_KNOW_COLS).filter(function(r){ return r["状態"] === "approved" && osCanSee_(me, String(r["対象"])); }).map(osKnow_);
-  var hits = osSearch_(q, know);
+  var hasAi = !!PropertiesService.getScriptProperties().getProperty("ANTHROPIC_API_KEY");
+  // AI があるときは候補を広め（12%・8件）に取り、関係の判断は AI に任せる。AI が無ければ従来どおり 25%
+  var hits = hasAi ? osSearch_(q, know, 0.12).slice(0, 8) : osSearch_(q, know);
   var ans = null, model = "search";
   if (hits.length){
-    // 上位の Knowledge を根拠に AI が短く答える（APIキーが無ければ最上位をそのまま返す）
-    var ai = osGateway_(me, q, hits.slice(0, 5));
-    if (ai && ai.text){ ans = ai.text; model = ai.model; }
-    else { ans = hits[0].a; }
+    var ai = hasAi ? osGateway_(me, q, hits) : null;
+    if (ai && ai.text){
+      if (/決まりがありません/.test(ai.text)) { ans = null; model = ai.model; hits = []; } // 根拠なし → 未回答へ
+      else { ans = ai.text; model = ai.model; }
+    }
+    else if (osSearch_(q, hits).length) { ans = osSearch_(q, hits)[0].a; } // AI 失敗時は 25% 以上の一致だけ採用
   }
   var status = ans ? "回答" : "未回答";
   var qid = "";
@@ -125,24 +130,38 @@ function osAsk_(d, me){
   return { ok:true, status:status, answer:ans, sources:hits.slice(0,3).map(function(h){ return { id:h.id, q:h.q, a:h.a }; }), q_id:qid, log_id:logId };
 }
 // 簡易検索：質問と Knowledge の質問・回答・タグの語の一致数で順位付け（日本語は2文字の組で比較）
-function osSearch_(q, list){
-  var grams = function(s){ s = String(s||"").toLowerCase().replace(/[\s、。・「」（）()\/／]/g,""); var g = {}; for (var i = 0; i < s.length-1; i++) g[s.substr(i,2)] = 1; return g; };
+function osSearch_(q, list, min){
+  var grams = function(s){ s = String(s||"").toLowerCase().replace(/[\s、。・「」（）()\/／？?！!]/g,""); var g = {}; for (var i = 0; i < s.length-1; i++) g[s.substr(i,2)] = 1; return g; };
   var qg = grams(q); var qn = Object.keys(qg).length; if (!qn) return [];
-  return list.map(function(k){ var kg = grams(k.q + " " + k.tags + " " + k.a.slice(0,80)); var hit = 0; Object.keys(qg).forEach(function(g){ if (kg[g]) hit++; }); var score = hit / qn; return { k:k, score:score }; })
-    .filter(function(x){ return x.score >= 0.25; }).sort(function(a,b){ return b.score - a.score; }).map(function(x){ return x.k; });
+  var th = (min === undefined) ? 0.25 : min;
+  return list.map(function(k){ var kg = grams(k.q + " " + k.tags + " " + k.a.slice(0,120)); var hit = 0; Object.keys(qg).forEach(function(g){ if (kg[g]) hit++; }); var score = hit / qn; return { k:k, score:score }; })
+    .filter(function(x){ return x.score >= th; }).sort(function(a,b){ return b.score - a.score; }).map(function(x){ return x.k; });
 }
 // AI Gateway：全ての AI 呼び出しはここを通る。モデルは設定で差し替え。キー未設定なら null（検索結果だけで答える）
 function osGateway_(me, q, hits){
   var props = PropertiesService.getScriptProperties(); var key = props.getProperty("ANTHROPIC_API_KEY"); if (!key) return null;
   var model = props.getProperty("OS_MODEL") || "claude-haiku-5-5";
   var ctx = hits.map(function(h, i){ return (i+1) + ". Q: " + h.q + "\n   A: " + h.a; }).join("\n");
-  var sys = "あなたは洋食オリオン（神田淡路町のナポリタン専門店）のスタッフ向け案内役です。以下の『決まりごと』だけを根拠に、日本語で3行以内で簡潔に答えてください。決まりごとに書かれていないことは推測せず『決まりがありません。店長に確認してください』と答えてください。数字は算用数字で。";
+  var sys = "あなたは洋食オリオン（神田淡路町のナポリタン専門店）のスタッフ向け案内役です。以下の『決まりごと』（検索で拾った候補で、関係ないものも混じっています）のうち質問に関係するものだけを根拠に、日本語で3行以内で簡潔に答えてください。決まりごとに書かれていないことは推測せず『決まりがありません。店長に確認してください』と答えてください。数字は算用数字で。";
   var body = { model: model, max_tokens: 300, system: sys, messages: [{ role: "user", content: "決まりごと:\n" + ctx + "\n\n質問: " + q }] };
   try {
     var res = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", { method: "post", contentType: "application/json", headers: { "x-api-key": key, "anthropic-version": "2023-06-01" }, payload: JSON.stringify(body), muteHttpExceptions: true });
     var j = JSON.parse(res.getContentText()); var text = (j.content && j.content[0] && j.content[0].text) || "";
+    if (!text) osAiErr_ = "HTTP " + res.getResponseCode() + " " + String(res.getContentText()).slice(0, 300);
     return text ? { text: text, model: model, usage: j.usage || {} } : null;
-  } catch(e){ return null; }
+  } catch(e){ osAiErr_ = String(e); return null; }
+}
+var osAiErr_ = "";
+// エディタから AI 接続を確認する用／足りない権限（外部接続・Gmail）を承認し直す用
+function osAiDiagRun(){ var r = osAiDiag_({ role:"admin", name:"editor" }); Logger.log(JSON.stringify(r)); return r; }
+function osAuthAll(){ ScriptApp.requireAllScopes(ScriptApp.AuthMode.FULL); return "ok"; }
+// 診断：キーの有無（値は出さない）と API 応答。管理者のみ
+function osAiDiag_(me){
+  var props = PropertiesService.getScriptProperties(); var key = props.getProperty("ANTHROPIC_API_KEY") || "";
+  var out = { hasKey: !!key, keyLen: key.length, keyPrefix: key.slice(0, 7), model: props.getProperty("OS_MODEL") || "claude-haiku-5-5", props: Object.keys(props.getProperties()) };
+  if (!key) return out;
+  osAiErr_ = ""; var r = osGateway_(me, "営業時間は？", [{ q: "営業日と営業時間は？", a: "月〜金 11:00〜14:00。土日祝休。" }]);
+  out.ok = !!(r && r.text); out.text = r ? r.text : ""; out.error = osAiErr_; return out;
 }
 // AIログの整理：保存区分「通常」は90日で削除（Knowledge／決裁は永続）。日次トリガーで実行
 function osPurgeAiLog(){
