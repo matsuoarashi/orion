@@ -71,8 +71,11 @@ function osMailIngest_(d){
   var rules = osMailRules_(); var sh = osSheet_(OS_MAILCAND, OS_MAILCAND_COLS);
   var known = {}; invRows_(sh).forEach(function(r){ if (String(r["状態"]) !== "再取込") known[String(r["メールID"])] = 1; }); // 状態「再取込」の候補は取り直す
   var lock = LockService.getScriptLock(); lock.waitLock(10000); var n = 0;
-  try { (d.messages||[]).forEach(function(m){ if (osMailTake_(m, rules, sh, known, String(d.mailbox||""))) n++; }); } finally { lock.releaseLock(); }
-  return { ok:true, taken:n, received:(d.messages||[]).length };
+  var np = 0;
+  try { (d.messages||[]).forEach(function(m){ if (osMailTake_(m, rules, sh, known, String(d.mailbox||""))) n++; });
+    try { np = startIngestMessages_(d.messages, String(d.mailbox||"")); } catch(e){ np = 0; } // ORION START: 物件サイトのメール → 掲載（start.gs）
+  } finally { lock.releaseLock(); }
+  return { ok:true, taken:n, received:(d.messages||[]).length, properties:np };
 }
 // ルール判定：差出人ドメイン → 件名キーワード → 本文キーワード（転送メールは本文に元の差出人が残るのでここで拾える）
 function osMailMatch_(m, rules){

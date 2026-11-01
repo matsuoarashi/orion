@@ -101,4 +101,5 @@
 - 神田の容量：demonstrated（実証済みの下限）／theoretical_seat（席×60÷(滞在+入替)×稼働率）／kitchen（unknown）／sustainable を分けて保存
 - 来店品質：差率 3%以内 A（滞在の実測に使う）／10%以内 B（在店人数だけ比例補正）／それ以上 C（参考）
 - 滞在の実測は**累積曲線（入店累積−退店累積）の面積法**。既存のレジ・分析画面の「先着順の突き合わせ」は押し漏れがあると短く出る
-- 物件の Gmail 取り込み：「ORION/物件」ラベルのメールを `startMailScan`（1時間ごと。設定は `startMailTriggerInstall()`）。読めない値は空欄＝未確認項目。ページの自動取得はしない
+- 物件の Gmail 取り込み（本線）：物件サイトの新着メールは orion.napolitan@gmail.com に届く。orion 側の Gmail フィルタで「ORION/物件」ラベル・カテゴリ「メイン」にし、既存の収集スクリプト（collector.gs・10分ごと）が本体へ送る。osMailIngest_（mail.gs）から startIngestMessages_ が物件サイトの差出人だけを「掲載」に未確認で入れる。読めない値は空欄＝未確認項目。ページの自動取得はしない
+- 補助：分析GAS側の Gmail（arashi.matsuo）に届いた物件メールは `startMailScan`（「ORION/物件」ラベル。設定は `startMailTriggerInstall()`）
