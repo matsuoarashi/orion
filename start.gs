@@ -536,6 +536,8 @@ function startUpsertListing_(sh, rows, o){
   if (hit){
     var upd = { "最終確認日": "'" + invToday_() };
     ["賃料","坪","面積㎡","最寄駅","徒歩分","住所","造作譲渡","階","重飲食","source_url"].forEach(function(k){ if ((hit[k] === "" || hit[k] === undefined) && o[k] !== "" && o[k] !== undefined) { upd[k] = o[k]; hit[k] = o[k]; } });
+    var isLst = function(u){ return /inshokuten\.com\/bukken\/(?:bukkens|transfer\/detail)\/\d+/.test(String(u||"")); };
+    if (o.source_url && isLst(o.source_url) && !isLst(hit.source_url) && String(hit.source_url) !== String(o.source_url)) { upd.source_url = o.source_url; hit.source_url = o.source_url; } // 以前の読み違い（配信停止のURLなど）を物件ページのURLに直す
     var j = startJudge(hit); upd["坪単価"] = j.unit; upd["判定"] = j.grade; upd["判定理由"] = j.reason; upd["更新日時"] = now;
     startSetMany_(sh, hit._row, upd); return false;
   }
@@ -571,6 +573,7 @@ function startJudge(o){
   if (fl !== "" && !isNaN(fl)){ (fl === 1 ? oks : fails).push(fl < 0 ? "地下" + (-fl) + "階" : fl + "階"); } else unknown.push("階");
   if (tsubo){ (tsubo >= START_JUDGE.tsuboMin && tsubo <= START_JUDGE.tsuboMax ? oks : fails).push(tsubo + "坪"); } else unknown.push("坪");
   var hv = String(o["重飲食"]||""); if (hv === "不可") fails.push("重飲食不可"); else if (hv === "可") oks.push("重飲食可"); else unknown.push("重飲食");
+  if (!String(o["最寄駅"]||"").trim()) unknown.push("最寄駅");
   var grade = fails.length ? "×" : (unknown.filter(function(u){ return u !== "重飲食"; }).length ? "△" : "◎");
   if (grade === "◎" && !(tsubo >= START_JUDGE.idealMin && tsubo <= START_JUDGE.idealMax)) grade = "△";
   var reason = (fails.length ? "基準外: " + fails.join("・") + "／" : "") + (oks.length ? "基準内: " + oks.join("・") : "") + (unknown.length ? "／未確認: " + unknown.join("・") : "");
