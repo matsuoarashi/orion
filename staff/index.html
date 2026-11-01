@@ -162,6 +162,14 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
 .summary span{font-size:11px;color:var(--mute)}
 .tools{display:flex;gap:8px;margin-top:8px}
 .tools button{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 4px;font-size:13px;min-height:44px}
+.askin{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px;font-size:17px;font-family:inherit;background:#fff;margin-bottom:10px;resize:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px} .chips button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font-size:13px;color:var(--ink)}
+.ans{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px} .ans .q{font-size:13px;color:var(--mute);margin-bottom:6px} .ans .a{font-size:17px;line-height:1.7;white-space:pre-wrap}
+.ans.none{background:var(--amber-l);border-color:transparent} .ans .src{margin-top:10px;font-size:13px;color:var(--mute)} .ans .src b{display:block;color:var(--ink);margin-top:4px}
+.rate{display:flex;gap:8px;margin-top:10px} .rate button{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px;font-size:14px} .rate button.on{background:var(--g-l);border-color:var(--g);color:var(--g)}
+.myq{padding:10px 0;border-top:1px solid var(--line)} .myq:first-child{border-top:0} .myq .q{font-size:15px} .myq .st{font-size:12px;color:var(--mute)} .myq .a{font-size:15px;line-height:1.6;margin-top:4px;white-space:pre-wrap;color:var(--ink)}
+.shopbtn{display:flex;align-items:center;gap:10px;width:100%;border:1px solid var(--line);background:#fff;border-radius:12px;padding:12px;margin-top:8px;text-align:left;font-size:16px;color:var(--ink)}
+.shopbtn span{font-size:20px;width:28px;text-align:center}.shopbtn b{flex:1}.shopbtn small{display:block;font-weight:normal;font-size:12px;color:var(--mute)}.shopbtn i{font-style:normal;color:var(--mute)}
 .monthnav{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
 .monthnav button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 16px;font-size:16px;min-height:44px}
 .monthnav b{font-size:17px}
@@ -169,6 +177,7 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
 #bar{position:fixed;top:0;left:0;right:0;height:3px;z-index:20;background:linear-gradient(90deg,transparent 0%,#e9b949 40%,#e9b949 60%,transparent 100%);background-size:200% 100%;opacity:0;transition:opacity .2s;pointer-events:none}
 #bar.on{opacity:1;animation:slide 1s linear infinite}
 @keyframes slide{from{background-position:200% 0}to{background-position:-200% 0}}
+body.lock::after{content:"処理中…";position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top));transform:translateX(-50%);background:#1f3a2a;color:#fff;font-size:14px;font-weight:bold;padding:8px 16px;border-radius:999px;z-index:9999;box-shadow:0 4px 14px rgba(0,0,0,.18)}
 body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lock .tools button{pointer-events:none;opacity:.55}
 #punchArea .btn{margin-bottom:12px}
 .stale{opacity:.6}
@@ -230,6 +239,14 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
           <div class="sub" id="hShiftSub"></div>
         </div>
         <div id="punchArea"></div>
+        <div class="card" id="shopCard">
+          <h2>店の仕事</h2>
+          <button class="shopbtn" onclick="openShop('chef')"><span>🍳</span><b>食材を数える<small>シェフ・毎日</small></b><i>›</i></button>
+          <button class="shopbtn" onclick="openShop('hall')"><span>🥤</span><b>備品・飲料を数える<small>ホール・週1</small></b><i>›</i></button>
+          <button class="shopbtn" onclick="openShop('recv')"><span>📦</span><b>届いた物を受け取る・発注<small>納品書と数を確認</small></b><i>›</i></button>
+          <button class="shopbtn" onclick="location.href='../shime.html'"><span>💴</span><b>締め（閉店後）<small>現金・PayPay・注文票を数えて記録</small></b><i>›</i></button>
+          <button class="shopbtn" onclick="openShop('report')"><span>!</span><b>不足・破損を報告<small>備品が壊れた・足りない</small></b><i>›</i></button>
+        </div>
         <div class="card">
           <div class="row"><span class="l">次回の勤務</span><b id="hNext">-</b></div>
           <div class="row" id="hWishRow"><span class="l">来月の希望</span><b id="hWish"></b></div>
@@ -321,6 +338,22 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
           <button class="btn sec sm" onclick="openPass()">パスコードを変更する</button>
         </div>
       </section>
+
+      <!-- オリオンに聞く -->
+      <section id="pAsk" class="hide">
+        <div class="card">
+          <h2>オリオンに聞く</h2>
+          <div class="mini" style="margin-bottom:8px">店のルール・やり方・困ったときの対応を聞けます。答えが見つからない質問は管理者に届き、回答がつくとここに出ます。</div>
+          <textarea id="askIn" class="askin" rows="2" placeholder="例：PayPayが使えないときは？　異物混入と言われたら？"></textarea>
+          <button class="btn" id="askBtn" onclick="doAsk()">聞く</button>
+          <div class="chips" id="askChips"></div>
+        </div>
+        <div id="askOut"></div>
+        <div class="card" id="askMineCard">
+          <h2>自分の質問</h2>
+          <div id="askMine" class="mini">まだありません</div>
+        </div>
+      </section>
     </main>
     <nav>
       <button id="n_home" class="on" onclick="go('home')"><i>⌂</i>ホーム</button>
@@ -328,6 +361,7 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
       <button id="n_wish" onclick="go('wish')"><i>✎</i>希望<span class="bd hide" id="bdWish">!</span></button>
       <button id="n_shift" onclick="go('shift')"><i>▦</i>シフト</button>
       <button id="n_hist" onclick="go('hist')"><i>≡</i>履歴</button>
+      <button id="n_ask" onclick="go('ask')"><i>?</i>聞く<span class="bd hide" id="bdAsk">!</span></button>
     </nav>
   </div>
 </div>
@@ -370,11 +404,12 @@ async function api(action, body){
   const LDMSG = {punch:"記録しています…",wishes_save:"提出しています…",fix_request:"申請しています…",change_pass:"変更しています…",login:"ログインしています…",logout:"ログアウト中…"}; if (!window._ldT) window._ldT = setTimeout(()=>{ $("ldt").textContent = (isWrite ? (LDMSG[action]||"処理しています…") : "読み込み中…"); $("ld").classList.add("on"); }, 200); else if (isWrite) $("ldt").textContent = LDMSG[action]||"処理しています…";
   try{
     body = Object.assign({action, token: TOKEN}, body||{});
-    const res = await fetch(API_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(body)});
-    const j = await res.json();
+    // 15秒で打ち切り。読み取りは自動でもう1回（Google側の起動待ちや一時エラーで止まらないように）
+    const once = async ()=>{ const c = new AbortController(); const t = setTimeout(()=>c.abort(), 15000); try{ const res = await fetch(API_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(body), signal:c.signal}); const txt = await res.text(); try{ return JSON.parse(txt); }catch(e){ throw new Error("badjson"); } } finally{ clearTimeout(t); } };
+    let j; try{ j = await once(); }catch(e){ if (isWrite) throw e; await new Promise(r=>setTimeout(r,1200)); j = await once(); }
     if (!j.ok && j.code==="noauth"){ localStorage.removeItem("os-token"); TOKEN=""; cclear(); showLogin("ログインの期限が切れました"); }
     return j;
-  }catch(e){ return {ok:false, error:"通信エラーです。電波を確認してもう一度お試しください", code:"net"}; }
+  }catch(e){ const to = e && e.name==="AbortError"; return {ok:false, error: (to ? "応答がありません（Google側が混み合っています）。" : "通信エラーです。電波を確認して") + "もう一度お試しください", code:"net", retry:true}; }
   finally{ inflight--; if (inflight<=0){ inflight=0; $("bar").classList.remove("on"); clearTimeout(window._ldT); window._ldT=null; $("ld").classList.remove("on"); } if (isWrite) document.body.classList.remove("lock"); }
 }
 // 画面ごとの前回結果を端末に残し、まず表示してから裏で更新
@@ -425,24 +460,78 @@ async function doLogin(){
 }
 async function doLogout(){ if(!confirm("ログアウトしますか？")) return; await api("logout"); localStorage.removeItem("os-token"); TOKEN=""; cclear(); showLogin(); }
 
+
+// ───── オリオンに聞く（ORION OS：Knowledge 検索＋AI。レジ・分析と同じ GAS） ─────
+const OS_API = "https://script.google.com/macros/s/AKfycbzFNl4UM3fkoANru-agWmuOox-h3cS1yJmx4UZxpGFemEBnAUv45Gdp1VOvtCqOVUg/exec";
+const ASK_CHIPS = ["開店時に最初に何をする？","閉店時に何を確認する？","PayPayが使えないときは？","現金が合わないときは？","急に休むときは？","売り切れたら？","異物混入と言われたら？","アレルギーを聞かれたら？"];
+async function osFetch(url, opt, retry){ const c = new AbortController(); const t = setTimeout(()=>c.abort(), 20000); try{ const r = await fetch(url, Object.assign({signal:c.signal}, opt)); return JSON.parse(await r.text()); }catch(e){ if (retry){ await new Promise(r=>setTimeout(r,1200)); return osFetch(url, opt, false); } return {error:"net"}; } finally{ clearTimeout(t); } }
+async function osGet(mode){ return osFetch(OS_API+"?mode="+mode+"&t="+Date.now()+"&token="+encodeURIComponent(TOKEN), {cache:"no-store"}, true); }
+async function osPost(body){ return osFetch(OS_API, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(Object.assign({token:TOKEN}, body))}, false); }
+function loadAsk(){
+  $("askChips").innerHTML = ASK_CHIPS.map(q=>`<button onclick="askQuick(this.textContent)">${esc(q)}</button>`).join("");
+  const c = cget("ask_mine"); if (c) renderAskMine(c);
+  osGet("os_myq").then(r=>{ if (r && r.list){ cset("ask_mine", r.list); renderAskMine(r.list); } });
+}
+function askQuick(q){ $("askIn").value = q; doAsk(); }
+async function doAsk(){
+  const q = $("askIn").value.trim(); if(!q){ toast("質問を入れてください"); return; }
+  const b = $("askBtn"); b.disabled = true; b.textContent = "探しています…"; $("bar").classList.add("on");
+  try{
+    const r = await osPost({type:"os_ask", q});
+    if (r.error){ $("askOut").innerHTML = `<div class="msg err">${esc(r.error==="net"?"通信エラーです。電波を確認してもう一度お試しください":r.error)}</div>`; return; }
+    if (r.answer){
+      const srcs = (r.sources||[]).slice(0,2).map(s=>`<b>${esc(s.q)}</b>`).join("");
+      $("askOut").innerHTML = `<div class="ans"><div class="q">${esc(q)}</div><div class="a">${esc(r.answer)}</div>${srcs?`<div class="src">もとにした決まりごと${srcs}</div>`:""}<div class="rate" data-log="${esc(r.log_id||"")}"><button onclick="rateAsk(this,'役に立った')">役に立った</button><button onclick="rateAsk(this,'違う')">実際と違う</button></div></div>`;
+    } else {
+      $("askOut").innerHTML = `<div class="ans none"><div class="q">${esc(q)}</div><div class="a">まだ決まりごとがありません。管理者に届けました。回答がつくと下の「自分の質問」に出ます。急ぎのときは長下さんに連絡してください。</div></div>`;
+      loadAsk();
+    }
+    $("askIn").value = ""; $("main").scrollTo({top:0, behavior:"smooth"});
+  } finally { b.disabled = false; b.textContent = "聞く"; $("bar").classList.remove("on"); }
+}
+async function rateAsk(btn, v){
+  const box = btn.parentElement; [...box.children].forEach(x=>x.classList.remove("on")); btn.classList.add("on");
+  const r = await osPost({type:"os_rate", log_id: box.dataset.log, v});
+  toast(v==="違う" ? "管理者に伝えました。決まりごとを見直します" : "ありがとうございます");
+}
+function renderAskMine(list){
+  const el = $("askMine"); if (!list || !list.length){ el.innerHTML = "まだありません"; return; }
+  el.innerHTML = list.map(x=>`<div class="myq"><div class="q">${esc(x.q)}</div><div class="st">${esc(String(x.at||"").slice(0,16))}　${x.status==="回答済"?"回答あり":"回答待ち"}</div>${x.a?`<div class="a">${esc(x.a)}</div>`:""}</div>`).join("");
+  askBadge(list); try{ localStorage.setItem("os-ask-seen", list.reduce((m,x)=>x.answeredAt>m?x.answeredAt:m, "")); }catch(e){}
+}
+// 回答がついた質問がまだ見られていなければ「聞く」に印
+function askBadge(list){ const seen = localStorage.getItem("os-ask-seen")||""; const n = (list||[]).filter(x=>x.status==="回答済" && x.answeredAt > seen).length; $("bdAsk").classList.toggle("hide", !n); }
+
+// 店の仕事：発注アプリ（同じログイン）を開く。終わったら「勤怠アプリに戻る」で戻れる
+function openShop(k){ location.href = "../hacchu.html?from=staff#" + k; }
 // ───── 画面遷移 ─────
 function enterApp(){ $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); go("home"); }
 function go(p, sub){
-  ["home","comm","wish","shift","hist"].forEach(x=>{ $("p"+x[0].toUpperCase()+x.slice(1)).classList.toggle("hide", x!==p); $("n_"+x).classList.toggle("on", x===p); });
-  showMsg($("msg"), ""); closeOv();
-  if(p==="home") loadHome(); if(p==="comm") loadComm(sub); if(p==="wish") loadWish(); if(p==="shift") loadShift(); if(p==="hist") loadHist();
+  ["home","comm","wish","shift","hist","ask"].forEach(x=>{ $("p"+x[0].toUpperCase()+x.slice(1)).classList.toggle("hide", x!==p); $("n_"+x).classList.toggle("on", x===p); });
+  showMsg($("msg"), ""); closeOv(); CUR_PAGE = p;
+  if(p==="home") loadHome(); if(p==="comm") loadComm(sub); if(p==="wish") loadWish(); if(p==="shift") loadShift(); if(p==="hist") loadHist(); if(p==="ask") loadAsk();
   $("main").scrollTo(0,0);
   if(p==="comm" && sub==="notes") setTimeout(()=>$("notesCard").scrollIntoView({behavior:"smooth"}), 150);
 }
+// 読み込み失敗：前回の内容があればその旨を、なければ再読み込みボタンを出す（空白で止まらない）
+let CUR_PAGE = "home";
+function loadFail(r, hasCache){
+  const btn = `<button class="btn sec sm" style="margin-top:8px" onclick="go(CUR_PAGE)">もう一度読み込む</button>`;
+  showMsg($("msg"), (hasCache ? "前回の内容を表示しています。更新できませんでした。" : esc(r.error||"読み込めませんでした")) + btn, hasCache ? "ok" : "err");
+}
+// 1分以上バックグラウンドにいた後に開き直したら、その画面を読み直す（ホーム画面アプリが固まったままにならないように）
+let HIDDEN_AT = 0;
+document.addEventListener("visibilitychange", ()=>{ if (document.hidden){ HIDDEN_AT = Date.now(); return; } if (HIDDEN_AT && Date.now()-HIDDEN_AT > 60000 && TOKEN && !$("vApp").classList.contains("hide")) go(CUR_PAGE); HIDDEN_AT = 0; });
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 
 // ───── ホーム・打刻 ─────
 async function loadHome(){
   const c = cget("home"); if (c && c.today===todayStr()) renderHome(c, true);
   const cc = cget("comm"); if (cc) renderCommHome(cc);
-  const [r, k] = await Promise.all([api("home"), api("comm")]); if(!r.ok){ if(!c) showMsg($("msg"), r.error); return; }
+  const [r, k] = await Promise.all([api("home"), api("comm")]); if(!r.ok){ loadFail(r, !!c); return; }
   cset("home", r); renderHome(r, false);
   if (k.ok){ cset("comm", k); renderCommHome(k); }
+  osGet("os_myq").then(r=>{ if (r && r.list){ cset("ask_mine", r.list); askBadge(r.list); } });
 }
 // ───── 連絡（お知らせ・引き継ぎ） ─────
 let COMM = null;
@@ -468,7 +557,7 @@ function renderCommHome(k){
 }
 async function loadComm(sub){
   const c = cget("comm"); if (c) renderComm(c);
-  const k = await api("comm"); if(!k.ok){ if(!c) showMsg($("msg"), k.error); return; }
+  const k = await api("comm"); if(!k.ok){ loadFail(k, !!c); return; }
   cset("comm", k); renderComm(k); renderCommHome(k);
 }
 function renderComm(k){
@@ -711,7 +800,7 @@ async function loadWish(month){
   const key = "wish:"+(month||"next"); const c = cget(key); if (c){ renderWish(c); }
   else { $("wishMonth").textContent = month ? monthLabel(month) : "…"; $("wishInfo").textContent = "読み込み中…"; }
   WISH.dirty = false;
-  const r = await api("wishes_get", {month}); if(!r.ok){ if(!c) showMsg($("msg"), r.error); return; }
+  const r = await api("wishes_get", {month}); if(!r.ok){ loadFail(r, !!c); return; }
   cset(key, r); if (WISH.dirty && c) return; // 編集中なら上書きしない
   renderWish(r);
 }
@@ -779,7 +868,7 @@ let SHM = thisMonth();
 function shiftMove(n){ SHM = ymAdd(SHM, n); loadShift(); }
 async function loadShift(){
   const key = "shift:"+SHM; const c = cget(key); if (c) renderShift(c); else { $("shiftMonth").textContent = monthLabel(SHM); $("shiftList").innerHTML = `<div class="sub">読み込み中…</div>`; }
-  const r = await api("shifts", {month:SHM}); if(!r.ok){ if(!c) showMsg($("msg"), r.error); return; }
+  const r = await api("shifts", {month:SHM}); if(!r.ok){ loadFail(r, !!c); return; }
   cset(key, r); if (r.month===SHM) renderShift(r);
 }
 function renderShift(r){
@@ -796,7 +885,7 @@ let HM = thisMonth(); let HIST = null;
 function histMove(n){ HM = ymAdd(HM, n); loadHist(); }
 async function loadHist(){
   const key = "hist:"+HM; const c = cget(key); if (c) renderHist(c); else { $("histMonth").textContent = monthLabel(HM); $("histList").innerHTML = `<div class="sub">読み込み中…</div>`; }
-  const r = await api("history", {month:HM}); if(!r.ok){ if(!c) showMsg($("msg"), r.error); return; }
+  const r = await api("history", {month:HM}); if(!r.ok){ loadFail(r, !!c); return; }
   cset(key, r); if (r.month===HM) renderHist(r);
 }
 function renderHist(r){
