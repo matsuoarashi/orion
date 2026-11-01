@@ -420,6 +420,7 @@ function dayStatus(dt){
   r.expectedNow = (s.prep||0) + (d.sales||0) - (d.salesPaypay||0) - (s.vendorPay||0);
   r.cashDiff = (s.actual||0) - r.expectedNow; r.cashDiffAt = s.diff||0;
   r.ppScreen = s.ppScreen||0; r.ppDiff = r.ppScreen ? r.ppScreen - (d.salesPaypay||0) : null;
+  r.ppMail = (ops().ppMail||{})[dt] || 0; // PayPay 取引通知メールの日別合計（取引ごとの通知が揃っている日だけ参考になる）
   if(Math.abs(r.cashDiff)>=100) r.issues.push(`現金 ${r.cashDiff>0?"+":"−"}${num(Math.abs(r.cashDiff))}`);
   if(r.ppDiff!==null && Math.abs(r.ppDiff)>=100) r.issues.push(`PayPay ${r.ppDiff>0?"+":"−"}${num(Math.abs(r.ppDiff))}`);
   const sd = s.slipDetail; r.slipDiffs = [];
@@ -457,7 +458,7 @@ function renderShime(days){
         const slipRow = (label, keys) => sd && sd.slips && keys.some(k=>sd.slips[k]!==undefined) ? `<tr><td>${label}</td><td>${sum(sd.app,keys)}</td><td>${sum(sd.slips,keys)}</td><td class="d ${sum(sd.slips,keys)-sum(sd.app,keys)?"neg":"pos"}">${sum(sd.slips,keys)-sum(sd.app,keys)?((sum(sd.slips,keys)-sum(sd.app,keys))>0?"+":"")+(sum(sd.slips,keys)-sum(sd.app,keys)):"一致"}</td></tr>` : "";
         body = `<table class="cmp"><tr><th></th><th>レジ記録</th><th>実際</th><th>差</th></tr>
           <tr><td>現金 <small>(あるべき額)</small></td><td>${num(r.expectedNow)}</td><td>${num(s.actual)}</td><td class="d ${r.cashDiff?"neg":"pos"}">${r.cashDiff?(r.cashDiff>0?"+":"−")+num(Math.abs(r.cashDiff)):"一致"}</td></tr>
-          <tr><td>PayPay</td><td>${num(d.salesPaypay||0)}</td><td>${r.ppScreen?num(r.ppScreen):"<small>未入力</small>"}</td><td class="d ${r.ppDiff===null?"":(r.ppDiff?"neg":"pos")}">${r.ppDiff===null?"<small>照合で確認</small>":(r.ppDiff?(r.ppDiff>0?"+":"−")+num(Math.abs(r.ppDiff)):"一致")}</td></tr>
+          <tr><td>PayPay</td><td>${num(d.salesPaypay||0)}</td><td>${r.ppScreen?num(r.ppScreen):"<small>未入力</small>"}</td><td class="d ${r.ppDiff===null?"":(r.ppDiff?"neg":"pos")}">${r.ppDiff===null?"<small>照合で確認</small>":(r.ppDiff?(r.ppDiff>0?"+":"−")+num(Math.abs(r.ppDiff)):"一致")}${r.ppMail?`<br><small>通知メール集計 ${num(r.ppMail)}</small>`:""}</td></tr>
           ${slipRow("伝票 店内", inK)}${slipRow("伝票 持ち帰り", tgK)}${slipRow("伝票 副菜追加", ["副菜追加"])}${slipRow("伝票 副菜値引き", ["副菜値引き"])}${slipRow("伝票 ドリンク", ["ドリンク"])}
           ${!sd ? `<tr><td>伝票</td><td colspan="2"></td><td class="d ${/不一致|NG/.test(s.slipMatch)?"neg":"pos"}">${s.slipMatch||"未入力"}</td></tr>` : ""}
           </table>`;

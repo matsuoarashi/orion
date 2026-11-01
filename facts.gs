@@ -37,6 +37,7 @@ function handleOsGet(e){
   if (mode === "os_mail"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_({ list: osRows_(OS_MAILCAND, OS_MAILCAND_COLS).filter(function(r){ return String(r["状態"]) === "未確認"; }).slice(-100).reverse().map(function(r){ var o = {}; OS_MAILCAND_COLS.forEach(function(c){ o[c] = String(r[c]===undefined?"":r[c]); }); return o; }) }); }
   var lg = osLedgerGet_(mode, me); if (lg) return invOut_(lg);
   if (mode === "os_snapshot_run"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_(osSnapshot(String(p.ym||""), me)); }
+  if (mode === "os_seed_mail"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_({ result: osMailSeedRules(), rules: osMailRules_().length }); }
   if (mode === "os_seed_ledgers"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_(osSeedLedgers20261101()); }
   if (mode === "os_ailog"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_({ list: osRows_(OS_AILOG, OS_AILOG_COLS).slice(-200).reverse() }); }
   return invOut_({ error: "unknown mode" });
