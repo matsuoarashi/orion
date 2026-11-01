@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#7a2f2f">
+<title>オリオン 出店</title>
+<style>
+:root{--cream:#fbf7ef;--paper:#fff;--ink:#241c17;--sub:#6d6054;--wine:#7a2f2f;--wine-d:#5e2121;--line:#e4dccb;--green:#1f8a3b;--amber:#b8860b;--danger:#b23b3b;--blue:#1f5f9a}
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;-webkit-tap-highlight-color:transparent}
+body{background:var(--cream);color:var(--ink);font-size:15px}
+header{position:sticky;top:0;z-index:5;background:var(--wine);color:#fff;padding:10px 14px}
+header h1{font-size:16px}
+.tabs{display:flex;gap:6px;padding:8px 12px;background:var(--cream);position:sticky;top:41px;z-index:4;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{border:1px solid var(--line);background:#fff;border-radius:18px;padding:6px 12px;font-size:14px;white-space:nowrap}
+.tabs button.on{background:var(--wine);color:#fff;border-color:var(--wine)}
+main{max-width:760px;margin:0 auto;padding:12px 12px 80px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.card h2{font-size:15px;margin-bottom:8px}
+.sub{color:var(--sub);font-size:13px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:10px;background:#efe8da;color:var(--ink)}
+.c-fact{background:#dcefe0}.c-observed{background:#dbe7f3}.c-estimated{background:#f3ead2}.c-assumption{background:#f3e0dc}.c-unknown{background:#e6e2dc;color:#6d6054}
+.v-PASS{background:#f1d9d6}.v-CHECK{background:#f3ead2}.v-VISIT{background:#dbe7f3}.v-GO\ REVIEW{background:#dcefe0}.v-WATCH{background:#ece7de}
+button.b{border:0;border-radius:8px;padding:8px 12px;background:var(--wine);color:#fff;font-size:14px;font-weight:600}
+button.g{border:1px solid var(--line);border-radius:8px;padding:7px 11px;background:#fff;font-size:13px}
+input,select,textarea{font-size:15px;padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;width:100%}
+label{display:block;font-size:12px;color:var(--sub);margin:8px 0 3px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{border-bottom:1px solid var(--line);padding:5px 4px;text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+.tw{overflow-x:auto}
+.hide{display:none!important}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px dashed var(--line)}
+.kv:last-child{border-bottom:0}
+.big{font-size:22px;font-weight:700}
+.note{font-size:12px;color:var(--sub);margin-top:6px;line-height:1.5}
+.warn{background:#fdf1e3;border:1px solid #ecd2a8;border-radius:8px;padding:8px 10px;font-size:13px;margin:8px 0}
+.simin{display:grid;grid-template-columns:1fr 92px 110px;gap:6px;align-items:center;margin:4px 0}
+.simin span{font-size:13px}
+</style>
+</head>
+<body>
+<header><h1>出店（ORION START）</h1></header>
+<div class="tabs" id="tabs">
+  <button data-t="list" class="on">案件</button>
+  <button data-t="inbox">物件Inbox <span id="inboxN"></span></button>
+  <button data-t="base">神田の基準値</button>
+</div>
+<main>
+  <div id="msg" class="warn hide"></div>
+  <section id="v_list"></section>
+  <section id="v_detail" class="hide"></section>
+  <section id="v_inbox" class="hide"></section>
+  <section id="v_base" class="hide"></section>
+</main>
+<script src="busy.js"></script>
+<script>
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbzFNl4UM3fkoANru-agWmuOox-h3cS1yJmx4UZxpGFemEBnAUv45Gdp1VOvtCqOVUg/exec";
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let TOKEN = ""; let HOME = null; let CUR = null;
+try{ TOKEN = localStorage.getItem("os-admin-token") || localStorage.getItem("os-token") || ""; }catch(e){}
+async function get(mode, params){ const q = Object.assign({mode, token:TOKEN, t:Date.now()}, params||{}); const u = SHEET_URL+"?"+Object.keys(q).map(k=>k+"="+encodeURIComponent(q[k])).join("&"); try{ const r = await fetch(u,{cache:"no-store"}); return await r.json(); }catch(e){ return {error:"通信エラー"}; } }
+async function post(type, body){ try{ const r = await fetch(SHEET_URL,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify(Object.assign({type, token:TOKEN}, body||{}))}); return await r.json(); }catch(e){ return {error:"通信エラー"}; } }
+function msg(t){ const m=$("msg"); if(!t){ m.classList.add("hide"); return; } m.textContent=t; m.classList.remove("hide"); }
+const CERT_JA = {fact:"確定",observed:"実測",estimated:"推定",assumption:"仮定",unknown:"不明"};
+const cert = c => `<span class="pill c-${esc(c||"unknown")}">${esc(CERT_JA[c]||c||"不明")}</span>`;
+const verdict = v => v ? `<span class="pill v-${esc(v)}">${esc(v)}</span>` : "";
+const num = v => (v===""||v==null) ? "-" : esc(v);
+
+document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>tab(b.dataset.t));
+function tab(t){ document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on", b.dataset.t===t)); ["list","detail","inbox","base"].forEach(x=>$("v_"+x).classList.toggle("hide", x!==(t==="list"&&CUR?"detail":t)));
+  if (t==="list"){ CUR=null; $("v_detail").classList.add("hide"); $("v_list").classList.remove("hide"); loadHome(); }
+  if (t==="inbox") loadInbox(); if (t==="base") loadBase(false); }
+
+// ---------- 案件一覧 ----------
+async function loadHome(){
+  if (!TOKEN){ msg("管理者アプリからログインして開いてください"); return; }
+  const r = await get("os_start_home"); if (r.error){ msg(r.error); return; } msg(""); HOME = r;
+  $("inboxN").textContent = r.inboxCount ? "("+r.inboxCount+")" : "";
+  $("v_list").innerHTML = r.projects.map(p=>`<div class="card" onclick="openPrj('${esc(p.project_id)}')" style="cursor:pointer">
+    <div class="row"><b>${esc(p.project_id)}</b><span>${esc(p["案件名"])}</span></div>
+    <div class="row" style="margin-top:6px"><span class="pill">${esc(p["役割"])}</span><span class="pill">${esc(p.stage)}</span><span class="pill">${esc(p["契約状況"])}</span><span class="sub">決裁 ${esc(p["決裁者"])}</span></div>
+    ${p["メモ"]?`<div class="note">${esc(p["メモ"])}</div>`:""}</div>`).join("") +
+    `<div class="card"><h2>新しい案件</h2><input id="np_name" placeholder="案件名（例: 神保町 候補）"><div style="margin-top:8px"><button class="b" onclick="newPrj()">追加</button></div></div>`;
+}
+async function newPrj(){ const n = $("np_name").value.trim(); if(!n) return; const r = await post("os_start_project_save", {"案件名": n, stage:"idea"}); if (r.error) return alert(r.error); loadHome(); }
+
+// ---------- 案件詳細 ----------
+async function openPrj(id){
+  CUR = id; $("v_list").classList.add("hide"); const v = $("v_detail"); v.classList.remove("hide"); v.innerHTML = "<div class='sub'>読み込み中…</div>";
+  const r = await get("os_start_project", {id}); if (r.error){ v.innerHTML = `<div class='warn'>${esc(r.error)}</div>`; return; }
+  const p = r.project; const base = p["役割"]==="baseline"; const prop = r.properties[0]||{};
+  let h = `<div class="row" style="margin-bottom:8px"><button class="g" onclick="tab('list')">← 一覧</button><b>${esc(p.project_id)} ${esc(p["案件名"])}</b></div>`;
+  h += `<div class="card"><h2>状態</h2><div class="grid2">
+    <div><label>stage</label><select id="d_stage">${(HOME?HOME.stages:[]).map(s=>`<option ${s===p.stage?"selected":""}>${s}</option>`).join("")}</select></div>
+    <div><label>契約状況</label><input id="d_ct" value="${esc(p["契約状況"])}"></div>
+    <div><label>store_id（契約成立で発行）</label><input id="d_store" value="${esc(p.store_id)}"></div>
+    <div><label>決裁者</label><input id="d_dec" value="${esc(p["決裁者"])}"></div></div>
+    <label>メモ</label><textarea id="d_memo" rows="2">${esc(p["メモ"])}</textarea>
+    <div style="margin-top:8px"><button class="b" onclick="savePrj()">保存（変更は履歴に残ります）</button></div></div>`;
+  h += `<div class="card"><h2>物件 ${esc(prop.property_id||"")}</h2>${prop.property_id?["名称","住所","最寄駅","階","面積㎡","坪","重飲食","ガス","排気","グリストラップ","設備","席数案","設備確認"].map(k=>`<div class="kv"><span class="sub">${k}</span><span>${String(prop[k])==="unknown"?cert("unknown"):esc(prop[k])}</span></div>`).join(""):"<div class='sub'>未設定。物件Inboxから紐付けてください</div>"}</div>`;
+  if (base){
+    h += `<div class="card"><h2>基準店（baseline）</h2><div class="note">開業済みのため出店時予測は作りません。標準店モデルの実績値は「神田の基準値」タブで計算します。</div>
+      ${Object.keys(r.settings||{}).map(k=>{const s=r.settings[k]; return `<div class="kv"><span class="sub">${esc(k)}</span><span>${esc(s.value===""?"-":s.value)} ${esc(s.unit)} ${cert(s.cert)}</span></div>`;}).join("")}</div>`;
+  } else {
+    h += `<div class="card"><h2>試算</h2>${r.sims.length?r.sims.map(simCard).join(""):"<div class='sub'>まだありません</div>"}
+      <details style="margin-top:8px"><summary class="sub">新しい試算を作る</summary>${simForm(p, prop, r.sims[0])}</details></div>`;
+    h += `<div class="card"><h2>評価</h2>${r.evals.length?r.evals.map(evCard).join(""):"<div class='sub'>まだありません</div>"}
+      <details style="margin-top:8px"><summary class="sub">評価を追加</summary>${evForm(p, prop, r.sims[0])}</details></div>`;
+    h += `<div class="card"><h2>現地調査</h2>${r.surveys.length?r.surveys.map(s=>`<div class="kv"><span>${esc(s["日付"])} ${esc(s["開始"])}〜${esc(s["終了"])} ${esc(s["方法"])}</span><span class="sub">入店${num(s["入店"])}・断念${num(s["入店断念"])}・行列${num(s["行列最大"])}</span></div>`).join(""):"<div class='sub'>まだありません</div>"}
+      <details style="margin-top:8px"><summary class="sub">調査を記録</summary>${srvForm(p, prop)}</details></div>`;
+  }
+  v.innerHTML = h;
+}
+async function savePrj(){ const r = await post("os_start_project_save", {id:CUR, stage:$("d_stage").value, "契約状況":$("d_ct").value, store_id:$("d_store").value, "決裁者":$("d_dec").value, "メモ":$("d_memo").value}); if (r.error) return alert(r.error); alert(r.changed? r.changed+"項目を保存しました" : "変更はありません"); openPrj(CUR); }
+
+const SIM_FIELDS = [["price","客単価","円"],["costRate","原価率","0〜1"],["days","営業日数/月","日"],["labor","人件費/月","円"],["rent","家賃/月","円"],["otherFixed","その他固定費/月","円"],["otherIncome","その他収入/月（夜貸し等）","円"],["debt","借入返済/月","円"],["ownerPay","オーナー報酬/月","円"],["initialInvestment","初期投資","円"],["demandLo","需要見込み 下限","食/日"],["demandHi","需要見込み 上限","食/日"],["seats","席数","席"],["stay","計画滞在","分"],["buffer","入替","分"],["util","稼働率","0〜1"],["kitchenCapHour","厨房キャパ","食/時"],["peakShare","ピーク1時間比率","0〜1"],["takeoutDay","持ち帰り上限","食/日"]];
+const SIM_DEF = {stay:{v:18,c:"assumption"},buffer:{v:2,c:"assumption"},util:{v:0.85,c:"assumption"},kitchenCapHour:{v:"",c:"unknown"}};
+function simForm(p, prop, last){
+  let prev = {}; try{ prev = last ? JSON.parse(last["前提JSON"]||"{}") : {}; }catch(e){}
+  return `<div class="note">前の版の値を下書きに入れています。確度を必ず選んでください（不明は「不明」）。</div>` + SIM_FIELDS.map(([k,l,u])=>{ const pv = prev[k] || (SIM_DEF[k] ? {value:SIM_DEF[k].v, cert:SIM_DEF[k].c} : (k==="seats"&&prop["席数案"]?{value:prop["席数案"],cert:"estimated"}:{value:"",cert:"assumption"}));
+    return `<div class="simin"><span>${l} <small class="sub">${u}</small></span><input id="si_${k}" inputmode="decimal" value="${esc(pv.value)}"><select id="sc_${k}">${Object.keys(CERT_JA).map(c=>`<option value="${c}" ${c===pv.cert?"selected":""}>${CERT_JA[c]}</option>`).join("")}</select></div>`; }).join("") +
+    `<label>メモ</label><input id="si_memo"><div style="margin-top:8px"><button class="b" onclick="saveSim('${esc(p.project_id)}','${esc(prop.property_id||"")}','${esc(last?last.sim_id:"")}')">試算を保存（下書き）</button></div>`;
+}
+async function saveSim(pid, propId, prev){ const inputs = {}, certs = {}; SIM_FIELDS.forEach(([k])=>{ inputs[k] = $("si_"+k).value.trim(); certs[k] = $("sc_"+k).value; });
+  const r = await post("os_start_sim_save", {project_id:pid, property_id:propId, inputs, certs, prev, memo:$("si_memo").value}); if (r.error) return alert(r.error); openPrj(CUR); }
+function simCard(s){ let res = {}, a = {}; try{ res = JSON.parse(s["結果JSON"]||"{}"); a = JSON.parse(s["前提JSON"]||"{}"); }catch(e){}
+  const fz = s["状態"]==="frozen"; const unk = Object.keys(a).filter(k=>a[k].cert==="unknown"||a[k].cert==="assumption");
+  return `<div class="card" style="background:${fz?"#f3f7f0":"#fff"}"><div class="row"><b>版${esc(s["版"])}</b>${fz?`<span class="pill c-fact">凍結済</span><span class="sub">${esc(s["凍結日時"])} ${esc(s["凍結者"])}</span>`:`<span class="pill">下書き</span>`}</div>
+    <div class="kv"><span class="sub">必要食数 店舗／返済後／オーナー</span><span><b>${num(s["必要食数_店舗"])}／${num(s["必要食数_返済後"])}／${num(s["必要食数_オーナー"])}</b> 食/日</span></div>
+    <div class="kv"><span class="sub">処理上限（持続可能）</span><span>${num(s["処理上限_日"])} 食/日 ${cert(s["処理上限_確度"])}</span></div>
+    <div class="kv"><span class="sub">capacity_margin（上限−返済後必要）</span><span class="big" style="color:${Number(s.capacity_margin)<0?"var(--danger)":"inherit"}">${num(s.capacity_margin)}</span></div>
+    ${res.sustainable&&res.sustainable.note?`<div class="note">${esc(res.sustainable.note)}</div>`:""}
+    ${unk.length?`<div class="note">仮定・不明の前提: ${unk.map(k=>esc((SIM_FIELDS.find(f=>f[0]===k)||[k,k])[1])).join("・")}</div>`:""}
+    ${fz?`<div class="note">ハッシュ ${esc(String(s["凍結ハッシュ"]).slice(0,16))}… 決裁ログ ${esc(s["関連dec_id"]||"-")}</div>`:`<div style="margin-top:8px"><button class="g" onclick="freezeSim('${esc(s.sim_id)}')">GO判断用に凍結する</button></div>`}</div>`; }
+async function freezeSim(id){ const why = prompt("凍結の理由（例: 契約前のGO判断）。凍結後は変更できません"); if (why===null) return; const r = await post("os_start_sim_freeze", {id, reason: why}); if (r.error) return alert(r.error); alert("凍結しました。決裁ログに「提案中」として記録しました（承認は長下さん）"); openPrj(CUR); }
+
+function evForm(p, prop, sim){
+  return `<div class="grid2"><div><label>足切り</label><select id="e_cut"><option value="unknown">未確認</option><option>可</option><option>不可</option></select></div>
+    <div><label>必要食数（返済後）</label><input id="e_need" inputmode="numeric" value="${esc(sim?sim["必要食数_返済後"]:"")}"></div>
+    <div><label>需要見込み 下限</label><input id="e_lo" inputmode="numeric"></div><div><label>需要見込み 上限</label><input id="e_hi" inputmode="numeric"></div>
+    <div><label>処理上限</label><input id="e_cap" inputmode="numeric" value="${esc(sim?sim["処理上限_日"]:"")}"></div>
+    <div><label>現地実測</label><select id="e_sv"><option value="">なし</option><option value="1">あり</option></select></div></div>
+    <label>未確認事項（・区切り）</label><input id="e_unk" placeholder="排気・ガス容量・看板条件">
+    <label>判定（空ならルールで自動）</label><select id="e_v"><option value="">自動</option>${(HOME?HOME.verdicts:[]).map(v=>`<option>${v}</option>`).join("")}</select>
+    <label>見送り理由（PASSのとき）</label><select id="e_pr"><option value="">-</option>${(HOME?HOME.passReasons:[]).map(v=>`<option>${v}</option>`).join("")}</select>
+    <label>メモ</label><input id="e_memo"><div style="margin-top:8px"><button class="b" onclick="saveEv('${esc(p.project_id)}','${esc(prop.property_id||"")}','${esc(sim?sim.sim_id:"")}')">評価を保存</button></div>`;
+}
+async function saveEv(pid, propId, simId){ const r = await post("os_start_eval_save", {project_id:pid, property_id:propId, sim_id:simId, cut:$("e_cut").value, need:$("e_need").value, demandLo:$("e_lo").value, demandHi:$("e_hi").value, capacity:$("e_cap").value, surveyed:$("e_sv").value, unknownItems:$("e_unk").value, verdict:$("e_v").value, passReason:$("e_pr").value, memo:$("e_memo").value});
+  if (r.error) return alert(r.error); openPrj(CUR); }
+function evCard(e){ return `<div class="kv"><span>版${esc(e["版"])} ${verdict(e["判定"])} ${e["見送り理由"]?`<span class="sub">${esc(e["見送り理由"])}</span>`:""}</span><span class="sub">必要${num(e["必要食数"])}・需要${num(e["需要見込み_下限"])}〜${num(e["需要見込み_上限"])}・上限${num(e["処理上限"])}・余裕${num(e["余裕度"])}</span></div>${e["理由メモ"]?`<div class="note">${esc(e["理由メモ"])}</div>`:""}`; }
+function srvForm(p, prop){ const f = [["日付","2026/11/05"],["開始","11:30"],["終了","13:30"],["方法","手動カウント"],["通行量",""],["入店",""],["退店",""],["入店断念",""],["行列最大",""],["席占有",""],["対象店",""],["元データリンク","CSV/JSON の保存先"]];
+  return `<div class="grid2">${f.map(([k,ph])=>`<div><label>${k}</label><input id="sv_${k}" placeholder="${esc(ph)}"></div>`).join("")}</div><label>メモ</label><input id="sv_memo"><div style="margin-top:8px"><button class="b" onclick="saveSrv('${esc(p.project_id)}','${esc(prop.property_id||"")}')">記録</button></div>`; }
+async function saveSrv(pid, propId){ const b = {project_id:pid, property_id:propId, "メモ":$("sv_memo").value}; ["日付","開始","終了","方法","通行量","入店","退店","入店断念","行列最大","席占有","対象店","元データリンク"].forEach(k=>{ b[k] = $("sv_"+k).value.trim(); });
+  const r = await post("os_start_survey_save", b); if (r.error) return alert(r.error); openPrj(CUR); }
+
+// ---------- 物件Inbox ----------
+async function loadInbox(){
+  const v = $("v_inbox"); v.innerHTML = "<div class='sub'>読み込み中…</div>"; const r = await get("os_start_inbox"); if (r.error){ v.innerHTML = `<div class='warn'>${esc(r.error)}</div>`; return; }
+  const props = r.properties;
+  let h = `<div class="card"><h2>物件を登録（URL＋分かる項目）</h2><div class="note">ページの自動取得はしません。分からない項目は空欄のまま（未確認として残ります）。URLが開けない物件は募集図面やスクショをDriveに置き、そのリンクを根拠に。</div>
+    <label>URL</label><input id="li_url" placeholder="https://">
+    <div class="grid2">${[["source","掲載元"],["賃料","賃料（円/月）"],["坪","坪"],["面積㎡","面積㎡"],["最寄駅","最寄駅"],["徒歩分","徒歩分"],["造作譲渡","造作譲渡（円）"],["契約形態","契約形態"]].map(([k,l])=>`<div><label>${l}</label><input id="li_${k}"></div>`).join("")}</div>
+    <label>住所</label><input id="li_住所"><label>根拠リンク（図面・スクショ）</label><input id="li_ev">
+    <div style="margin-top:8px"><button class="b" onclick="addListing()">Inboxに入れる</button></div></div>`;
+  h += `<div class="card"><h2>未確認 ${r.inbox.length}件</h2>${r.inbox.length?"":"<div class='sub'>ありません。Gmailで物件通知に「ORION/物件」ラベルを付けると1時間ごとに入ります</div>"}</div>`;
+  h += r.inbox.map(l=>`<div class="card"><div class="row"><b>${esc(l["最寄駅"]||"駅不明")}</b><span>${esc(l["坪"]||"?")}坪</span><span>${l["賃料"]?Number(l["賃料"]).toLocaleString()+"円":"賃料不明"}</span><span class="sub">${esc(l.source)} ${esc(l["初出日"])}</span></div>
+    ${l.source_url?`<div class="note"><a href="${esc(l.source_url)}" target="_blank" rel="noopener">${esc(l.source_url.slice(0,60))}</a></div>`:""}
+    ${l["未確認項目"]?`<div class="note">未確認: ${esc(l["未確認項目"])}</div>`:""}${l.evidence_link?`<div class="note"><a href="${esc(l.evidence_link)}" target="_blank" rel="noopener">元のメール・根拠</a></div>`:""}
+    ${l.dups.length?`<div class="warn">同じ物件かも: ${l.dups.map(d=>`<button class="g" onclick="lset('${esc(l.listing_id)}','link','${esc(d.property_id)}')">${esc(d.property_id)}（${esc(d.why)}）に紐付け</button>`).join(" ")}</div>`:""}
+    <div class="row" style="margin-top:8px"><button class="b" onclick="lset('${esc(l.listing_id)}','new_property')">新しい物件として登録</button>
+      <select id="lk_${esc(l.listing_id)}"><option value="">既存物件に紐付け…</option>${props.map(p=>`<option value="${esc(p.property_id)}">${esc(p.property_id)} ${esc(p["名称"])}</option>`).join("")}</select>
+      <button class="g" onclick="lset('${esc(l.listing_id)}','link',$('lk_${esc(l.listing_id)}').value)">紐付け</button>
+      <button class="g" onclick="lset('${esc(l.listing_id)}','ignore')">対象外</button></div></div>`).join("");
+  v.innerHTML = h; $("inboxN").textContent = r.inbox.length ? "("+r.inbox.length+")" : "";
+}
+async function addListing(){ const b = {source_url:$("li_url").value.trim(), evidence_link:$("li_ev").value.trim(), "住所":$("li_住所").value.trim()}; ["source","賃料","坪","面積㎡","最寄駅","徒歩分","造作譲渡","契約形態"].forEach(k=>{ b[k] = $("li_"+k).value.trim(); });
+  if (!b.source_url && !b.evidence_link) return alert("URLか根拠リンクのどちらかは必要です"); const r = await post("os_start_listing_add", b); if (r.error) return alert(r.error); if (r.existed) alert("同じURLが既にあります。最終確認日を更新しました"); loadInbox(); }
+async function lset(id, action, pid){ if (action==="link" && !pid) return alert("物件を選んでください"); let reason = ""; if (action==="ignore"){ reason = prompt("対象外の理由（見送り理由として残ります）"); if (reason===null) return; }
+  const r = await post("os_start_listing_set", {id, action, property_id:pid||"", reason}); if (r.error) return alert(r.error); loadInbox(); }
+
+// ---------- 神田の基準値 ----------
+async function loadBase(save){
+  const v = $("v_base"); v.innerHTML = "<div class='sub'>"+(save?"計算して保存中…":"計算中…（売上と来店を読み込み）")+"</div>";
+  const r = await get("os_start_capacity", {from:"2026/10/13", save: save?"1":""}); if (r.error){ v.innerHTML = `<div class='warn'>${esc(r.error)}</div>`; return; }
+  const s = r.summary; const KIND = {demonstrated:"実証済み（下限）",theoretical_seat:"席の理論上限",kitchen:"厨房",sustainable:"持続可能（1日）"};
+  let h = `<div class="card"><h2>神田 ${esc(r.period)}</h2><div class="kv"><span class="sub">営業日・食数</span><span>${s.days}日・${s.meals}食（平均${num(s.avgMeals)}）</span></div>
+    <div class="kv"><span class="sub">持ち帰り率</span><span>${s.takeoutRate==null?"-":(s.takeoutRate*100).toFixed(1)+"%"}</span></div>
+    <div class="kv"><span class="sub">ピーク1時間比率 P75</span><span>${s.peakShareP75==null?"-":(s.peakShareP75*100).toFixed(1)+"%"} ${cert("observed")}</span></div>
+    <div class="kv"><span class="sub">平均滞在（品質Aの日・面積法）</span><span>${s.observedStayA==null?"-":s.observedStayA+"分"}（A ${s.gradeADays}日） ${cert(s.gradeADays>=10?"observed":"unknown")}</span></div>
+    <div class="note">滞在時間は品質Aの日が10日たまるまで確定しません。計画値は18分（仮定）を使います。</div></div>`;
+  h += `<div class="card"><h2>容量</h2>${r.capacity.map(c=>`<div class="kv"><span>${KIND[c.kind]||c.kind}<br><small class="sub">${esc(c.method)}</small></span><span><b>${c.perHour!=null?c.perHour+" 食/時":(c.perDay!=null?c.perDay+" 食/日":"-")}</b> ${cert(c.cert)}<br><small class="sub">${esc(c.note)}</small></span></div>`).join("")}
+    <details style="margin-top:8px"><summary class="sub">感度（内部用）: 滞在15/18/20分の席キャパ</summary>${r.sensitivity.map(x=>`<div class="kv"><span>${x.stay}分</span><span>${x.seatCapHour} 食/時</span></div>`).join("")}</details>
+    <div style="margin-top:8px"><button class="g" onclick="loadBase(true)">この結果を新しい版として保存</button>${r.version?` <span class="sub">保存しました ${esc(r.version)}</span>`:""}</div></div>`;
+  h += `<div class="card"><h2>日別</h2><div class="tw"><table><tr><th>日</th><th>食数</th><th>店内</th><th>持帰</th><th>最大60分</th><th>ピーク比</th><th>来店</th><th>差</th><th>品質</th><th>滞在(面積)</th><th>最大在店</th></tr>
+    ${r.days.map(d=>`<tr><td>${esc(d.date.slice(5))}</td><td>${d.meals}</td><td>${d.eatin}</td><td>${d.takeout}</td><td>${d.roll60}</td><td>${d.peakShare==null?"-":(d.peakShare*100).toFixed(0)+"%"}</td><td>${d.visits||"-"}</td><td>${d.visits?d.diff:"-"}</td><td>${esc(d.grade)}</td><td>${d.meanStayArea==null?"-":d.meanStayArea}</td><td>${d.maxOcc==null?"-":d.maxOcc}</td></tr>`).join("")}</table></div>
+    <div class="note">品質: A=来店と店内食数の差3%以内（実測に使う）／B=10%以内（比例で補正して在店人数だけ見る）／C=それ以上（参考）。滞在・在店人数は人を1対1で対応させず、累積の入店−退店で出しています。</div></div>`;
+  v.innerHTML = h;
+}
+loadHome();
+</script>
+</body>
+</html>
