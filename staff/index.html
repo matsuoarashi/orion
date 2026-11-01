@@ -240,12 +240,9 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
         </div>
         <div id="punchArea"></div>
         <div class="card" id="shopCard">
-          <h2>店の仕事</h2>
-          <button class="shopbtn" onclick="openShop('chef')"><span>🍳</span><b>食材を数える<small>シェフ・毎日</small></b><i>›</i></button>
-          <button class="shopbtn" onclick="openShop('hall')"><span>🥤</span><b>備品・飲料を数える<small>ホール・週1</small></b><i>›</i></button>
-          <button class="shopbtn" onclick="openShop('recv')"><span>📦</span><b>届いた物を受け取る・発注<small>納品書と数を確認</small></b><i>›</i></button>
-          <button class="shopbtn" onclick="location.href='../shime.html'"><span>💴</span><b>締め（閉店後）<small>現金・PayPay・注文票を数えて記録</small></b><i>›</i></button>
-          <button class="shopbtn" onclick="openShop('report')"><span>!</span><b>不足・破損を報告<small>備品が壊れた・足りない</small></b><i>›</i></button>
+          <h2 id="shopTitle">店の仕事</h2>
+          <div id="shopMain"></div>
+          <div id="shopMoreWrap" class="hide"><button class="btn sec sm" style="margin-top:10px;width:100%" onclick="SHOP_MORE=!SHOP_MORE;renderShop()" id="shopMoreBtn">ほかの仕事も見る</button><div id="shopMore"></div></div>
         </div>
         <div class="card">
           <div class="row"><span class="l">次回の勤務</span><b id="hNext">-</b></div>
@@ -504,6 +501,30 @@ function askBadge(list){ const seen = localStorage.getItem("os-ask-seen")||""; c
 
 // 店の仕事：発注アプリ（同じログイン）を開く。終わったら「勤怠アプリに戻る」で戻れる
 function openShop(k){ location.href = "../hacchu.html?from=staff#" + k; }
+// 店の仕事：担当（厨房／ホール）ごとに並べ替える。厨房担当は管理画面の設定 kitchen_ids で決まる（COMM.kitchen）。管理者は全部
+let SHOP_MORE = false;
+const SHOP = {
+  chef:   ["🍳","食材を数える","厨房・毎日","openShop('chef')"],
+  hall:   ["🥤","備品・飲料を数える","ホール・週1・十分／少／無で","openShop('hall')"],
+  recv:   ["📦","届いた物を受け取る・発注","納品書と数を確認","openShop('recv')"],
+  shime:  ["💴","締め（閉店後）","現金・PayPay・注文票を数えて記録","location.href='../shime.html'"],
+  report: ["!","不足・破損を報告","備品が壊れた・足りない","openShop('report')"]
+};
+function shopBtn(k){ const b = SHOP[k]; return `<button class="shopbtn" onclick="${b[3]}"><span>${b[0]}</span><b>${b[1]}<small>${b[2]}</small></b><i>›</i></button>`; }
+function renderShop(){
+  if (!$("shopMain")) return;
+  const admin = ME && ME.role === "admin";
+  const cm = COMM || cget("comm"); const kitchen = !!(cm && cm.kitchen);
+  let main, more, title;
+  if (admin){ main = ["chef","hall","recv","shime","report"]; more = []; title = "店の仕事"; }
+  else if (kitchen){ main = ["chef","recv","report"]; more = ["hall","shime"]; title = "店の仕事（厨房）"; }
+  else { main = ["hall","shime","recv","report"]; more = ["chef"]; title = "店の仕事（ホール）"; }
+  $("shopTitle").textContent = title;
+  $("shopMain").innerHTML = main.map(shopBtn).join("");
+  $("shopMoreWrap").classList.toggle("hide", !more.length);
+  $("shopMoreBtn").textContent = SHOP_MORE ? "閉じる" : "ほかの仕事も見る（手伝うとき）";
+  $("shopMore").innerHTML = SHOP_MORE ? more.map(shopBtn).join("") : "";
+}
 // ───── 画面遷移 ─────
 function enterApp(){ $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); go("home"); }
 function go(p, sub){
@@ -546,7 +567,7 @@ function sendDiag(){
   }catch(e){} }, 1500);
 }
 function renderCommHome(k){
-  COMM = k; sendDiag();
+  COMM = k; sendDiag(); renderShop();
   const latest = k.notices[0];
   $("hNotice").innerHTML = k.unread>0 ? `<span class="amber">未読 ${k.unread}件</span>` : (latest ? `<span style="font-weight:normal;font-size:13px">${esc(latest.title)}</span>` : "なし");
   $("hNotes").innerHTML = k.openCount>0 ? `<span class="red">${k.openCount}件 未対応</span>` : "なし";
@@ -612,6 +633,7 @@ async function noticeRead(id){ const r = await api("notice_read", {notice_id:id}
 async function noteAdd(){ const body = $("noteIn").value.trim(); if(!body){ toast("内容を入力してください"); return; } const r = await api("note_add", {body}); if(!r.ok){ toast(r.error); return; } $("noteIn").value=""; toast("書き込みました"); loadComm(); }
 async function noteDone(id, undo){ const r = await api("note_done", {note_id:id, undo}); if(!r.ok){ toast(r.error); return; } loadComm(); }
 function renderHome(r, stale){
+  try{ renderShop(); }catch(e){}
   HOME = r; ME = r.staff; SET = r.settings; $("pHome").classList.toggle("stale", !!stale);
   $("hName").textContent = ME.name + (ME.role==="admin" ? "（管理者）" : "");
   $("hToday").textContent = mdLabel(r.today);
