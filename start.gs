@@ -576,18 +576,18 @@ function startRejudgeAll(){
 // 値はページの表示が正（メールより詳しい）。変えた項目は変更履歴に前後を残す
 function startParsePage(text, url){
   var t = String(text||""); var o = {};
-  function lab(re){ var m = t.match(re); return m ? String(m[1]).replace(/\s+$/,"").trim() : ""; }
-  var addr = lab(/所在地\s*\t\s*([^\t\n]+)/) || lab(/【所在地】\s*([^\n]+)/); if (addr && !/から\d+分/.test(addr)) o["住所"] = addr;
+  function lab(re){ var m = t.match(re); var v = m ? String(m[1]).replace(/\s+$/,"").trim() : ""; return /^(償却|更新料|築年|取引態様|構造|契約期間|備考)$/.test(v) ? "" : v; }
+  var addr = lab(/所在地[ \u3000]*\t[ \u3000]*([^\t\n]+)/) || lab(/【所在地】\s*([^\n]+)/); if (addr && !/から\d+分/.test(addr)) o["住所"] = addr;
   var rt = t.match(/賃料\s*\/?\s*坪単価\s*\t\s*([\d,.]+)\s*万円/) || t.match(/賃料\s*\t\s*([\d,.]+)\s*万円/); if (rt) o["賃料"] = Math.round(Number(rt[1].replace(/,/g,"")) * 10000);
   var ar = t.match(/面積m2・坪\s*\t\s*([\d.]+)\s*m2\s*\/\s*([\d.]+)\s*坪/); if (ar){ o["面積㎡"] = Number(ar[1]); o["坪"] = Number(ar[2]); }
   else { var ts = t.match(/【坪数】\s*([\d.]+)/); if (ts) o["坪"] = Number(ts[1]); }
   var fl = startFloor_(t); if (fl !== "") o["階"] = fl;
   var st = t.match(/最寄り駅\s*\t?\s*\n?\s*[^\n]*?線[ 　]+([^ 　\n]+)[ 　]+徒歩\s*(\d+)\s*分/) || t.match(/線\s*([^\s線　\n]{1,10}?)\s*から\s*(\d+)\s*分/);
   if (st){ o["最寄駅"] = st[1]; o["徒歩分"] = Number(st[2]); }
-  var dep = lab(/保証金または敷金\s*\t\s*([^\t\n]+)/); if (dep) o["保証金"] = dep;
-  var key = lab(/権利金または礼金\s*\t\s*([^\t\n]+)/); if (key) o["礼金"] = key;
-  var ct = lab(/契約期間\s*\t\s*([^\t\n]+)/); if (ct) o["契約形態"] = ct;
-  var cm = lab(/共益費および管理費\s*\t\s*([^\t\n]+)/); if (cm) o["共益費"] = cm;
+  var dep = lab(/保証金または敷金[ \u3000]*\t[ \u3000]*([^\t\n]+)/); if (dep) o["保証金"] = dep;
+  var key = lab(/権利金または礼金[ \u3000]*\t[ \u3000]*([^\t\n]+)/); if (key) o["礼金"] = key;
+  var ct = lab(/契約期間[ \u3000]*\t[ \u3000]*([^\t\n]+)/); if (ct) o["契約形態"] = ct;
+  var cm = lab(/共益費および管理費[ \u3000]*\t[ \u3000]*([^\t\n]+)/); if (cm) o["共益費"] = cm;
   var tp = t.match(/造作譲渡料\s*\/\s*前テナント\s*\t\s*([^\t\n]*)/);
   if (tp){ var a = String(tp[1]).split("/"); var tv = String(a[0]||"").match(/([\d,.]+)\s*(万)?円/); if (tv) o["造作譲渡"] = tv[2] ? Math.round(Number(tv[1].replace(/,/g,""))*10000) : Number(tv[1].replace(/,/g,"")); else if (/なし|無/.test(a[0]||"")) o["造作譲渡"] = 0;
     if (a[1] && a[1].trim()) o["前テナント"] = a[1].trim(); }
@@ -595,8 +595,11 @@ function startParsePage(text, url){
   var hv = startHeavy_(t); if (hv) o["重飲食"] = hv;
   var bk = lab(/備考\s*\t\s*([^\t]+?)(?:\n出店可能な業態|\n[^\n]*\t|$)/); if (bk) o["備考"] = bk.slice(0, 500);
   // 不動産会社と電話（プレミアムで表示される）。会社名の欄の近くにある番号だけを使う
-  var co = t.match(/(?:取扱(?:い)?(?:不動産)?会社|取り扱い(?:不動産)?会社|不動産会社(?:名)?|会社名)\s*\t?\s*\n?\s*([^\t\n]{2,40})/);
-  if (co) { o["不動産会社"] = co[1].trim(); var near = t.slice(t.indexOf(co[0]), t.indexOf(co[0]) + 300).match(/0\d{1,4}-\d{1,4}-\d{3,4}/); if (near) o["電話"] = near[0]; }
+  var co = t.match(/取扱会社は…?[ \u3000]*\t?[ \u3000]*\n?[ \u3000]*([^\t\n]{2,40})/) || t.match(/(?:^|\n)[ \u3000]*(?:取扱(?:い)?(?:不動産)?会社|不動産会社名|会社名)[ \u3000]*\t[ \u3000]*([^\t\n]{2,40})/);
+  if (co && !/問い合わせ|お問合せ/.test(co[1])) {
+    var after = t.slice(t.indexOf(co[0]), t.indexOf(co[0]) + 300); var tan = after.match(/担当者?[:：][ \u3000]*([^\n]{1,20})/);
+    o["不動産会社"] = co[1].trim() + (tan ? "（担当: " + tan[1].trim() + "）" : "");
+    var near = after.match(/0\d{1,4}-\d{1,4}-\d{3,4}/); if (near) o["電話"] = near[0]; }
   if (url) { var u = String(url).match(/https?:\/\/www\.inshokuten\.com\/bukken\/(?:bukkens|transfer\/detail)\/\d+/); o.source_url = u ? u[0] : String(url).split("#")[0]; }
   return o;
 }
