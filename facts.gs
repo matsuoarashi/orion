@@ -111,15 +111,21 @@ function osAsk_(d, me){
   var t0 = Date.now();
   var know = osRows_(OS_KNOW, OS_KNOW_COLS).filter(function(r){ return r["状態"] === "approved" && osCanSee_(me, String(r["対象"])); }).map(osKnow_);
   var hasAi = !!PropertiesService.getScriptProperties().getProperty("ANTHROPIC_API_KEY");
-  // AI があるときは候補を広め（12%・8件）に取り、関係の判断は AI に任せる。AI が無ければ従来どおり 25%
-  var hits = hasAi ? osSearch_(q, know, 0.12).slice(0, 8) : osSearch_(q, know);
+  // AI があるときは決まりごとを全件（多い時は検索上位 20 件）渡して、関係するものを AI に選ばせる
+  var hits = hasAi ? (know.length <= 120 ? osSearch_(q, know, 0).concat([]) : osSearch_(q, know, 0.05).slice(0, 20)) : osSearch_(q, know);
+  if (hasAi && know.length <= 120){ var seen = {}; hits.forEach(function(h){ seen[h.id] = 1; }); know.forEach(function(k){ if (!seen[k.id]) hits.push(k); }); }
   var ans = null, model = "search";
   if (hits.length){
     osAiErr_ = "";
     var ai = hasAi ? osGateway_(me, q, hits) : null;
     if (ai && ai.text){
       if (/決まりがありません/.test(ai.text)) { ans = null; model = ai.model; hits = []; } // 根拠なし → 未回答へ
-      else { ans = ai.text; model = ai.model; }
+      else {
+        var mm = ai.text.match(/\n?\s*根拠[:：]\s*([\d,、\s]+)\s*$/); var used = [];
+        if (mm){ mm[1].split(/[,、\s]+/).forEach(function(n){ var h = hits[Number(n)-1]; if (h) used.push(h); }); }
+        ans = ai.text.replace(/\n?\s*根拠[:：][\s\S]*$/, "").trim(); model = ai.model;
+        hits = used.length ? used : hits.slice(0, 1);
+      }
     }
     else if (osSearch_(q, hits).length) { ans = osSearch_(q, hits)[0].a; } // AI 失敗時は 25% 以上の一致だけ採用
   }
@@ -143,7 +149,7 @@ function osGateway_(me, q, hits){
   var props = PropertiesService.getScriptProperties(); var key = props.getProperty("ANTHROPIC_API_KEY"); if (!key) return null;
   var model = props.getProperty("OS_MODEL") || "claude-haiku-5-5";
   var ctx = hits.map(function(h, i){ return (i+1) + ". Q: " + h.q + "\n   A: " + h.a; }).join("\n");
-  var sys = "あなたは洋食オリオン（神田淡路町のナポリタン専門店）のスタッフ向け案内役です。以下の『決まりごと』（検索で拾った候補で、関係ないものも混じっています）のうち質問に関係するものだけを根拠に、日本語で3行以内で簡潔に答えてください。決まりごとに書かれていないことは推測せず『決まりがありません。店長に確認してください』と答えてください。数字は算用数字で。";
+  var sys = "あなたは洋食オリオン（神田淡路町のナポリタン専門店）のスタッフ向け案内役です。以下の『決まりごと』（検索で拾った候補で、関係ないものも混じっています）のうち質問に関係するものだけを根拠に、日本語で3行以内で簡潔に答えてください。決まりごとに書かれていないことは推測せず『決まりがありません。店長に確認してください』と答えてください。数字は算用数字で。回答の最後に改行して『根拠: 番号』（使った決まりごとの番号をカンマ区切り）を1行だけ付けてください。";
   var body = { model: model, max_tokens: 1024, system: sys, messages: [{ role: "user", content: "決まりごと:\n" + ctx + "\n\n質問: " + q }] };
   try {
     var res = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", { method: "post", contentType: "application/json", headers: { "x-api-key": key, "anthropic-version": "2023-06-01" }, payload: JSON.stringify(body), muteHttpExceptions: true });
