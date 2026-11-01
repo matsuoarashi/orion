@@ -535,10 +535,35 @@ function swapItem2(date,row){ const x = ((SALES_CACHE[date]||{}).list||[]).find(
   $("swOk").onclick = async ()=>{ const from=$("swFrom").value, to=$("swTo").value; if(from===to){ toast("同じ商品です"); return; } $("swOk").disabled=true; const r = await fxPost("fx_item", {date,row,from,to,reason:$("swWhy").value||"締めの確認で差替え"}); if(r.error){ toast(r.error); $("swOk").disabled=false; return; } closeOv(); toast(`${to} に差し替えました（${num(r.amount)}円）`); refreshSales(date); };
 }
 // その他の確認（勤怠・在庫・経費・設定）
+// 人手が足りない日（今日から7日先まで）。シフトの人数が必要人数（未設定は2人）より少ない日と、ホール・厨房のどちらかがいない日
+async function shortDays(call){
+  const jst = new Date(Date.now()+9*3600e3), ds = d => d.toISOString().slice(0,10).replace(/-/g,"/");
+  const days = []; for(let i=0;i<=7;i++) days.push(ds(new Date(jst.getTime()+i*86400e3)));
+  const months = [...new Set(days.map(d=>d.slice(0,7)))];
+  const [res, st] = await Promise.all([Promise.all(months.map(m=>call("admin.shifts_month",{month:m}))), call("admin.settings_get")]);
+  if (res.some(r=>!r || !r.ok)) return null;
+  const set = {}; ((st&&st.settings)||[]).forEach(x=>set[x.key]=String(x.value||""));
+  const kitchen = new Set((set.kitchen_ids||"").split(",").map(x=>x.trim()).filter(Boolean));
+  const out = [];
+  days.forEach(date=>{
+    const r = res[months.indexOf(date.slice(0,7))]; const od = (r.openDays||[]).find(d=>d.date===date); if(!od) return;
+    const nd = (r.need||{})[date]||{}; const open = (nd.open===null||nd.open===undefined) ? od.open : nd.open; if(!open) return;
+    const sh = (r.shifts||[]).filter(x=>x.date===date); const name = id => ((r.staff||[]).find(s=>s.staff_id===id)||{}).name||"?";
+    const need = Number(nd.need)||2; const hasK = !kitchen.size || sh.some(x=>kitchen.has(x.staff_id)); const hasH = sh.some(x=>!kitchen.has(x.staff_id));
+    const why = []; if (sh.length < need) why.push(`${sh.length}人／必要${need}人`); if (sh.length && kitchen.size && !hasK) why.push("厨房がいない"); if (sh.length && !hasH) why.push("ホールがいない");
+    if (why.length) out.push({date, names: sh.map(x=>name(x.staff_id)), why: why.join("・"), draft: sh.some(x=>x.status!=="confirmed")});
+  });
+  return out;
+}
+let SHORT = [];
+async function loadShort(){ const tk = (()=>{ try{ return localStorage.getItem("os-admin-token")||TOKEN; }catch(e){ return TOKEN; } })(); if(!tk) return;
+  const call = (action, b)=>fetch(STAFF_API,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify(Object.assign({action, token:tk}, b||{})), busy:false}).then(r=>r.json()).catch(()=>null);
+  try{ const r = await shortDays(call); if(r){ SHORT = r; renderMisc(); } }catch(e){} }
 function renderMisc(){
   if(!DATA) return;
   const o = ops(), p = pnlData(), today = DATA.todayKey, H = new Date().getHours(); const M = [];
   const li = (t, n, btnLabel, fn) => M.push(`<div class="mi"><div><b>${t}</b><small>${n}</small></div>${btnLabel?`<button onclick="${fn}">${btnLabel}</button>`:""}</div>`);
+  SHORT.forEach(x=>li(`<span class="neg">人が足りない</span> ${x.date.slice(5)}(${["日","月","火","水","木","金","土"][new Date(x.date.replace(/\//g,"-")+"T00:00:00+09:00").getDay()]})`, `${x.names.length?x.names.join("・"):"シフトなし"}｜${x.why}${x.draft?"（下書きを含む）":""}`, "シフト", "goApp('staff')"));
   if(OSC.q) li(`スタッフからの質問 ${OSC.q}件（未回答）`, OSC.qs, "回答する", "setTab('people');setTimeout(()=>$('osQ').scrollIntoView({behavior:'smooth'}),100)");
   if(OSC.m) li(`メールからの候補 ${OSC.m}件`, OSC.ms, "確認する", "setTab('people');setTimeout(()=>$('osM').scrollIntoView({behavior:'smooth'}),100)");
   if(OSC.k) li(`承認待ちの決まり ${OSC.k}件`, OSC.ks, "確認する", "setTab('people');setTimeout(()=>$('osPK').scrollIntoView({behavior:'smooth'}),100)");
@@ -566,7 +591,7 @@ async function fxGet(mode, params){ const q = Object.assign({mode, token:TOKEN, 
 async function fxPost(type, body){ try{ const r = await fetch(SHEET_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(Object.assign({type, token:TOKEN}, body||{}))}); return await r.json(); }catch(e){ return {error:"通信エラー"}; } }
 async function bootAuth(){
   const cands = []; try{ [localStorage.getItem("os-admin-token"), localStorage.getItem("os-token")].forEach(t=>{ if(t) cands.push(t); }); }catch(e){}
-  for (const tk of cands){ TOKEN = tk; const r = await fxGet("fx_me"); if(!r.error){ ME = r.me; renderWho(); if(DATA) renderAlerts(); renderOsQ(); renderOsM(); return; } }
+  for (const tk of cands){ TOKEN = tk; const r = await fxGet("fx_me"); if(!r.error){ ME = r.me; renderWho(); if(DATA) renderAlerts(); renderOsQ(); renderOsM(); loadShort(); return; } }
   TOKEN = ""; ME = null; renderWho();
 }
 function renderWho(){ $("who").style.display = (ME && /embed=1/.test(location.search)) ? "none" : ""; // 管理者アプリの中ではログイン中の名前・ログアウトは上の帯にあるので出さない
@@ -1125,7 +1150,7 @@ function renderPeople(){
   $("ppWeeks").innerHTML = "<tr><th>週</th><th>営業</th><th>売上</th><th>人件費</th><th>率</th><th>時間</th><th>人時売上</th></tr>" + weeks.map(m=>{ const x = sumDays(weekDays(m)); return `<tr><td>${m.slice(5)}〜</td><td>${x.days}日${x.laborDays<x.days?`<small>(勤怠${x.laborDays})</small>`:""}</td><td>${num(x.sales)}</td><td>${num(x.labor)}</td><td>${x.labor?pct(x.labor/x.sales):"-"}</td><td>${(x.minutes/60).toFixed(1)}h</td><td>${x.minutes?num(Math.round(x.sales/(x.minutes/60))):"-"}</td></tr>`; }).join("");
   const miss = days.filter(d=>!p.laborDaily[d.date] && d.date<DATA.todayKey);
   // 質問・メール候補は自動更新（60秒ごと）のたびには読まず、5分に1回まで（Googleへの通信を減らす）
-  if (!window._osAt || Date.now() - window._osAt > 300000){ window._osAt = Date.now(); renderOsQ(); renderOsM(); }
+  if (!window._osAt || Date.now() - window._osAt > 300000){ window._osAt = Date.now(); renderOsQ(); renderOsM(); loadShort(); }
   $("ppOps").innerHTML = (o.unclosed.length ? o.unclosed.map(u=>`<div class="pl"><span><b class="neg">未退勤</b> ${u.name} ${u.date.slice(5)} 出勤 ${hmOnly(u.in)}</span></div>`).join("") : "") + (miss.length ? `<div class="pl"><span>勤怠のない営業日：${miss.map(d=>d.date.slice(5)).join("・")}</span></div>` : "") + (!o.unclosed.length && !miss.length ? "<div class='sub'>勤怠に問題はありません</div>" : "");
 }
 
