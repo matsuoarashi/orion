@@ -68,6 +68,21 @@ function invMaster_(){
       stock: r["現在庫"]===""?null:Number(r["現在庫"]), stockAt: String(r["在庫更新日時"]||""), order: Number(r["表示順"])||999, note: String(r["備考"]||"") };
   }).sort(function(a,b){ return a.order-b.order || (a.cat<b.cat?-1:1); });
 }
+// 発注先一覧（仕入先シート）の1行を保存。業者名で探し、なければ注意書きの行の前に足す（管理者だけ）
+function invSupplierSave_(d, me){
+  if (me.role !== "admin") return { error: "発注先の編集は管理者だけです" };
+  var name = String(d.name || "").trim(); if (!name) return { error: "業者名を入れてください" };
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("仕入先"); if (!sh) return { error: "仕入先シートがありません" };
+  var head = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(String); var ki = head.indexOf("業者名"); if (ki < 0) return { error: "業者名の列がありません" };
+  var n = sh.getLastRow(); var names = n > 1 ? sh.getRange(2, ki + 1, n - 1, 1).getValues().map(function(r){ return String(r[0]).trim(); }) : [];
+  var idx = names.indexOf(String(d.orig || name).trim()), row;
+  if (idx >= 0) row = idx + 2;
+  else { var note = -1; for (var i = 0; i < names.length; i++){ if (/要確認|埋めてください/.test(names[i])){ note = i; break; } }
+    if (note >= 0){ sh.insertRowBefore(note + 2); row = note + 2; } else row = n + 1; }
+  var f = d.fields || {}; f["業者名"] = name;
+  Object.keys(f).forEach(function(k){ var c = head.indexOf(k); if (c < 0) return; var val = String(f[k] == null ? "" : f[k]); if (/^[=+@]/.test(val)) val = "'" + val; sh.getRange(row, c + 1).setValue(val); });
+  return { ok: true, row: row };
+}
 function invSuppliers_(){ try{ var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("仕入先"); if (!sh) return []; return invRows_(sh).map(function(r){ var o={}; Object.keys(r).forEach(function(k){ if(k!=="_row") o[k]=String(r[k]); }); return o; }); }catch(e){ return []; } }
 function invLastChecks_(){
   // 担当ごとの最終記録（日付・記録者）
@@ -135,6 +150,7 @@ function handleInvPost(d){
       else if (d.type === "inv_report") res = invReport_(d, me);
       else if (d.type === "inv_report_done") res = invReportDone_(d, me);
       else if (d.type === "inv_master_save") res = invMasterSave_(d, me);
+      else if (d.type === "inv_supplier_save") res = invSupplierSave_(d, me);   // 発注先一覧の編集（管理者）
       else if (d.type === "inv_price_save") res = invPriceSave_(d, me);     // 11/1: 発注アプリの価格追加・編集（取り付け漏れを修正、v59）
       else if (d.type === "inv_price_delete") res = invPriceDelete_(d, me);
       else res = { error: "type" };
