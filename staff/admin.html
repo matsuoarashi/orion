@@ -96,7 +96,8 @@ body.loading main{opacity:.6;transition:opacity .2s}
 </head>
 <body>
 <div class="app">
-  <div id="vLogin" class="login">
+  <div id="vBoot" style="padding:80px 20px;text-align:center;color:#7a7265;font-size:14px">読み込み中…</div>
+  <div id="vLogin" class="login hide">
     <h1>ORION STAFF 管理</h1>
     <div id="loginMsg"></div>
     <label>管理者</label><select id="adminSel"></select>
@@ -173,7 +174,7 @@ function download(name, text){ const a=document.createElement("a"); a.href=URL.c
 
 // ───── ログイン ─────
 async function showLogin(msg){
-  $("vLogin").classList.remove("hide"); $("vApp").classList.add("hide");
+  $("vBoot").classList.add("hide"); $("vLogin").classList.remove("hide"); $("vApp").classList.add("hide");
   $("loginMsg").innerHTML = msg?`<div class="msg err">${esc(msg)}</div>`:"";
   try{ const r = await fetch(API_URL+"?action=staff_list").then(r=>r.json());
     $("adminSel").innerHTML = (r.staff||[]).filter(s=>s.role==="admin").map(s=>`<option value="${s.staff_id}">${esc(s.name)}</option>`).join("");
@@ -188,7 +189,7 @@ async function doLogin(){
   }catch(e){ $("loginMsg").innerHTML=`<div class="msg err">通信エラー</div>`; } finally{ $("loginBtn").disabled=false; }
 }
 async function doLogout(){ if(!confirm("ログアウトしますか？")) return; await api("logout"); localStorage.removeItem("os-admin-token"); TOKEN=""; showLogin(); }
-function enterApp(){ $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); $("hName").textContent = ME.name; go("today"); }
+function enterApp(){ $("vBoot").classList.add("hide"); $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); $("hName").textContent = ME.name; go("today"); }
 function go(t){
   document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on", b.dataset.t===t));
   ["today","shift","att","pay","comm","staff","set"].forEach(x=>$("p"+x[0].toUpperCase()+x.slice(1)).classList.toggle("hide", x!==t));
@@ -746,7 +747,10 @@ async function showAudit(){ const r = await api("admin.audit"); modal(`<h3>操�
 
 (async function(){
   if(!TOKEN){ showLogin(); return; }
-  try{ const r = await api("home"); if(r.ok && r.staff.role==="admin"){ ME=r.staff; enterApp(); } else if(r.ok){ showLogin("管理者ではありません"); } else if(r.code!=="noauth"){ showLogin(r.error); } } catch(e){ showLogin("通信できません"); }
+  // 管理者アプリで前回ログインした管理者なら、確認を待たずに開く（期限切れならログイン画面へ）
+  let cached = null; try{ cached = JSON.parse(localStorage.getItem("kanri-me")||"null"); }catch(e){}
+  if (cached && cached.role==="admin"){ ME = cached; enterApp(); }
+  try{ const r = await api("home"); if(r.ok && r.staff.role==="admin"){ if(!cached || cached.role!=="admin"){ ME=r.staff; enterApp(); } else ME=r.staff; } else if(r.ok){ showLogin("管理者ではありません"); } else if(r.code!=="noauth"){ if(cached && cached.role==="admin") toast(r.error||"通信できません"); else showLogin(r.error); } } catch(e){ if(cached && cached.role==="admin") toast("通信できません"); else showLogin("通信できません"); }
 })();
 </script>
 </body>
