@@ -480,7 +480,7 @@ function startExtract(body, subject){
   var r = t.match(/賃料[^\d\n]{0,6}([\d,.]+)\s*(万)?\s*円?/); if (r){ var n = Number(r[1].replace(/,/g,"")); out.rent = r[2] ? Math.round(n*10000) : n; }
   var ts = t.match(/([\d.]+)\s*坪(?!単価)/); if (ts) out.tsubo = Number(ts[1]);
   var sq = t.match(/([\d.]+)\s*(㎡|m²|m2|平米)/); if (sq) out.sqm = Number(sq[1]);
-  var st = t.match(/([^\s「」【】()（）、,。・\n\[\]]{1,12}?)駅[^\d\n]{0,4}徒歩\s*(\d+)\s*分/) || t.match(/線\s*([^\s線　\n]{1,10}?)\s*から\s*(\d+)\s*分/);
+  var st = t.match(/【所在地】[^\n]*?線\s*([^\s線　\n]{1,10}?)\s*から\s*(\d+)\s*分/) || t.match(/([^\s「」【】()（）、,。・\n\[\]]{1,12}?)駅[^\d\n]{0,4}徒歩\s*(\d+)\s*分/) || t.match(/線\s*([^\s線　\n]{1,10}?)\s*から\s*(\d+)\s*分/);
   if (st){ out.station = st[1]; out.walk = Number(st[2]); }
   else { var st2 = t.match(/\[最寄り?駅\]\s*([^\s\[]{1,12})/); if (st2) out.station = st2[1]; }
   var ad = t.match(/(東京都[^\s、,。\n]{2,40}?\d+(?:[-－丁目]\d+)*)/) || t.match(/\[住所\]\s*([^\[\n]{2,40}?)\s*(?=\[|\n|$)/);
@@ -492,11 +492,13 @@ function startExtract(body, subject){
 }
 // 1通に複数の物件が並ぶメール（飲食店ドットコムの居抜き譲渡速報など）を物件ごとに分ける。分けられなければ1件のまま
 function startSplitMail_(body){
-  var b = String(body||""); var parts = b.split(/(?=譲渡No\s*\d+)/);
-  if (parts.length < 3) return [{ text: b, key: "" }];
-  return parts.slice(1).map(function(seg){ var no = seg.match(/譲渡No\s*(\d+)/)[1];
-    var cut = seg.split(/詳しく見る/)[0];
-    return { text: cut, key: "#" + no, url: "https://www.inshokuten.com/bukken/transfer/detail/" + no }; });
+  var b = String(body||"");
+  var segs = b.split(/━{8,}|─{8,}|={8,}|＝{8,}/).filter(function(x){ return /譲渡\s*No/.test(x); });          // テキスト版: 罫線で区切られ【譲渡No】12643
+  if (segs.length < 1 || (segs.length === 1 && (b.match(/譲渡\s*No/g)||[]).length > 1)) segs = b.split(/(?=譲渡No\s*\d+)/).slice(1); // HTML版
+  if (!segs.length) return [{ text: b, key: "" }];
+  return segs.map(function(seg){ var m = seg.match(/譲渡\s*No】?\s*[:：]?\s*(\d+)/); var no = m ? m[1] : "";
+    var cut = seg.split(/■譲渡、引継ぎ|詳しく見る⇒/)[0];
+    return { text: cut, key: no ? "#" + no : "", url: no ? "https://www.inshokuten.com/bukken/transfer/detail/" + no : "" }; });
 }
 // orion.napolitan@gmail.com の収集スクリプト（collector.gs）経由の取り込み。mail.gs の osMailIngest_ から呼ぶ
 //  orion 側の Gmail フィルタ: 下の差出人ドメイン → ラベル「ORION/物件」・迷惑メールにしない・カテゴリ「メイン」（収集はプロモーションを除外するため）
@@ -509,11 +511,12 @@ function startIngestMessages_(msgs, mailbox){
   var sh = startSheet_("lst"); var rows = startRows_("lst"); var n = 0;
   props.forEach(function(m){
     var items = startSplitMail_(m.body || "");
-    if (items.length > 1){ // まとめメールを以前1件として入れていたら、その行は「分割して取り込み直し」として閉じる（消さない）
+    var isDigest = items.length > 1 || !!items[0].key;
+    if (isDigest){ // まとめメールを以前1件として入れていたら、その行は「分割して取り込み直し」として閉じる（消さない）
       rows.filter(function(r){ return String(r["メールID"]) === String(m.id) && r["取込状態"] === "未確認"; }).forEach(function(r){
         startSetMany_(sh, r._row, { "取込状態":"対象外", "抽出メモ": String(r["抽出メモ"]||"") + "／まとめメールを物件ごとに分けて取り込み直し", "更新日時": invNow_() }); r["取込状態"] = "対象外"; }); }
     items.forEach(function(it){
-      var x = startExtract(it.text, items.length > 1 ? "" : (m.subject || "")); if (it.url) { x.url = it.url; x.missing = x.missing.filter(function(k){ return k !== "URL"; }); }
+      var x = startExtract(it.text, isDigest ? "" : (m.subject || "")); if (it.url) { x.url = it.url; x.missing = x.missing.filter(function(k){ return k !== "URL"; }); }
       var mid = String(m.id) + (it.key || "");
       var link = mailbox ? "https://mail.google.com/mail/?authuser=" + encodeURIComponent(mailbox) + "#all/" + m.id : "https://mail.google.com/mail/u/0/#all/" + m.id;
       var o = { "取込状態":"未確認", source: startSource_(m.from), source_url: x.url || "", "初出日": "'" + String(m.date||invToday_()).slice(0,10),
@@ -549,11 +552,20 @@ function startSetMany_(sh, row, obj){
 // ◎ = 分かっている項目がすべて基準内で、坪単価・階・坪がそろっている
 // △ = 基準外の項目はないが、まだ分からない項目がある（物件ページで確かめる）
 // × = 基準外の項目がある（理由を残す。消さない）
+function startNum_(v){
+  if (v instanceof Date) return Math.round((v.getTime() - new Date(1899, 11, 30).getTime()) / 86400000);
+  if (v === "" || v === null || v === undefined) return ""; var n = Number(v); return isNaN(n) ? "" : n;
+}
+// 掲載タブの数の列の書式（階が日付に見えないように）
+function startFixFormats_(){
+  var sh = startSheet_("lst"); var hdr = sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String); var rows = Math.max(sh.getMaxRows() - 1, 1);
+  [["階","0"],["坪単価","#,##0"],["賃料","#,##0"],["坪","0.##"],["徒歩分","0"]].forEach(function(f){ var c = hdr.indexOf(f[0]); if (c >= 0) sh.getRange(2, c+1, rows, 1).setNumberFormat(f[1]); });
+}
 function startComma_(n){ return String(Math.round(Number(n)||0)).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
 var START_JUDGE = { maxUnit: 30000, tsuboMin: 5, tsuboMax: 15, idealMin: 6, idealMax: 12 };
 function startJudge(o){
   var fails = [], oks = [], unknown = [];
-  var rent = Number(o["賃料"]) || 0, tsubo = Number(o["坪"]) || 0, fl = (o["階"] === "" || o["階"] === undefined || o["階"] === null) ? "" : Number(o["階"]);
+  var rent = Number(startNum_(o["賃料"])) || 0, tsubo = Number(startNum_(o["坪"])) || 0, fl = startNum_(o["階"]);
   var unit = (rent && tsubo) ? Math.round(rent / tsubo) : "";
   if (unit !== ""){ (unit <= START_JUDGE.maxUnit ? oks : fails).push("坪単価" + startComma_(unit) + "円"); } else unknown.push("坪単価");
   if (fl !== "" && !isNaN(fl)){ (fl === 1 ? oks : fails).push(fl < 0 ? "地下" + (-fl) + "階" : fl + "階"); } else unknown.push("階");
@@ -566,7 +578,7 @@ function startJudge(o){
 }
 // 既存の行の判定をまとめて付け直す（エディタから。基準を変えたとき用）
 function startRejudgeAll(){
-  var sh = startSheet_("lst"); var n = 0;
+  startFixFormats_(); var sh = startSheet_("lst"); var n = 0;
   startRows_("lst").forEach(function(r){ var j = startJudge(r); if (String(r["判定"]) !== j.grade || String(r["判定理由"]) !== j.reason){ startSetMany_(sh, r._row, { "坪単価": j.unit, "判定": j.grade, "判定理由": j.reason }); n++; } });
   return { ok:true, updated:n };
 }
@@ -641,7 +653,7 @@ function startDailyDigest(){
   var esc = function(s){ return String(s==null?"":s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); };
   var line = function(r){
     var rent = Number(r["賃料"]) ? (Number(r["賃料"])/10000).toFixed(1).replace(/\.0$/,"") + "万円" : "賃料?";
-    var head = esc(r["最寄駅"]||"駅?") + (r["徒歩分"] !== "" ? " 徒歩" + esc(r["徒歩分"]) + "分" : "") + "｜" + rent + "｜" + esc(r["坪"]||"?") + "坪" + (r["坪単価"] ? "（坪" + startComma_(r["坪単価"]) + "円）" : "") + "｜" + (r["階"] !== "" ? esc(r["階"]) + "階" : "階?");
+    var head = esc(r["最寄駅"]||"駅?") + (r["徒歩分"] !== "" ? " 徒歩" + esc(r["徒歩分"]) + "分" : "") + "｜" + rent + "｜" + esc(r["坪"]||"?") + "坪" + (r["坪単価"] ? "（坪" + startComma_(r["坪単価"]) + "円）" : "") + "｜" + (startNum_(r["階"]) !== "" ? startNum_(r["階"]) + "階" : "階?");
     var link = r.source_url ? '<a href="' + esc(r.source_url) + '">物件ページ</a>' : (r.evidence_link ? '<a href="' + esc(r.evidence_link) + '">元のメール</a>' : "");
     return '<li style="margin:0 0 10px"><b>' + head + '</b><br><span style="color:#6d6054;font-size:13px">' + esc(r["判定理由"]) + "</span><br>" + link + "</li>"; };
   var html = '<div style="font-family:sans-serif;font-size:14px;line-height:1.5">'
