@@ -5,6 +5,7 @@
 //  - 決裁権限   … 誰が何を決められるか（Fact の承認者を決める表）
 //  - 関連当事者取引 … アウタ⇄オリオンの立替・精算の台帳（税務・融資・DD 用）
 //  - 未回答質問 … 「聞く」で答えられなかった質問。回答されたら Knowledge へ昇格
+//  基本原則：DD・融資・税務に耐える Evidence 設計。重要データは「出所・担当・承認者・有効日・状態・証憑・更新日時」を持ち、上書きせず履歴を残す。提案者と最終決裁者は別の列
 // 取り付け: handleFxGet/handleFxPost と同様に doGet /^os_/ → handleOsGet、doPost handleOsPost
 var OS_FACTS = "Facts"; var OS_FACTS_COLS = ["fact_id","分類","店舗","項目","値","状態","有効開始","有効終了","根拠","承認者","承認日時","前のfact_id","メモ","登録者","登録日時"];
 var OS_KNOW = "Knowledge"; var OS_KNOW_COLS = ["k_id","店舗","対象","分類","質問","回答","状態","承認者","更新日時","出典","タグ","前のk_id","変更理由"];
@@ -25,10 +26,18 @@ function handleOsGet(e){
     var facts = osRows_(OS_FACTS, OS_FACTS_COLS).filter(function(r){ return r["状態"] !== "superseded" && r["状態"] !== "rejected"; });
     var know = osRows_(OS_KNOW, OS_KNOW_COLS).filter(function(r){ return r["状態"] === "approved" && osCanSee_(me, String(r["対象"])); });
     var un = osRows_(OS_UNANS, OS_UNANS_COLS).filter(function(r){ return r["状態"] !== "回答済"; });
-    return invOut_({ me: me, facts: facts.map(osFact_), knowledge: know.map(osKnow_), unanswered: me.role === "admin" ? un.map(osUnans_) : un.filter(function(r){ return r["質問者"] === me.name; }).map(osUnans_), auth: me.role === "admin" ? osRows_(OS_AUTH, OS_AUTH_COLS).map(function(r){ var o = {}; OS_AUTH_COLS.forEach(function(c){ o[c] = String(r[c]||""); }); return o; }) : [] });
+    return invOut_({ me: me, facts: facts.map(osFact_), knowledge: know.map(osKnow_), unanswered: me.role === "admin" ? un.map(osUnans_) : un.filter(function(r){ return r["質問者"] === me.name; }).map(osUnans_), contractAlerts: me.role === "admin" ? (function(){ try { return osContractAlerts_(90); } catch(e){ return []; } })() : [], auth: me.role === "admin" ? osRows_(OS_AUTH, OS_AUTH_COLS).map(function(r){ var o = {}; OS_AUTH_COLS.forEach(function(c){ o[c] = String(r[c]||""); }); return o; }) : [] });
   }
   if (mode === "os_rpt"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_({ list: osRows_(OS_RPT, OS_RPT_COLS).map(osRpt_) }); }
   if (mode === "os_seed"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_(osSeed20261101()); }
+  if (mode === "os_myq"){ // 自分の質問（最新20件）。回答がついたものは回答も返す
+    var mine = osRows_(OS_UNANS, OS_UNANS_COLS).filter(function(r){ return String(r["質問者"]) === me.name; }).slice(-20).reverse();
+    return invOut_({ list: mine.map(function(r){ return { id:r.q_id, at:String(r["日時"]), q:String(r["質問"]), status:String(r["状態"]), a:String(r["回答"]||""), answeredAt:String(r["回答日時"]||"") }; }) });
+  }
+  if (mode === "os_mail"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_({ list: osRows_(OS_MAILCAND, OS_MAILCAND_COLS).filter(function(r){ return String(r["状態"]) === "未確認"; }).slice(-100).reverse().map(function(r){ var o = {}; OS_MAILCAND_COLS.forEach(function(c){ o[c] = String(r[c]===undefined?"":r[c]); }); return o; }) }); }
+  var lg = osLedgerGet_(mode, me); if (lg) return invOut_(lg);
+  if (mode === "os_snapshot_run"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_(osSnapshot(String(p.ym||""), me)); }
+  if (mode === "os_seed_ledgers"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_(osSeedLedgers20261101()); }
   if (mode === "os_ailog"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_({ list: osRows_(OS_AILOG, OS_AILOG_COLS).slice(-200).reverse() }); }
   return invOut_({ error: "unknown mode" });
 }
@@ -54,6 +63,10 @@ function handleOsPost(d){
       else if (d.type === "os_know_save") res = osKnowSave_(d, me);
       else if (d.type === "os_ask") res = osAsk_(d, me);
       else if (d.type === "os_answer") res = osAnswer_(d, me);
+      else if (d.type === "os_rate") res = osRate_(d, me);
+      else if (d.type === "os_mail_set") res = osMailCandSet_(d, me);
+      else if (d.type === "os_dec_save") res = osDecSave_(d, me);
+      else if (d.type === "os_contract_save") res = osContractSave_(d, me);
       else if (d.type === "os_rpt_save") res = osRptSave_(d, me);
       else res = { error: "unknown type" };
     } finally { lock.releaseLock(); }
@@ -134,6 +147,12 @@ function osPurgeAiLog(){
   var sh = osSheet_(OS_AILOG, OS_AILOG_COLS); var rows = invRows_(sh); var cut = new Date(Date.now() - 90*86400000); var del = 0;
   for (var i = rows.length-1; i >= 0; i--){ var r = rows[i]; if (String(r["保存区分"]) !== "通常") continue; var d = new Date(String(r["日時"]).replace(/\//g,"-")); if (isNaN(d) || d > cut) continue; sh.deleteRow(r._row); del++; }
   return del;
+}
+// 回答の評価（役に立った／違う）。「違う」は Knowledge の見直し材料なので保存区分を Knowledge に上げる
+function osRate_(d, me){
+  var sh = osSheet_(OS_AILOG, OS_AILOG_COLS); var r = invRows_(sh).filter(function(x){ return x.log_id === d.log_id; })[0]; if (!r) return { error: "見つかりません" };
+  var v = String(d.v||""); invSet_(sh, r._row, "評価", v); if (v === "違う") invSet_(sh, r._row, "保存区分", "Knowledge");
+  return { ok:true };
 }
 // 未回答に回答 → Knowledge に追加（承認済み）
 function osAnswer_(d, me){
