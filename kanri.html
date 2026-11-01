@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>管理者 | 洋食オリオン</title>
+<style>
+:root{ --g:#2c4f39; --g-d:#1f3a2a; --g-l:#e4eee7; --cream:#faf6ee; --cream-d:#ece4d2; --ink:#2b2a26; --mute:#7a7265; --red:#a33c2e; --red-l:#f6e3df; --amber:#b7791f; --line:#d9d1bd; --sat:env(safe-area-inset-top); --sab:env(safe-area-inset-bottom); }
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:var(--cream);color:var(--ink);font-size:16px}
+.hide{display:none!important}
+.app{display:flex;flex-direction:column;height:100%}
+header{background:var(--g-d);color:#fff;padding:calc(6px + var(--sat)) 10px 0;flex:none}
+.top{display:flex;align-items:center;gap:8px;padding:2px 2px 6px}
+.top .t{font-size:11px;letter-spacing:3px;opacity:.8}
+.top .n{font-size:14px;font-weight:bold;flex:1}
+.top button{background:rgba(255,255,255,.14);border:0;color:#fff;border-radius:8px;padding:6px 10px;font-size:12px}
+nav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{flex:1 0 auto;border:0;background:none;color:rgba(255,255,255,.7);padding:9px 12px 10px;font-size:14px;font-weight:bold;border-bottom:3px solid transparent;white-space:nowrap}
+nav button.on{color:#fff;border-bottom-color:#e8c26a}
+nav .bd{display:inline-block;min-width:16px;padding:0 4px;border-radius:999px;background:var(--red);color:#fff;font-size:10px;line-height:16px;margin-left:4px;vertical-align:1px}
+#frames{flex:1;position:relative;background:var(--cream)}
+#frames iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--cream)}
+.login{max-width:400px;margin:0 auto;padding:calc(40px + var(--sat)) 20px 20px}
+.login h1{font-size:22px;letter-spacing:6px;text-align:center;color:var(--g)}
+.login .s{text-align:center;color:var(--mute);font-size:13px;margin:6px 0 24px}
+label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
+select,input{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:17px;background:#fff;font-family:inherit}
+.btn{display:block;width:100%;border:0;border-radius:12px;padding:14px;font-size:17px;font-weight:bold;color:#fff;background:var(--g);margin-top:20px}
+.msg{background:var(--red-l);color:var(--red);padding:10px 12px;border-radius:10px;font-size:14px;margin-bottom:10px}
+.msg:empty{display:none}
+.note{font-size:12px;color:var(--mute);text-align:center;margin-top:16px;line-height:1.6}
+</style>
+</head>
+<body>
+<div id="vLogin" class="login hide">
+  <h1>管 理 者</h1>
+  <div class="s">洋食オリオン｜分析・発注・経費・スタッフ</div>
+  <div class="msg" id="loginMsg"></div>
+  <label>名前（管理者）</label><select id="staffSel"><option value="">読み込み中…</option></select>
+  <label>パスコード（勤怠アプリと同じ）</label><input type="password" inputmode="numeric" id="passIn" placeholder="●●●●" autocomplete="off">
+  <button class="btn" id="loginBtn" onclick="doLogin()">ログイン</button>
+  <div class="note">ここに 1 回ログインすると、分析・発注・経費・スタッフ管理の全部に入れます。<br>スタッフの方は「勤怠アプリ」を使ってください。</div>
+</div>
+
+<div id="vApp" class="app hide">
+  <header>
+    <div class="top"><div><div class="t">管理者</div></div><div class="n" id="who">-</div><button onclick="reloadCur()">更新</button><button onclick="logout()">ログアウト</button></div>
+    <nav id="nav"></nav>
+  </header>
+  <div id="frames"></div>
+</div>
+
+<script>
+// 管理者アプリ：1 つの入口。中身は既存の画面を順に移していく（段階統合の第1段）
+const STAFF_API = "https://script.google.com/macros/s/AKfycbwgGW6rXzAW2rHVicdoCMdHOT_E3egrXPsaEJerX-_brZr0mYF6Qo_tRorX8PgLc7c/exec";
+const SECTIONS = [
+  { id:"shime", label:"締め・分析", src:"dashboard.html?embed=1" },
+  { id:"hacchu", label:"発注", src:"hacchu.html?embed=1" },
+  { id:"keihi", label:"経費", src:"keihi.html?embed=1" },
+  { id:"staff", label:"スタッフ・シフト", src:"admin.html?embed=1" },
+];
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let CUR = null;
+function ls(k, v){ try{ if(v===undefined) return localStorage.getItem(k); if(v===null) localStorage.removeItem(k); else localStorage.setItem(k, v); }catch(e){ return null; } }
+
+async function boot(){
+  const tok = ls("os-admin-token") || ls("os-token");
+  if (tok){ const me = await whoami(tok); if (me && me.role === "admin"){ enter(tok, me); return; } }
+  showLogin();
+}
+async function whoami(tok){
+  try{ const r = await fetch(STAFF_API, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({action:"home", token:tok})}).then(r=>r.json()); return r.ok ? r.staff : null; }catch(e){ return null; }
+}
+async function showLogin(msg){
+  $("vApp").classList.add("hide"); $("vLogin").classList.remove("hide"); $("loginMsg").textContent = msg||"";
+  try{ const r = await fetch(STAFF_API+"?action=staff_list").then(r=>r.json());
+    const adm = (r.staff||[]).filter(s=>s.role==="admin"); const list = adm.length ? adm : (r.staff||[]);
+    $("staffSel").innerHTML = `<option value="">名前を選んでください</option>` + list.map(s=>`<option value="${esc(s.staff_id)}">${esc(s.name)}</option>`).join("");
+  }catch(e){ $("loginMsg").textContent = "通信できません。電波を確認してください"; }
+}
+async function doLogin(){
+  const id = $("staffSel").value, pass = $("passIn").value.trim(); if(!id){ $("loginMsg").textContent="名前を選んでください"; return; } if(!pass){ $("loginMsg").textContent="パスコードを入力してください"; return; }
+  $("loginBtn").disabled = true;
+  try{ const r = await fetch(STAFF_API, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({action:"login", staff_id:id, passcode:pass, ua:navigator.userAgent})}).then(r=>r.json());
+    if(!r.ok){ $("loginMsg").textContent = r.error||"ログインできません"; return; }
+    if(!r.staff || r.staff.role !== "admin"){ $("loginMsg").textContent = "管理者ではありません。スタッフの方は勤怠アプリを使ってください"; return; }
+    $("passIn").value = ""; enter(r.token, r.staff);
+  }catch(e){ $("loginMsg").textContent = "通信できません"; } finally{ $("loginBtn").disabled = false; }
+}
+function enter(tok, me){
+  // 中の画面は同じ場所のログイン情報を読むので、両方の鍵に入れておく
+  ls("os-token", tok); ls("os-admin-token", tok);
+  $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); $("who").textContent = me.name + "（管理者）";
+  $("nav").innerHTML = SECTIONS.map(s=>`<button id="nb_${s.id}" onclick="show('${s.id}')">${esc(s.label)}</button>`).join("");
+  const first = (location.hash||"").slice(1); show(SECTIONS.some(s=>s.id===first) ? first : (ls("kanri-tab")||"shime"));
+}
+// 画面は開いたときに初めて読み込み、以後は切り替えても保持（行き来しても入力が消えない）
+function show(id){
+  const sec = SECTIONS.find(s=>s.id===id) || SECTIONS[0]; CUR = sec.id; ls("kanri-tab", CUR); history.replaceState(null, "", "#"+CUR);
+  SECTIONS.forEach(s=>{ $("nb_"+s.id).classList.toggle("on", s.id===CUR); const f = $("fr_"+s.id); if (f) f.classList.toggle("hide", s.id!==CUR); });
+  if (!$("fr_"+CUR)){ const f = document.createElement("iframe"); f.id = "fr_"+CUR; f.src = sec.src; f.title = sec.label; $("frames").appendChild(f); }
+}
+function reloadCur(){ const f = $("fr_"+CUR); if (f) f.contentWindow.location.reload(); }
+function logout(){ if(!confirm("ログアウトしますか？")) return; ls("os-admin-token", null); ls("os-token", null); $("frames").innerHTML = ""; showLogin(); }
+boot();
+</script>
+</body>
+</html>
