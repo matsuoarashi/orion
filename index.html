@@ -586,9 +586,12 @@ async function flushQueue(){
     for(const rec of q){
       if(doneIds.has(rec.id)) continue;   // 同じ id は1回だけ
       try{
-        await fetch(SHEET_URL, {method:"POST", mode:"no-cors",
-          headers:{"Content-Type":"text/plain"}, body: JSON.stringify(rec)});
-        doneIds.add(rec.id);
+        // 11/1: 返事を読んで、シートに書けた（ok / dup）ものだけ送信済みにする。"error" や通信失敗は残して送り直す
+        const ac = new AbortController(); const tm = setTimeout(()=>ac.abort(), 20000);
+        let txt = "";
+        try{ const res = await fetch(SHEET_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(rec), signal: ac.signal}); txt = (await res.text()).trim(); }
+        finally{ clearTimeout(tm); }
+        if (/^error/i.test(txt)) { failed = true; } else { doneIds.add(rec.id); }
       }catch(e){ failed = true; }
     }
     // 送信済みの id を除いたものを残す（送信中に増えた分はそのまま残る）
