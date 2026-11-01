@@ -61,6 +61,7 @@ input.wide{width:100%;text-align:left}
     <div class="card">
       <h2><span class="no">2</span>PayPay と業者払い</h2>
       <div class="row"><span class="l">PayPay 画面の本日の取引額<small>店の端末の PayPay で確認</small></span><input type="number" inputmode="numeric" id="ppScreen" placeholder="0" oninput="calc()"></div>
+      <div id="ppMail" class="hide" style="margin:2px 0 8px;padding:10px 12px;border-radius:10px;background:#eef4ef;font-size:13px;line-height:1.6"></div>
       <div class="row"><span class="l">業者に現金で払った額<small>納品のときにレジから払った分。なければ 0</small></span><input type="number" inputmode="numeric" id="vendor" placeholder="0" oninput="calc()"></div>
     </div>
 
@@ -125,12 +126,21 @@ function build(){
   $("slips").innerHTML = SLIP_GROUPS.map(g=>`<div class="lbl">${g.label}</div><div class="grid">` + g.items.map(n=>{ const i = SLIP_MENUS.indexOf(n); const lab = g.short ? n.replace(/^TG/,"") : n;
     return `<div class="fm"><span>${esc(lab)}<small id="sl${i}c"></small></span><span><input type="number" inputmode="numeric" id="sl${i}" placeholder="—" value="${d["sl"+i]??""}" oninput="calc()"></span></div>`; }).join("") + `</div>`).join("");
 }
+// PayPay の取引メール（1時間ごとに取り込み）から今日の合計を出し、ボタンで入力欄に入れられるようにする
+function renderPPMail(){
+  const el = document.getElementById("ppMail"); const m = DAY && DAY.ppMail; if (!el) return;
+  if (!m || !m.count){ el.classList.add("hide"); return; }
+  el.classList.remove("hide");
+  el.innerHTML = `メールで届いた PayPay：<b>${m.total.toLocaleString()}円</b>（${m.count}件・最後 ${m.last||"-"}）<br><button type="button" onclick="usePPMail()" style="margin-top:6px;border:0;border-radius:8px;padding:8px 12px;background:#2c4f39;color:#fff;font-weight:bold;font-size:14px">この金額を入れる</button><br><span style="color:#7a7265">メールは1時間ごとに届くので、閉店直前の分が入っていないことがあります。PayPay 端末の「本日の取引額」と違うときは、端末の金額を入れてください。</span>`;
+}
+function usePPMail(){ const m = DAY && DAY.ppMail; if (!m) return; document.getElementById("ppScreen").value = m.total; calc(); }
 let DAYP = null;
 async function loadDay(manual){
   try{
     const j = (!manual && DAYP) ? await DAYP : await fetchJ(SHEET_URL + "?mode=day_lite&t=" + Date.now()); DAYP = null;
     const t = (j.daily||[]).find(x=>x.date===j.todayKey) || { date:j.todayKey, count:0, sales:0, salesPaypay:0, items:{} };
     DAY = { count:t.count||0, sum:t.sales||0, paypay:t.salesPaypay||0, items:t.items||{}, updated:j.updated, date:j.todayKey };
+    DAY.ppMail = j.ppMail || null; renderPPMail();
     const done = (j.ops && j.ops.shime || []).filter(x=>x.date===j.todayKey);
     $("src").textContent = "更新 " + (j.updated||"");
     msg(done.length ? `今日はすでに ${done[done.length-1].time} に締めが記録されています${done[done.length-1].by?"（"+esc(done[done.length-1].by)+"）":""}。やり直す場合は記録し直してください（管理者が確認します）` : "", "warn");
