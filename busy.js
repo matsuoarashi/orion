@@ -23,7 +23,7 @@
     var bar = document.getElementById("bzBar"), lk = document.getElementById("bzLock"); if (!bar || !lk) return;
     if (reads > 0 && !readT && !bar.classList.contains("on")) readT = setTimeout(function(){ readT = null; if (reads > 0) bar.classList.add("on"); }, 400);
     if (reads <= 0){ clearTimeout(readT); readT = null; bar.classList.remove("on"); }
-    if (writes > 0){ lk.classList.add("on"); clearTimeout(writeT); writeT = setTimeout(function(){ var t = document.getElementById("bzText"); if (t) t.textContent = "処理中…（通信に時間がかかっています）"; writeT = setTimeout(function(){ var c = document.getElementById("bzClose"); if (c) c.style.display = "inline-block"; }, 14000); }, 6000); }
+    if (writes > 0){ if (lk.classList.contains("on")) return; lk.classList.add("on"); clearTimeout(writeT); writeT = setTimeout(function(){ var t = document.getElementById("bzText"); if (t) t.textContent = "処理中…（通信に時間がかかっています）"; writeT = setTimeout(function(){ var c = document.getElementById("bzClose"); if (c) c.style.display = "inline-block"; }, 14000); }, 6000); }
     else { lk.classList.remove("on"); clearTimeout(writeT); var t = document.getElementById("bzText"); if (t) t.textContent = "処理中…"; var c = document.getElementById("bzClose"); if (c) c.style.display = "none"; }
   }
   window.busyText = function(s){ var t = document.getElementById("bzText"); if (t) t.textContent = s || "処理中…"; };

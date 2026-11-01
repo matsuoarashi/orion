@@ -41,7 +41,7 @@ input.wide{width:100%;text-align:left}
 </style>
 </head>
 <body>
-<header><button onclick="back()">‹ 勤怠</button><div style="flex:1"><div class="t">締 め</div><div class="n" id="who">-</div></div><button onclick="ME ? loadDay(true) : boot()">更新</button></header>
+<header><button onclick="back()">‹ 勤怠</button><div style="flex:1"><div class="t">締 め</div><div class="n" id="who">-</div></div><button onclick="READY ? loadDay(true) : boot()">更新</button></header>
 <main>
   <div id="msg"></div>
   <div id="body" class="hide">
@@ -97,7 +97,7 @@ const DRINK_NAMES = ["コカ・コーラ","コカ・コーラ ゼロ","ジンジ
 const $ = id => document.getElementById(id);
 const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const yen = n => (Number(n)||0).toLocaleString() + " 円";
-let TOKEN = "", ME = null, DAY = null, R = null;
+let TOKEN = "", ME = null, DAY = null, R = null, READY = false; // READY：締め画面の準備ができたか（「更新」の動きを分ける）
 function ls(k, v){ try{ if(v===undefined) return localStorage.getItem(k); if(v===null) localStorage.removeItem(k); else localStorage.setItem(k, v); }catch(e){ return null; } }
 function msg(t, cls){ $("msg").innerHTML = t ? `<div class="msg ${cls||"err"}">${t}</div>` : ""; }
 function back(){ location.href = "staff/"; }
@@ -117,7 +117,7 @@ async function boot(){
   ME = h.staff; $("who").textContent = ME.name;
   // 締められるのは今日のシフトに入っている人と管理者
   if (!h.todayShift && ME.role !== "admin"){ msg("今日のシフトに入っていないため、締めはできません。締めが必要なら長下さんに連絡してください。"); return; }
-  build(); await loadDay(false);
+  build(); READY = true; await loadDay(false);
 }
 function build(){
   const d = JSON.parse(ls(draftKey()) || "{}");
