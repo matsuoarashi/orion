@@ -9,7 +9,7 @@ var COLLECT_QUERY = 'newer_than:3d -label:"ORION/送信済" -category:promotions
 function setup(){ // 初回：権限承認 ＋ 1時間ごとのトリガー
   GmailApp.getUserLabelByName(COLLECT_LABEL) || GmailApp.createLabel(COLLECT_LABEL);
   ScriptApp.getProjectTriggers().forEach(function(t){ if (t.getHandlerFunction() === "collect") ScriptApp.deleteTrigger(t); });
-  ScriptApp.newTrigger("collect").timeBased().everyHours(1).create();
+  ScriptApp.newTrigger("collect").timeBased().everyMinutes(10).create(); // 11/1: 締めでPayPayメールを使うため1時間→10分ごと
   return Session.getEffectiveUser().getEmail();
 }
 
