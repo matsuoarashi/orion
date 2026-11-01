@@ -94,7 +94,8 @@ div.sec{font-size:11px;letter-spacing:2px;color:var(--mute);margin:14px 4px 6px}
 </head>
 <body>
 <div class="app">
-  <div id="vLogin" class="login">
+  <div id="vBoot" style="padding:80px 20px;text-align:center;color:#7a7265;font-size:14px">読み込み中…</div>
+  <div id="vLogin" class="login hide">
     <h1>発 注</h1>
     <div class="store">洋食オリオン｜在庫・発注管理</div>
     <div class="credo"><span>古いけれど、清潔。</span><span>下町だけれど、丁寧。</span><span>親しみやすいけれど、雑ではない。</span></div>
@@ -144,11 +145,17 @@ function daysAgo(s){ if(!s) return null; const m = String(s).match(/(\d{4})\/(\d
 async function boot(){
   // 勤怠アプリ（os-token）か管理画面（os-admin-token）のログインをそのまま使う
   const cands = [localStorage.getItem("os-token"), localStorage.getItem("os-admin-token")].filter(Boolean);
-  for (const tk of cands){ TOKEN = tk; const r = await get("inv_home"); if(!r.error){ enterApp(r); return; } if(r.error!=="auth"){ showLogin(r.error); return; } }
-  TOKEN = ""; showLogin();
+  // 前回の内容があればすぐ表示し、裏で最新に差し替える（開くたびにログイン画面が出ないように）
+  let cached = null; try{ cached = JSON.parse(localStorage.getItem("hacchu-home")||"null"); }catch(e){}
+  const shown = !!(cands.length && cached && cached.items);
+  if (shown){ TOKEN = cands[0]; enterApp(cached); }
+  for (const tk of cands){ TOKEN = tk; const r = await get("inv_home"); if(!r.error){ saveHomeCache(r); if(shown){ applyHome(r); if(PAGE==="home") renderHome(); } else enterApp(r); return; }
+    if(r.error!=="auth"){ if(shown){ showMsg(r.error); return; } showLogin(r.error); return; } }
+  TOKEN = ""; try{ localStorage.removeItem("hacchu-home"); }catch(e){} showLogin();
 }
+function saveHomeCache(r){ try{ localStorage.setItem("hacchu-home", JSON.stringify(r)); }catch(e){} }
 async function showLogin(msg){
-  $("vLogin").classList.remove("hide"); $("vApp").classList.add("hide"); $("loginMsg").textContent = msg||"";
+  $("vBoot").classList.add("hide"); $("vLogin").classList.remove("hide"); $("vApp").classList.add("hide"); $("loginMsg").textContent = msg||"";
   try{ const r = await (await fetch(STAFF_API+"?action=staff_list")).json(); $("staffSel").innerHTML = `<option value="">名前を選んでください</option>` + (r.staff||[]).map(s=>`<option value="${s.staff_id}">${esc(s.name)}</option>`).join(""); }catch(e){ $("loginMsg").textContent="通信できません"; }
 }
 async function doLogin(){
@@ -156,18 +163,18 @@ async function doLogin(){
   $("loginBtn").disabled = true;
   try{ const r = await (await fetch(STAFF_API,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({action:"login",staff_id:id,passcode:pass})})).json();
     if(!r.ok){ $("loginMsg").textContent = r.error||"ログインできません"; return; }
-    TOKEN = r.token; localStorage.setItem("os-token", TOKEN); $("passIn").value=""; const h = await get("inv_home"); if(h.error){ $("loginMsg").textContent=h.error; return; } enterApp(h);
+    TOKEN = r.token; localStorage.setItem("os-token", TOKEN); $("passIn").value=""; const h = await get("inv_home"); if(h.error){ $("loginMsg").textContent=h.error; return; } saveHomeCache(h); enterApp(h);
   }catch(e){ $("loginMsg").textContent="通信できません"; } finally{ $("loginBtn").disabled=false; }
 }
 const FROM_STAFF = /[?&]from=staff/.test(location.search);
-function enterApp(h){ $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); applyHome(h);
+function enterApp(h){ $("vBoot").classList.add("hide"); $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); applyHome(h);
   const hk = (location.hash||"").slice(1);
   if (hk==="chef"){ OWNER="シェフ"; go("stock"); } else if (hk==="hall"){ OWNER="ホール"; go("stock"); } else if (hk==="report"){ go("report"); } else { go("home"); if (hk==="recv") setTimeout(()=>{ const c = document.querySelectorAll("#pHome .card")[2]; if (c) c.scrollIntoView({behavior:"smooth"}); }, 200); } loadPrices().then(()=>{ if(PAGE==="master") renderMaster(); }); }
 const TITLES = {home:"発 注", stock:"在庫を数える", order:"発 注", report:"不足・破損の報告", master:"品目と価格"};
 function go(p){ if(p==="order") p="home"; PAGE = p; ["home","stock","order","report","master"].forEach(x=>{ $("p"+x[0].toUpperCase()+x.slice(1)).classList.toggle("hide", x!==p); }); showMsg(""); closeOv();
   $("hTitle").textContent = TITLES[p]||"発 注"; $("hBack").classList.toggle("hide", p==="home" && !FROM_STAFF); $("hBack").textContent = (FROM_STAFF && (p==="home" || /chef|hall|report/.test(location.hash))) ? "‹ 勤怠" : "‹ 戻る";
   if(p==="home") renderHome(); if(p==="stock") renderStock(); if(p==="report") renderReport(); if(p==="master"){ renderMaster(); if(!PRICES.length) loadPrices().then(renderMaster); } $("main").scrollTo(0,0); }
-async function loadHome(reload){ const r = await get("inv_home"); if(r.error){ if(r.error==="auth"){ TOKEN=""; localStorage.removeItem("os-token"); showLogin("ログインし直してください"); } else showMsg(r.error); return; } applyHome(r); if(reload) toast("更新しました"); go(PAGE); }
+async function loadHome(reload){ const r = await get("inv_home"); if(!r.error) saveHomeCache(r); if(r.error){ if(r.error==="auth"){ TOKEN=""; localStorage.removeItem("os-token"); showLogin("ログインし直してください"); } else showMsg(r.error); return; } applyHome(r); if(reload) toast("更新しました"); go(PAGE); }
 function applyHome(h){ HOME = h; ME = h.me; MASTER = h.items||[]; CHEF = h.chefNames||[]; $("hName").textContent = ME.name + (ME.role==="admin"?"（管理者）":""); OWNER = CHEF.includes(ME.name) ? "シェフ" : (ME.role==="admin" ? "シェフ" : "ホール");
   h.suggest = (h.suggest||[]).filter(x=>!x.plan).concat(buildPlan());
 }
