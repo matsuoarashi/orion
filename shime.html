@@ -126,12 +126,12 @@ function build(){
   $("slips").innerHTML = SLIP_GROUPS.map(g=>`<div class="lbl">${g.label}</div><div class="grid">` + g.items.map(n=>{ const i = SLIP_MENUS.indexOf(n); const lab = g.short ? n.replace(/^TG/,"") : n;
     return `<div class="fm"><span>${esc(lab)}<small id="sl${i}c"></small></span><span><input type="number" inputmode="numeric" id="sl${i}" placeholder="—" value="${d["sl"+i]??""}" oninput="calc()"></span></div>`; }).join("") + `</div>`).join("");
 }
-// PayPay の取引メール（1時間ごとに取り込み）から今日の合計を出し、ボタンで入力欄に入れられるようにする
+// PayPay の取引メール（10分ごとに取り込み）から今日の合計を出し、ボタンで入力欄に入れられるようにする
 function renderPPMail(){
   const el = document.getElementById("ppMail"); const m = DAY && DAY.ppMail; if (!el) return;
   if (!m || !m.count){ el.classList.add("hide"); return; }
   el.classList.remove("hide");
-  el.innerHTML = `メールで届いた PayPay：<b>${m.total.toLocaleString()}円</b>（${m.count}件・最後 ${m.last||"-"}）<br><button type="button" onclick="usePPMail()" style="margin-top:6px;border:0;border-radius:8px;padding:8px 12px;background:#2c4f39;color:#fff;font-weight:bold;font-size:14px">この金額を入れる</button><br><span style="color:#7a7265">メールは1時間ごとに届くので、閉店直前の分が入っていないことがあります。PayPay 端末の「本日の取引額」と違うときは、端末の金額を入れてください。</span>`;
+  el.innerHTML = `メールで届いた PayPay：<b>${m.total.toLocaleString()}円</b>（${m.count}件・最後 ${m.last||"-"}）<br><button type="button" onclick="usePPMail()" style="margin-top:6px;border:0;border-radius:8px;padding:8px 12px;background:#2c4f39;color:#fff;font-weight:bold;font-size:14px">この金額を入れる</button><br><span style="color:#7a7265">メールは10分ごとに取り込むので、直前の数件が入っていないことがあります。PayPay 端末の「本日の取引額」と違うときは、端末の金額を入れてください。</span>`;
 }
 function usePPMail(){ const m = DAY && DAY.ppMail; if (!m) return; document.getElementById("ppScreen").value = m.total; calc(); }
 let DAYP = null;
