@@ -73,6 +73,7 @@
 
 - v69（11/2 朝）：ORION START v0.1 を取り付け。start.gs を末尾に追加、handleOsGet / handleOsPost に os_start_ の1行ずつ、osMailIngest_ から startIngestMessages_ を呼ぶ。startSetup 実行済み（「ORION START 事務局台帳」を作成、PRJ-0001 神田・PRJ-0002 飯田橋）
 - v70（11/2 朝）：物件メールの差出人に synchro-food.co.jp を追加（飲食店ドットコムの物件メールはこのドメインから届く）
+- v71〜v74（11/2 朝）：ORION START v0.2（一次判定・まとめメール分割・ページ取り込み・朝の候補メール）。メール送信の権限を追加承認、`startDigestTriggerInstall()` 実行済み（毎朝7時台）、`startRejudgeAll()` 実行済み
 
 ## 6. 原価（COSTS）の根拠
 
