@@ -180,6 +180,10 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
 body.lock::after{content:"処理中…";position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top));transform:translateX(-50%);background:#1f3a2a;color:#fff;font-size:14px;font-weight:bold;padding:8px 16px;border-radius:999px;z-index:9999;box-shadow:0 4px 14px rgba(0,0,0,.18)}
 body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lock .tools button{pointer-events:none;opacity:.55}
 #punchArea .btn{margin-bottom:12px}
+.todo{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;padding:10px 2px;border-top:1px solid var(--line);text-align:left;font:inherit;color:inherit}
+.todo:first-child{border-top:0}.todo .ck{flex:none;width:24px;height:24px;border-radius:50%;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff}
+.todo.done .ck{background:var(--g);border-color:var(--g)}.todo.done b{color:var(--mute);font-weight:normal;text-decoration:line-through}.todo b{flex:1;font-size:15px}.todo small{display:block;font-size:12px;color:var(--mute);text-decoration:none}.todo i{color:var(--mute);font-style:normal}
+.todo.next{background:var(--cream,#faf6ee);border-radius:10px}.todo.next .ck{border-color:var(--g)}
 .stale{opacity:.6}
 .stale .btn{pointer-events:none} /* 前回の内容を表示中は打刻ボタンを押せない（最新に更新されたら押せる） */
 .link{background:none;border:0;color:var(--g);text-decoration:underline;font-size:14px;padding:8px 0}
@@ -240,6 +244,7 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
           <div class="sub" id="hShiftSub"></div>
         </div>
         <div id="punchArea"></div>
+        <div class="card hide" id="todoCard"><h2>今日やること <small id="todoN"></small></h2><div id="todoList"></div></div>
         <div class="card" id="shopCard">
           <h2 id="shopTitle">店の仕事</h2>
           <div id="shopMain"></div>
@@ -502,6 +507,35 @@ function askBadge(list){ const seen = localStorage.getItem("os-ask-seen")||""; c
 
 // 店の仕事：発注アプリ（同じログイン）を開く。終わったら「勤怠アプリに戻る」で戻れる
 function openShop(k){ location.href = "../hacchu.html?from=staff#" + k; }
+// ===== 今日やること（出勤 → 在庫を数える → 締め → 退勤）。担当（厨房／ホール）で並びが変わる。シフトか打刻がある日だけ出す =====
+let TODOX = null; // 在庫の最終記録・今日の締め（裏で取得）
+function ymd(s){ const m = String(s||"").match(/(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/); return m ? `${m[1]}/${String(m[2]).padStart(2,"0")}/${String(m[3]).padStart(2,"0")}` : ""; }
+function daysSince(s){ const d = ymd(s); if (!d) return null; const [y,m,dd] = d.split("/").map(Number); return Math.round((new Date().setHours(0,0,0,0) - new Date(y,m-1,dd).getTime())/86400000); }
+async function loadTodoExtra(){
+  try{
+    const [inv, day] = await Promise.all([osGet("inv_master"), osGet("day_lite")]);
+    TODOX = { last: (inv && inv.lastChecks) || {}, shime: ((day && day.ops && day.ops.shime) || []).slice(-1)[0] || null, at: Date.now() };
+    cset("todox", TODOX); renderTodo();
+  }catch(e){}
+}
+function renderTodo(){
+  const card = $("todoCard"); if (!card || !HOME) return;
+  const a = HOME.att; const show = !!(HOME.todayShift || a);
+  card.classList.toggle("hide", !show); if (!show) return;
+  const x = TODOX || cget("todox") || {}; const last = x.last || {};
+  const admin = ME && ME.role === "admin"; const cm = COMM || cget("comm"); const kitchen = !!(cm && cm.kitchen);
+  const inDone = !!a, outDone = !!(a && a.status !== "working" && a.out);
+  const chefD = daysSince(last["シェフ"] && (last["シェフ"].date || last["シェフ"].at)), hallD = daysSince(last["ホール"] && (last["ホール"].date || last["ホール"].at));
+  const T = [];
+  T.push({ k:"in", t:"出勤", s: inDone ? `${a.in}` : "上の「出勤する」から", done: inDone, go:"$('punchArea').scrollIntoView({behavior:'smooth'})" });
+  if (kitchen || admin) T.push({ k:"chef", t:"食材を数える", s: chefD===0 ? `済（${esc((last["シェフ"]||{}).by||"")}）` : "厨房・毎日", done: chefD===0, go:"openShop('chef')" });
+  if (!kitchen || admin) T.push({ k:"hall", t:"備品・飲料を数える", s: hallD!==null && hallD<7 ? `今週は済（${hallD===0?"今日":hallD+"日前"}）` : "ホール・週1回", done: hallD!==null && hallD<7, go:"openShop('hall')" });
+  if (!kitchen || admin) T.push({ k:"shime", t:"締め（閉店後）", s: x.shime ? `済 ${esc(x.shime.time||"")}${x.shime.by?"（"+esc(x.shime.by)+"）":""}` : "現金・PayPay・注文票", done: !!x.shime, go:"location.href='../shime.html'" });
+  T.push({ k:"out", t:"退勤", s: outDone ? `${a.out}` : "上の「退勤する」から", done: outDone, go:"$('punchArea').scrollIntoView({behavior:'smooth'})" });
+  const nextI = T.findIndex(t=>!t.done); const left = T.filter(t=>!t.done).length;
+  $("todoN").textContent = left ? `あと${left}つ` : "全部できました";
+  $("todoList").innerHTML = T.map((t,i)=>`<button class="todo ${t.done?"done":""} ${i===nextI?"next":""}" onclick="${t.go}"><span class="ck">${t.done?"✓":""}</span><b>${t.t}<small>${t.s}</small></b>${t.done?"":"<i>›</i>"}</button>`).join("");
+}
 // 店の仕事：担当（厨房／ホール）ごとに並べ替える。厨房担当は管理画面の設定 kitchen_ids で決まる（COMM.kitchen）。管理者は全部
 let SHOP_MORE = false;
 const SHOP = {
@@ -557,7 +591,7 @@ async function loadHome(){
   const c = cget("home"); if (c && c.today===todayStr()) renderHome(c, true);
   const cc = cget("comm"); if (cc) renderCommHome(cc);
   const [r, k] = await Promise.all([api("home"), api("comm")]); if(!r.ok){ loadFail(r, !!c); return; }
-  cset("home", r); renderHome(r, false); hygFlush();
+  cset("home", r); renderHome(r, false); hygFlush(); loadTodoExtra();
   if (k.ok){ cset("comm", k); renderCommHome(k); }
   osGet("os_myq").then(r=>{ if (r && r.list){ cset("ask_mine", r.list); askBadge(r.list); } });
 }
@@ -641,6 +675,7 @@ async function noteAdd(){ const body = $("noteIn").value.trim(); if(!body){ toas
 async function noteDone(id, undo){ const r = await api("note_done", {note_id:id, undo}); if(!r.ok){ toast(r.error); return; } loadComm(); }
 function renderHome(r, stale){
   try{ renderShop(); }catch(e){}
+  setTimeout(()=>{ try{ renderTodo(); }catch(e){} }, 0);
   HOME = r; ME = r.staff; SET = r.settings; $("pHome").classList.toggle("stale", !!stale);
   $("hName").textContent = ME.name + (ME.role==="admin" ? "（管理者）" : "");
   $("hToday").textContent = mdLabel(r.today);
