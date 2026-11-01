@@ -70,8 +70,4 @@ function stfSetupTrigger(){
   ScriptApp.getProjectTriggers().forEach(function(t){ if (t.getHandlerFunction() === "stfShortNotify") ScriptApp.deleteTrigger(t); });
   ScriptApp.newTrigger("stfShortNotify").timeBased().atHour(17).everyDays(1).inTimezone("Asia/Tokyo").create();
 }
-function stfTest(){ var ld = stfLaborDaily_(); var a = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("人件費(STAFF)"); var tab = {};
-  a.getRange(2,1,a.getLastRow()-1,5).getValues().forEach(function(r){ var d = dateKey_(r[0]); if (d) tab[d] = [Number(r[2]),Number(r[3]),Number(r[4])]; });
-  var diff = Object.keys(ld).filter(function(d){ var t = tab[d]; return !t || t[0]!==ld[d].staff || t[1]!==ld[d].minutes || Math.abs(t[2]-ld[d].cost)>1; }).map(function(d){ return d + " calc=" + JSON.stringify(ld[d]) + " tab=" + JSON.stringify(tab[d]); });
-  Logger.log(JSON.stringify({days:Object.keys(ld).length, diff:diff, short: stfShortDays_(7)})); }
 // ===== 人手・人件費 END =====

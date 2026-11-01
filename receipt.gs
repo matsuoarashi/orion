@@ -44,7 +44,9 @@ function handleRcGet(e){
       var list = all.filter(function(x){ return x.date.slice(0,7) === ym; });
       if (me.role !== "admin") list = list.filter(function(x){ return x.by === me.name; });
       list.sort(function(a,b){ return a.date < b.date ? 1 : a.date > b.date ? -1 : (a.at < b.at ? 1 : -1); });
-      res = { me: me, ym: ym, list: list, accounts: RC_ACCOUNTS, unchecked: me.role === "admin" ? all.filter(function(x){ return x.status === "未確認"; }).length : 0 };
+      // 日付が空の登録はどの月にも出ないので、別に返して一覧の上に出す
+      var undated = all.filter(function(x){ return !x.date && (me.role === "admin" || x.by === me.name); });
+      res = { me: me, ym: ym, list: list, undated: undated, accounts: RC_ACCOUNTS, unchecked: me.role === "admin" ? all.filter(function(x){ return x.status === "未確認"; }).length : 0 };
     } else res = { error: "mode" };
   } catch(err){ res = { error: String(err) }; }
   return rcOut_(res);
