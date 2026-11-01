@@ -399,6 +399,26 @@ async function noticeSave(id){
 async function noticeArchive(id, restore){ if(!restore && !confirm("このお知らせを取り下げますか？（スタッフには表示されなくなります）")) return; const r = await api("admin.notice_archive", {notice_id:id, restore}); if(!r.ok){ toast(r.error); return; } loadComm(); }
 
 // ───── 今日 ─────
+// 人手が足りない日（今日から7日先まで）。シフトの人数が必要人数（未設定は2人）より少ない日と、ホール・厨房のどちらかがいない日
+async function shortDays(call){
+  const jst = new Date(Date.now()+9*3600e3), ds = d => d.toISOString().slice(0,10).replace(/-/g,"/");
+  const days = []; for(let i=0;i<=7;i++) days.push(ds(new Date(jst.getTime()+i*86400e3)));
+  const months = [...new Set(days.map(d=>d.slice(0,7)))];
+  const [res, st] = await Promise.all([Promise.all(months.map(m=>call("admin.shifts_month",{month:m}))), call("admin.settings_get")]);
+  if (res.some(r=>!r || !r.ok)) return null;
+  const set = {}; ((st&&st.settings)||[]).forEach(x=>set[x.key]=String(x.value||""));
+  const kitchen = new Set((set.kitchen_ids||"").split(",").map(x=>x.trim()).filter(Boolean));
+  const out = [];
+  days.forEach(date=>{
+    const r = res[months.indexOf(date.slice(0,7))]; const od = (r.openDays||[]).find(d=>d.date===date); if(!od) return;
+    const nd = (r.need||{})[date]||{}; const open = (nd.open===null||nd.open===undefined) ? od.open : nd.open; if(!open) return;
+    const sh = (r.shifts||[]).filter(x=>x.date===date); const name = id => ((r.staff||[]).find(s=>s.staff_id===id)||{}).name||"?";
+    const need = Number(nd.need)||2; const hasK = !kitchen.size || sh.some(x=>kitchen.has(x.staff_id)); const hasH = sh.some(x=>!kitchen.has(x.staff_id));
+    const why = []; if (sh.length < need) why.push(`${sh.length}人／必要${need}人`); if (sh.length && kitchen.size && !hasK) why.push("厨房がいない"); if (sh.length && !hasH) why.push("ホールがいない");
+    if (why.length) out.push({date, names: sh.map(x=>name(x.staff_id)), why: why.join("・"), draft: sh.some(x=>x.status!=="confirmed")});
+  });
+  return out;
+}
 async function loadToday(){ if(!$("pToday").dataset.loaded) $("pToday").innerHTML = loadingHtml(); $("pToday").dataset.loaded="1";
   $("pToday").innerHTML = `<div class="mini">読み込み中…</div>`;
   const r = await api("admin.dashboard"); if(!r.ok){ showMsg(r.error); return; }
@@ -414,6 +434,7 @@ async function loadToday(){ if(!$("pToday").dataset.loaded) $("pToday").innerHTM
     r.todayAtt.filter(a=>!r.todayShifts.some(s=>s.staff_id===a.staff_id)).map(a=>`<div class="row"><span><b>${esc(a.name)}</b> <span class="mini">予定外</span></span><span class="pill amber">${a.in}〜${a.out||""}</span></div>`).join("") +
     `</div></div>`;
   const alerts = [];
+  try{ const sd = await shortDays((a,b)=>api(a,b)); (sd||[]).forEach(x=>alerts.push(`<b style="color:var(--red)">人が足りない ${x.date.slice(5)}(${YO[youbi(x.date)]})</b>：${x.names.length?x.names.map(esc).join("・"):"シフトなし"}（${x.why}${x.draft?"・下書きを含む":""}）→ シフトタブ`)); }catch(e){}
   if (r.missing.length) alerts.push(`退勤打刻のない日が ${r.missing.length} 件（${r.missing.slice(0,3).map(m=>m.date.slice(5)+" "+esc(m.name)).join("、")}${r.missing.length>3?" ほか":""}）→ 勤怠タブで修正`);
   if (r.pendingFix) alerts.push(`修正申請が ${r.pendingFix} 件 承認待ち → 勤怠タブ`);
   if (r.syncIssues) alerts.push(`カレンダー未同期のシフトが ${r.syncIssues} 件 → 設定タブで再同期`);
