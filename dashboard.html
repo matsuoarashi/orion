@@ -1093,7 +1093,8 @@ function renderPeople(){
   const first = mondayOf(DATA.daily[0].date); const weeks = []; for(let m=mondayOf(DATA.todayKey); m>=first; m=dateAdd(m,-7)) weeks.push(m); weeks.splice(8);
   $("ppWeeks").innerHTML = "<tr><th>週</th><th>営業</th><th>売上</th><th>人件費</th><th>率</th><th>時間</th><th>人時売上</th></tr>" + weeks.map(m=>{ const x = sumDays(weekDays(m)); return `<tr><td>${m.slice(5)}〜</td><td>${x.days}日${x.laborDays<x.days?`<small>(勤怠${x.laborDays})</small>`:""}</td><td>${num(x.sales)}</td><td>${num(x.labor)}</td><td>${x.labor?pct(x.labor/x.sales):"-"}</td><td>${(x.minutes/60).toFixed(1)}h</td><td>${x.minutes?num(Math.round(x.sales/(x.minutes/60))):"-"}</td></tr>`; }).join("");
   const miss = days.filter(d=>!p.laborDaily[d.date] && d.date<DATA.todayKey);
-  renderOsQ(); renderOsM();
+  // 質問・メール候補は自動更新（60秒ごと）のたびには読まず、5分に1回まで（Googleへの通信を減らす）
+  if (!window._osAt || Date.now() - window._osAt > 300000){ window._osAt = Date.now(); renderOsQ(); renderOsM(); }
   $("ppOps").innerHTML = (o.unclosed.length ? o.unclosed.map(u=>`<div class="pl"><span><b class="neg">未退勤</b> ${u.name} ${u.date.slice(5)} 出勤 ${hmOnly(u.in)}</span></div>`).join("") : "") + (miss.length ? `<div class="pl"><span>勤怠のない営業日：${miss.map(d=>d.date.slice(5)).join("・")}</span></div>` : "") + (!o.unclosed.length && !miss.length ? "<div class='sub'>勤怠に問題はありません</div>" : "");
 }
 
@@ -1104,6 +1105,8 @@ function goApp(id){ try{ if(window.parent !== window && typeof window.parent.sho
 // 朝の確認に出す件数（人タブの読み込み結果を流用）
 const OSC = {q:0, qs:"", m:0, ms:"", c:0, cs:"", k:0, ks:""};
 // スタッフからの未回答質問（ORION OS）。管理者だけ
+// 入力中（フォーカス中・書きかけ）の欄があるときは描き直さない（自動更新で書きかけの回答が消えないように）
+function osBusy(id){ const el = $(id); if (!el) return false; return [...el.querySelectorAll("textarea,input")].some(t=>t===document.activeElement || (t.value && t.value !== t.defaultValue)); }
 async function renderOsQ(){
   const el = $("osQ"); if (!el) return;
   if (!ME || ME.role !== "admin"){ el.innerHTML = "<div class='sub'>管理者でログインすると表示されます</div>"; return; }
@@ -1111,14 +1114,15 @@ async function renderOsQ(){
   const un = (r.unanswered||[]).filter(x=>x.status!=="回答済");
   const ca = r.contractAlerts||[]; $("osctN").textContent = ca.length ? `${ca.length}件` : ""; $("osCt").innerHTML = ca.length ? ca.map(a=>`<div class="pl"><span>${a.overdue?"<b class='neg'>期限超過</b> ":""}${esc(a.name)}<small>（${esc(a.kind)}）</small> ${esc(a.col)} ${esc(a.date)}${a.auto?` / 自動更新:${esc(a.auto)}`:""}</span></div>`).join("") : "<div class='sub'>90 日以内の期限はありません（終了日・更新期限が未記入の契約は出ません）</div>";
   $("osqN").textContent = un.length ? `未回答 ${un.length}` : "";
-  OSC.q = un.length; OSC.qs = un.slice(0,3).map(x=>x.q).join("／"); OSC.c = ca.length; OSC.cs = ca.slice(0,3).map(a=>a.name).join("、"); renderMisc();
-  renderOsPK(r.pendingKnow||[]);
+  OSC.q = un.length; OSC.qs = esc(un.slice(0,3).map(x=>x.q).join("／")); OSC.c = ca.length; OSC.cs = esc(ca.slice(0,3).map(a=>a.name).join("、")); renderMisc();
+  renderOsPK(r.pendingKnow||[]); if (osBusy("osQ")) return;
   el.innerHTML = un.length ? un.map(x=>`<div class="pl" style="display:block" id="osq_${esc(x.id)}"><div><b>${esc(x.q)}</b> <small>${esc(x.who)}・${esc(String(x.at).slice(0,16))}</small></div><textarea rows="3" style="width:100%;margin:6px 0;font-size:14px;padding:8px;border:1px solid var(--line);border-radius:8px" placeholder="回答（スタッフにそのまま見えます）"></textarea><div style="display:flex;gap:8px"><button class="btn" style="flex:2" onclick="osAnswer('${esc(x.id)}')">回答して Knowledge に入れる</button><button class="btn" style="flex:1;background:#fff;color:var(--mute);border:1px solid var(--line)" onclick="osQClose('${esc(x.id)}')">対象外（テスト・重複）</button></div></div>`).join("") : "<div class='sub'>未回答の質問はありません</div>";
 }
 // 承認待ちの決まり（Knowledge の proposed）。直して承認すると新しい行で approved になり、旧行は archived（履歴が残る）
 function renderOsPK(list){
-  const el = $("osPK"); if (!el) return; OSC.k = list.length; OSC.ks = list.slice(0,3).map(k=>k.q).join("／");
+  const el = $("osPK"); if (!el) return; OSC.k = list.length; OSC.ks = esc(list.slice(0,3).map(k=>k.q).join("／"));
   $("ospkN").textContent = list.length ? `${list.length}件` : "";
+  if (osBusy("osPK")){ renderMisc(); return; }
   el.innerHTML = list.length ? list.map(k=>`<div class="pl" style="display:block" id="ospk_${esc(k.id)}"><div><b>${esc(k.q)}</b> <small>${esc(k.cat)}</small></div><textarea rows="4" style="width:100%;margin:6px 0;font-size:14px;padding:8px;border:1px solid var(--line);border-radius:8px">${esc(k.a)}</textarea><button class="btn" onclick="osPKApprove('${esc(k.id)}')">この内容で承認</button></div>`).join("") : "<div class='sub'>承認待ちはありません</div>";
   renderMisc();
 }
@@ -1146,7 +1150,8 @@ async function renderOsM(){
   if (!ME || ME.role !== "admin"){ el.innerHTML = "<div class='sub'>管理者でログインすると表示されます</div>"; return; }
   const r = await fxGet("os_mail"); if (r.error){ el.innerHTML = `<div class='sub'>${esc(r.error)}</div>`; return; }
   const L = r.list||[]; $("osmN").textContent = L.length ? `未確認 ${L.length}` : "";
-  OSC.m = L.length; OSC.ms = L.slice(0,3).map(x=>x["取引先"]).join("、"); renderMisc();
+  OSC.m = L.length; OSC.ms = esc(L.slice(0,3).map(x=>x["取引先"]).join("、")); renderMisc();
+  if (osBusy("osM")) return;
   el.innerHTML = L.length ? L.map(x=>`<div class="pl" style="display:block" id="osm_${esc(x.cand_id)}"><div><b>${esc(x["取引先"])}</b> <span class="pill">${esc(x["種別"])}</span> <small>${esc(x["受信日時"])}</small></div><div>${esc(x["件名"])}${x["金額"]?` ― <b>${num(Number(x["金額"]))}円</b>`:""}${x["日付"]?` / ${esc(x["日付"])}`:""} <a href="${esc(x["リンク"])}" target="_blank">メールを開く</a></div><div style="margin-top:6px"><button class="btn" onclick="osMailSet('${esc(x.cand_id)}','反映済')">反映済</button> <button class="btn" style="background:#888" onclick="osMailSet('${esc(x.cand_id)}','不要')">不要</button></div></div>`).join("") : "<div class='sub'>未確認の候補はありません</div>";
 }
 async function osMailSet(id, status){ const box = $("osm_"+id); box.querySelectorAll("button").forEach(b=>b.disabled=true); const r = await fxPost("os_mail_set", {id, status}); if (r.error){ alert(r.error); box.querySelectorAll("button").forEach(b=>b.disabled=false); return; } box.remove(); renderOsM(); }

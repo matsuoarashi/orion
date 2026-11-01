@@ -273,7 +273,7 @@ function renderHome(){
 
     <div class="card">${stepHead("①","在庫を数える", n1, "今日の分は済み")}
       <div class="mini" style="margin:2px 0 10px">数えると、足りない物が下の「② 発注する」に自動で出ます</div>
-      <button class="todo ${chefDue.length?"urgent":""}" onclick="OWNER='シェフ';go('stock')"><span class="ic">🍳</span><span class="tt"><b>食材（シェフ・毎日）</b><small>${chefDue.length?chefDue.length+"品目 未入力":"入力済み"}・前回 ${lc["シェフ"]?fmtD(lc["シェフ"].date)+" "+esc(lc["シェフ"].by):"—"}</small></span><span class="ar">›</span></button>
+      <button class="todo ${chefDue.length?"urgent":""}" onclick="OWNER='シェフ';go('stock')"><span class="ic">🍳</span><span class="tt"><b>食材（厨房・毎日）</b><small>${chefDue.length?chefDue.length+"品目 未入力":"入力済み"}・前回 ${lc["シェフ"]?fmtD(lc["シェフ"].date)+" "+esc(lc["シェフ"].by):"—"}</small></span><span class="ar">›</span></button>
       <button class="todo ${hallDue.length?"urgent":""}" onclick="OWNER='ホール';go('stock')"><span class="ic">🥤</span><span class="tt"><b>備品・飲料（ホール・週1）</b><small>${hallDue.length?hallDue.length+"品目 未入力":"入力済み"}・前回 ${lc["ホール"]?fmtD(lc["ホール"].date)+" "+esc(lc["ホール"].by):"—"}</small></span><span class="ar">›</span></button>
     </div>
 
@@ -331,9 +331,11 @@ function stAdd(id, d){ const it = MASTER.find(x=>x.id===id); const cur = STK[id]
 function stState(id, s, btn){ STK[id] = {state:s}; [...btn.parentNode.children].forEach(b=>b.className=""); btn.className = "on "+(s==="少"?"low":s==="無"?"out":""); stCount(); }
 function stCount(){ const n = Object.keys(STK).length; $("stN").textContent = n?`（${n}品目）`:""; }
 async function saveStock(){
-  const entries = Object.keys(STK).map(id=>Object.assign({item_id:id}, STK[id])); if(!entries.length){ toast("変更がありません"); return; }
+  // 担当（厨房／ホール）ごとに記録する。もう一方のタブの入力は残して、そのタブで記録してもらう
+  const mine = id => { const it = MASTER.find(x=>x.id===id); return it && it.owner === OWNER; };
+  const entries = Object.keys(STK).filter(mine).map(id=>Object.assign({item_id:id}, STK[id])); if(!entries.length){ toast("この担当の入力がありません"); return; }
   const r = await post("inv_stock", {entries, owner: OWNER}); if(r.error){ showMsg(r.error); return; }
-  STK = {}; toast(`${r.saved}品目を記録しました`); await loadHome(); if (FROM_STAFF && /chef|hall/.test(location.hash)){ setTimeout(()=>{ location.href = "staff/"; }, 900); } else go("home");
+  const other = Object.keys(STK).filter(id=>!mine(id)).length; Object.keys(STK).filter(mine).forEach(id=>delete STK[id]); toast(`${r.saved}品目を記録しました` + (other ? `（もう一方の担当に入力中が ${other}品目あります）` : "")); await loadHome(); if (FROM_STAFF && /chef|hall/.test(location.hash)){ setTimeout(()=>{ location.href = "staff/"; }, 900); } else go("home");
 }
 
 // ───── 発注 ─────

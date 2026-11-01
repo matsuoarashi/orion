@@ -591,7 +591,8 @@ async function flushQueue(){
         let txt = "";
         try{ const res = await fetch(SHEET_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(rec), signal: ac.signal}); txt = (await res.text()).trim(); }
         finally{ clearTimeout(tm); }
-        if (/^error/i.test(txt)) { failed = true; } else { doneIds.add(rec.id); }
+        // ok / dup（会計・締め・来店）か JSON（そのほかの記録）の返事だけ成功。"error" や HTML のエラーページは残して送り直す
+        if (/^(ok|dup)\b/i.test(txt) || /^[\[{]/.test(txt)) { doneIds.add(rec.id); } else { failed = true; }
       }catch(e){ failed = true; }
     }
     // 送信済みの id を除いたものを残す（送信中に増えた分はそのまま残る）
