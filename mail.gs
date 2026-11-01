@@ -38,22 +38,38 @@ function osMailScan(){
   var threads = GmailApp.search('newer_than:3d -label:"' + OS_MAIL_LABEL + '"', 0, 50); var n = 0;
   threads.forEach(function(th){
     var hit = false;
-    th.getMessages().forEach(function(m){
-      var id = m.getId(); if (known[id]) return;
-      var r = osMailMatch_(m, rules); if (!r) return; hit = true;
-      if (r["扱い"] === "無視") return;
-      var ex = osMailExtract_(m, String(r["種別"]));
-      invAppend_(sh, { cand_id:invId_("mc_"), "受信日時":Utilities.formatDate(m.getDate(), "Asia/Tokyo", "yyyy/MM/dd HH:mm"), "差出人":m.getFrom(), "件名":m.getSubject(), "取引先":String(r["名前"]), "種別":String(r["種別"]), "扱い":String(r["扱い"]), "抽出":JSON.stringify(ex), "金額":ex.amount||"", "日付":ex.date||"", "状態":"未確認", "確認者":"", "確認日時":"", "反映先":"", "メールID":id, "リンク":"https://mail.google.com/mail/u/0/#all/" + id, "登録日時":invNow_() });
-      n++;
+    th.getMessages().forEach(function(gm){
+      var m = { id:gm.getId(), date:Utilities.formatDate(gm.getDate(), "Asia/Tokyo", "yyyy/MM/dd HH:mm"), from:gm.getFrom(), subject:gm.getSubject(), body:String(gm.getPlainBody()||"").slice(0, 20000) };
+      if (osMailTake_(m, rules, sh, known, "")) { hit = true; n++; }
     });
     if (hit) th.addLabel(label);
   });
   return n;
 }
 
+// 1通を判定して候補に入れる。mailbox は収集元（空なら本体アカウント）
+function osMailTake_(m, rules, sh, known, mailbox){
+  if (known[m.id]) return false;
+  var r = osMailMatch_(m, rules); if (!r) return false;
+  if (r["扱い"] === "無視") return true;
+  var ex = osMailExtract_(m, String(r["種別"]));
+  var link = mailbox ? "https://mail.google.com/mail/?authuser=" + encodeURIComponent(mailbox) + "#all/" + m.id : "https://mail.google.com/mail/u/0/#all/" + m.id;
+  invAppend_(sh, { cand_id:invId_("mc_"), "受信日時":m.date, "差出人":m.from, "件名":m.subject, "取引先":String(r["名前"]), "種別":String(r["種別"]), "扱い":String(r["扱い"]), "抽出":JSON.stringify(ex), "金額":ex.amount||"", "日付":ex.date||"", "状態":"未確認", "確認者":"", "確認日時":"", "反映先":"", "メールID":m.id, "リンク":link, "登録日時":invNow_() });
+  known[m.id] = 1; return true;
+}
+// 収集スクリプト（orion.napolitan 側）からの受け口。合い言葉は スクリプト プロパティ OS_INGEST_KEY
+function osMailIngest_(d){
+  var key = PropertiesService.getScriptProperties().getProperty("OS_INGEST_KEY");
+  if (!key || String(d.key||"") !== key) return { error: "key" };
+  var rules = osMailRules_(); var sh = osSheet_(OS_MAILCAND, OS_MAILCAND_COLS);
+  var known = {}; invRows_(sh).forEach(function(r){ known[String(r["メールID"])] = 1; });
+  var lock = LockService.getScriptLock(); lock.waitLock(10000); var n = 0;
+  try { (d.messages||[]).forEach(function(m){ if (osMailTake_(m, rules, sh, known, String(d.mailbox||""))) n++; }); } finally { lock.releaseLock(); }
+  return { ok:true, taken:n, received:(d.messages||[]).length };
+}
 // ルール判定：差出人ドメイン → 件名キーワード → 本文キーワード（転送メールは本文に元の差出人が残るのでここで拾える）
 function osMailMatch_(m, rules){
-  var from = String(m.getFrom()||"").toLowerCase(); var subj = String(m.getSubject()||""); var body = null;
+  var from = String(m.from||"").toLowerCase(); var subj = String(m.subject||""); var body = null;
   var list = function(s){ return String(s||"").split(/[,、]/).map(function(x){ return x.trim(); }).filter(String); };
   for (var i = 0; i < rules.length; i++){
     var r = rules[i];
@@ -61,7 +77,7 @@ function osMailMatch_(m, rules){
     var okDom = !doms.length || doms.some(function(d){ return from.indexOf("@" + d) >= 0 || from.indexOf("." + d) >= 0; });
     var okSub = !sk.length || sk.some(function(k){ return subj.indexOf(k) >= 0; });
     var okBody = true;
-    if (bk.length){ if (body === null) body = String(m.getPlainBody()||"").slice(0, 20000); okBody = bk.some(function(k){ return body.indexOf(k) >= 0 || subj.indexOf(k) >= 0; }); }
+    if (bk.length){ if (body === null) body = String(m.body||"").slice(0, 20000); okBody = bk.some(function(k){ return body.indexOf(k) >= 0 || subj.indexOf(k) >= 0; }); }
     // ドメイン一致＋件名一致、または（ドメイン不一致でも）本文キーワード一致（転送対策）
     if ((okDom && okSub && (bk.length ? okBody : true)) || (bk.length && okBody && !doms.length)) return r;
     if (bk.length && okBody && !okDom && body.indexOf("Forwarded") + body.indexOf("転送") > -2) return r;
@@ -71,7 +87,7 @@ function osMailMatch_(m, rules){
 
 // 定型メールの抽出。正規表現は実物のメールで調整する（※ここは叩き台）
 function osMailExtract_(m, kind){
-  var body = String(m.getPlainBody()||"").replace(/\r/g, ""); var out = { kind:kind };
+  var body = String(m.body||"").replace(/\r/g, ""); var out = { kind:kind };
   var yen = function(re){ var x = body.match(re); return x ? Number(String(x[1]).replace(/[,，]/g, "")) : ""; };
   var dt = function(re){ var x = body.match(re); return x ? x[1].replace(/年|月/g, "/").replace(/日/g, "") : ""; };
   if (kind === "PayPay入金"){
