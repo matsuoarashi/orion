@@ -115,6 +115,7 @@ function osAsk_(d, me){
   var hits = hasAi ? osSearch_(q, know, 0.12).slice(0, 8) : osSearch_(q, know);
   var ans = null, model = "search";
   if (hits.length){
+    osAiErr_ = "";
     var ai = hasAi ? osGateway_(me, q, hits) : null;
     if (ai && ai.text){
       if (/決まりがありません/.test(ai.text)) { ans = null; model = ai.model; hits = []; } // 根拠なし → 未回答へ
@@ -127,7 +128,7 @@ function osAsk_(d, me){
   if (!ans){ var sh = osSheet_(OS_UNANS, OS_UNANS_COLS); qid = invId_("q_"); invAppend_(sh, { q_id:qid, "日時":invNow_(), "質問者":me.name, "役割":me.role, "質問":q, "状態":"未回答", "回答":"", "回答者":"", "回答日時":"", "k_id":"" }); }
   var logId = invId_("lg_");
   try { invAppend_(osSheet_(OS_AILOG, OS_AILOG_COLS), { log_id:logId, "日時":invNow_(), "利用者":me.name, "役割":me.role, "モデル":model, "質問":q, "回答":ans||"（未回答）", "根拠k_id":hits.slice(0,5).map(function(h){ return h.id; }).join(","), "入力tokens":"", "出力tokens":"", "所要ms":Date.now()-t0, "評価":"", "保存区分": ans ? "通常" : "Knowledge" }); } catch(e){}
-  return { ok:true, status:status, answer:ans, sources:hits.slice(0,3).map(function(h){ return { id:h.id, q:h.q, a:h.a }; }), q_id:qid, log_id:logId };
+  return { ok:true, status:status, answer:ans, sources:hits.slice(0,3).map(function(h){ return { id:h.id, q:h.q, a:h.a }; }), q_id:qid, log_id:logId, aiErr: me.role === "admin" ? osAiErr_ : undefined };
 }
 // 簡易検索：質問と Knowledge の質問・回答・タグの語の一致数で順位付け（日本語は2文字の組で比較）
 function osSearch_(q, list, min){
@@ -143,10 +144,10 @@ function osGateway_(me, q, hits){
   var model = props.getProperty("OS_MODEL") || "claude-haiku-5-5";
   var ctx = hits.map(function(h, i){ return (i+1) + ". Q: " + h.q + "\n   A: " + h.a; }).join("\n");
   var sys = "あなたは洋食オリオン（神田淡路町のナポリタン専門店）のスタッフ向け案内役です。以下の『決まりごと』（検索で拾った候補で、関係ないものも混じっています）のうち質問に関係するものだけを根拠に、日本語で3行以内で簡潔に答えてください。決まりごとに書かれていないことは推測せず『決まりがありません。店長に確認してください』と答えてください。数字は算用数字で。";
-  var body = { model: model, max_tokens: 300, system: sys, messages: [{ role: "user", content: "決まりごと:\n" + ctx + "\n\n質問: " + q }] };
+  var body = { model: model, max_tokens: 1024, system: sys, messages: [{ role: "user", content: "決まりごと:\n" + ctx + "\n\n質問: " + q }] };
   try {
     var res = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", { method: "post", contentType: "application/json", headers: { "x-api-key": key, "anthropic-version": "2023-06-01" }, payload: JSON.stringify(body), muteHttpExceptions: true });
-    var j = JSON.parse(res.getContentText()); var text = (j.content && j.content[0] && j.content[0].text) || "";
+    var j = JSON.parse(res.getContentText()); var text = (j.content || []).filter(function(c){ return c.type === "text"; }).map(function(c){ return c.text; }).join("").trim(); // 思考ブロックが先に来ることがあるので text ブロックだけ読む
     if (!text) osAiErr_ = "HTTP " + res.getResponseCode() + " " + String(res.getContentText()).slice(0, 300);
     return text ? { text: text, model: model, usage: j.usage || {} } : null;
   } catch(e){ osAiErr_ = String(e); return null; }
