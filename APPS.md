@@ -57,3 +57,4 @@
 - v60：納品済みの発注をもう一度「届いた」にしても在庫を足さない（invOrderUpdate_）
 - v61：doGet に `mode=day_lite`（今日の売上と今日の締めだけ。スマホの締め画面用・約3秒）を追加。会計の受信は、シートに書けた後で二重送信ガードの印を付け、失敗時は "error" を返す（レジはそれを見て送り直す）
 - コード.gs 本体（doGet / doPost / dayLite_）は GitHub に控えがない。変えたらここに書く
+- v62：未回答の質問を決まりを作らずに閉じる `os_q_close`、os_home に承認待ちの決まり `pendingKnow` を追加（facts.gs）
