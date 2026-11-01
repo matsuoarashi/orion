@@ -62,6 +62,15 @@
 - v62：未回答の質問を決まりを作らずに閉じる `os_q_close`、os_home に承認待ちの決まり `pendingKnow` を追加（facts.gs）
 - v63：`day_lite` に PayPay 取引メールの今日の合計（ppMail）と `date=yyyy/MM/dd`（過去日の確認用）を追加。商品原価（COSTS）を最新の仕入価格で改定
 
+- v65：staffing.gs を ORION OS END の下に追加。日別人件費は STAFF の勤怠シートから直接計算（人件費(STAFF) タブ＝IMPORTRANGE は退勤時に書かれた日次表で、あとから承認・修正した勤怠が入らないため）。doGet の pnl.laborDaily を上書き
+- v66：rebuildPnl（月次損益）と開業費の研修費も stfLaborRows_ で勤怠から計算。人が足りない日のメール通知 stfShortNotify（毎日17時・3週間先まで、送り先 orion.napolitan@gmail.com）
+
+- v67：一度きりの修正・調査用の関数 23本を削除（applyPayPay・fixToday1015・importExpenses20261028 など。全文は v66 に残る）。rc_home に日付が空の登録 undated を追加（経費アプリの一覧の上に出す）
+- v68：発注先一覧の編集 inv_supplier_save（管理者。仕入先シートの1行を業者名で更新）
+- 在庫スレッドの一度きりの関数（invSeedMaster・invApply20261101・invFix20261101b）は在庫スレッドの担当なので残している
+
+- 11/1 夜：古い「利益」シート（原価が手入力の旧値）と「経費」シートの見本行（（例）食材 ○○商店・0円）を削除。利益シートを書いていた rebuildProfit も削除（保存のみ・デプロイ v68 のまま）
+
 ## 6. 原価（COSTS）の根拠
 
 - 金額は公開リポジトリに書かない。材料ごとの量・単価・合計は Drive「オリオン 原価・仕入価格（非公開）」 にある（松尾のみ）

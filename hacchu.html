@@ -87,7 +87,7 @@ div.sec{font-size:11px;letter-spacing:2px;color:var(--mute);margin:14px 4px 6px}
 .stp .cnt{font-size:13px;color:var(--mute)}
 .sup{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px;background:#fff} .suph{font-weight:bold;margin-bottom:4px} .suph small{font-weight:normal;color:var(--mute);font-size:12px;margin-left:4px}
 .lnk{border:0;background:none;color:var(--g);font-size:14px;padding:6px 0;text-decoration:underline}
-.links{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:4px 0 16px} .links button{border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px 6px;text-align:center;font-size:13px;color:var(--ink)} .links small{display:block;color:var(--mute);font-size:11px;margin-top:2px}
+.links{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 16px} .links button{border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px 6px;text-align:center;font-size:13px;color:var(--ink)} .links small{display:block;color:var(--mute);font-size:11px;margin-top:2px}
 .ar{color:var(--mute)}
 .sup .btn,.sup .btn + .btn{margin-top:0}
 </style>
@@ -123,7 +123,7 @@ div.sec{font-size:11px;letter-spacing:2px;color:var(--mute);margin:14px 4px 6px}
 <div id="ov"></div>
 <div class="toast" id="toast"></div>
 
-<script src="busy.js"></script>
+<script src="busy.js?v=1101b"></script>
 <script>
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbzFNl4UM3fkoANru-agWmuOox-h3cS1yJmx4UZxpGFemEBnAUv45Gdp1VOvtCqOVUg/exec";
 const STAFF_API = "https://script.google.com/macros/s/AKfycbwgGW6rXzAW2rHVicdoCMdHOT_E3egrXPsaEJerX-_brZr0mYF6Qo_tRorX8PgLc7c/exec";
@@ -310,6 +310,7 @@ function renderHome(){
       <button onclick="go('report')"><b>不足・破損の報告</b><small>${rep.length?"未対応 "+rep.length+"件":"未対応なし"}</small></button>
       <button onclick="orderHistory()"><b>発注・納品の履歴</b><small>過去の記録</small></button>
       <button onclick="go('master')"><b>品目と価格</b><small>${MASTER.length}品目${ME.role==="admin"?"・編集":""}</small></button>
+      <button onclick="supList()"><b>発注先一覧</b><small>注文方法・連絡先</small></button>
     </div>`;
 }
 // ───── 在庫入力 ─────
@@ -431,6 +432,42 @@ function manualOrder(){
   sheet(`<h3>手動で発注を記録</h3><label>品目</label><select id="moItem">${opts}</select><label>数量</label><input type="number" inputmode="numeric" id="moQty" value="1"><label>納品予定日（任意）</label><input id="moEta" placeholder="2026/10/29">
     <div style="height:14px"></div><button class="btn" onclick="manualDo()">発注済として記録</button><button class="btn sec" style="margin-top:8px" onclick="closeOv()">やめる</button>`); }
 async function manualDo(){ const it = MASTER.find(x=>x.id===$("moItem").value); const r = await post("inv_order_create", {items:[{item_id:it.id, qty:Number($("moQty").value)||1, eta:$("moEta").value}], supplier: it.supplier}); if(r.error){ showMsg(r.error); return; } closeOv(); toast("記録しました"); loadHome(); }
+// ───── 発注先一覧（分析シート「仕入先」）─────
+const SUP_HIDE = /^(_row|supplier_id|sup_id|id|作成日時|更新日時|登録日時|store_id)$/i;
+function supName(o){ return String(o["業者名"]||o["仕入先"]||o["仕入先名"]||o["名前"]||o["取引先"]||o.name||"").trim(); }
+// 仕入先シートの見出しの並び（編集フォームに使う）
+const SUP_FIELDS = ["区分","主な品目","発注方法","発注締切","納品曜日","納品時刻","リードタイム","配送/受取","締め・支払","担当・連絡先","代替仕入先","定常","備考"];
+const SUP_HINT = {"発注方法":"例：TOHOオーダーシステム／電話／LINE／Web","発注締切":"例：納品日前日17:00","納品曜日":"例：月水金","納品時刻":"例：14:00","担当・連絡先":"担当者名・電話・メール・URL（改行で複数）","締め・支払":"例：月末締め翌月末払い／都度払い"};
+let SUPS = [];
+// シートの時刻だけのセルは「1899/12/30 14:00:00」で届くことがあるので時刻だけにする
+function supPlain(v){ return String(v==null?"":v).trim().replace(/^1899\/12\/30 (\d{1,2}):(\d{2})(?::\d{2})?$/, (_, h, m)=>h.padStart(2,"0")+":"+m); }
+function supVal(v){ const s = supPlain(v);
+  if (/^https?:\/\//.test(s)) return `<a href="${esc(s)}" target="_blank" rel="noopener">${esc(s.replace(/^https?:\/\//,"").replace(/\/$/,"").slice(0,40))}</a>`;
+  if (/^[\w.+-]+@[\w.-]+\.[a-z]{2,}$/i.test(s)) return `<a href="mailto:${esc(s)}">${esc(s)}</a>`;
+  if (/^[0-9０-９()（）+\- ]{9,}$/.test(s)) return `<a href="tel:${esc(s.replace(/[^0-9+]/g,""))}">${esc(s)}</a>`;
+  return esc(s).replace(/\n/g,"<br>"); }
+async function supList(){
+  sheet(`<h3>発注先一覧</h3><div class="mini">読み込み中…</div>`);
+  const r = await get("inv_master"); if(r.error){ closeOv(); showMsg(r.error); return; }
+  const S = (r.suppliers||[]).filter(o=>{ const n = supName(o); return n && n.length <= 30 && !/要確認|埋めてください/.test(n); }); SUPS = S; const names = new Set(S.map(supName)); const adm = ME && ME.role==="admin";
+  const cnt = {}; MASTER.forEach(it=>{ const k = String(it.supplier||"").trim(); if(k) cnt[k] = (cnt[k]||0)+1; });
+  // 品目に出てくるのに一覧にない仕入先（店頭で買う所など）
+  const extra = Object.keys(cnt).filter(k=>!names.has(k)).sort();
+  const card = o => { const n = supName(o); const rows = Object.keys(o).filter(k=>!SUP_HIDE.test(k) && supName({[k]:1})==="" && String(o[k]??"").trim()!=="").map(k=>`<tr><th style="width:34%;color:var(--mute);font-weight:normal">${esc(k)}</th><td>${supVal(o[k])}</td></tr>`).join("");
+    return `<div class="card" style="margin:0 0 10px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:16px">${esc(n)}</b><span>${cnt[n]?`<span class="pill">${cnt[n]}品目</span>`:""}${adm?` <button class="btn sm sec" style="width:auto;padding:4px 10px" onclick="supEdit(${S.indexOf(o)})">編集</button>`:""}</span></div>${rows?`<table class="tbl" style="margin-top:6px">${rows}</table>`:`<div class="mini">詳細は未登録</div>`}</div>`; };
+  sheet(`<h3>発注先一覧</h3><div class="mini" style="margin-bottom:10px">電話・メール・URL はタップでそのまま開けます。${adm?"「編集」で内容を直せます（管理者）":"内容の追加・修正は管理者に伝えてください"}</div>
+    ${S.map(card).join("") || `<div class="mini">登録がありません</div>`}
+    ${extra.length?`<div class="sec">一覧にない購入先（品目にだけ登録）</div><div class="card" style="margin:0 0 10px">${extra.map(k=>`<div class="row" style="border:0;padding:4px 0"><span>${esc(k)}</span><span class="mini">${cnt[k]}品目</span></div>`).join("")}</div>`:""}
+    ${adm?`<button class="btn sec" style="margin-top:6px" onclick="supEdit(-1)">＋ 発注先を追加</button>`:""}
+    <button class="btn sec" style="margin-top:6px" onclick="closeOv()">閉じる</button>`);
+}
+function supEdit(i){ const o = i >= 0 ? SUPS[i] : {}; const n = supName(o);
+  sheet(`<h3>${n?esc(n)+" を編集":"発注先を追加"}</h3><label>業者名</label><input id="su_name" value="${esc(n)}">
+    ${SUP_FIELDS.map((k,j)=>`<label>${esc(k)}</label>${k==="担当・連絡先"||k==="備考"?`<textarea id="su_${j}" rows="3" placeholder="${esc(SUP_HINT[k]||"")}">${esc(o[k]??"")}</textarea>`:`<input id="su_${j}" value="${esc(supPlain(o[k]))}" placeholder="${esc(SUP_HINT[k]||"")}">`}`).join("")}
+    <div style="height:12px"></div><button class="btn" onclick="supSave('${esc(n)}')">保存</button><button class="btn sec" style="margin-top:8px" onclick="supList()">やめる</button>`); }
+async function supSave(orig){ const name = $("su_name").value.trim(); if(!name){ toast("業者名を入れてください"); return; }
+  const fields = {}; SUP_FIELDS.forEach((k,j)=>{ fields[k] = $("su_"+j).value.trim(); });
+  const r = await post("inv_supplier_save", {orig, name, fields}); if(r.error){ toast(r.error); return; } toast("保存しました"); supList(); }
 async function orderHistory(){ const r = await get("inv_orders"); if(r.error){ showMsg(r.error); return; } const list = (r.orders||[]).slice().reverse();
   sheet(`<h3>発注・納品の履歴</h3><table class="tbl"><tr><th>日付</th><th>仕入先・品目</th><th>数量</th><th>状態</th></tr>${list.map(o=>`<tr><td>${fmtD(o.at)}</td><td>${esc(o.supplier)}<br>${esc(o.name)}</td><td>${o.qty}${esc(o.unit)}${o.received!==""&&o.received!==undefined?"<br><span class='mini'>納 "+o.received+"</span>":""}</td><td>${esc(o.status)}<br><span class="mini">${fmtD(o.receivedAt||o.orderedAt)}</span></td></tr>`).join("")||"<tr><td colspan=4>まだありません</td></tr>"}</table><button class="btn sec" style="margin-top:10px" onclick="closeOv()">閉じる</button>`); }
 

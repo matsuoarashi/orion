@@ -350,7 +350,7 @@
     <div class="cards">
       <div class="card wide"><h2><span id="ppTitle">今月の人件費</span> <em class="tag g">概算</em></h2>
         <div class="pnlGrid" id="ppTop"></div>
-        <div class="sub">勤怠アプリの打刻×時給。退勤が未確定の日は入っていません</div></div>
+        <div class="sub">勤怠の打刻×時給。退勤が未確定の日は入っていません</div></div>
       <div class="card wide"><h2>日別の労働時間と生産性</h2>
         <div class="scroll"><table class="daygrid" id="ppDays"></table></div>
         <div class="sub">人時売上 = 売上 ÷ 労働時間（目安 3,500円/h）。人時食数 = 食数 ÷ 労働時間</div></div>
@@ -370,7 +370,7 @@
   </footer>
 </div>
 
-<script src="busy.js"></script>
+<script src="busy.js?v=1101b"></script>
 <script>
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbzFNl4UM3fkoANru-agWmuOox-h3cS1yJmx4UZxpGFemEBnAUv45Gdp1VOvtCqOVUg/exec";
 const GOAL_MEALS = 60;
@@ -535,10 +535,10 @@ function swapItem2(date,row){ const x = ((SALES_CACHE[date]||{}).list||[]).find(
   $("swOk").onclick = async ()=>{ const from=$("swFrom").value, to=$("swTo").value; if(from===to){ toast("同じ商品です"); return; } $("swOk").disabled=true; const r = await fxPost("fx_item", {date,row,from,to,reason:$("swWhy").value||"締めの確認で差替え"}); if(r.error){ toast(r.error); $("swOk").disabled=false; return; } closeOv(); toast(`${to} に差し替えました（${num(r.amount)}円）`); refreshSales(date); };
 }
 // その他の確認（勤怠・在庫・経費・設定）
-// 人手が足りない日（今日から7日先まで）。シフトの人数が必要人数（未設定は2人）より少ない日と、ホール・厨房のどちらかがいない日
+// 人手が足りない日（今日から3週間先まで）。シフトの人数が必要人数（未設定は2人）より少ない日と、ホール・厨房のどちらかがいない日
 async function shortDays(call){
   const jst = new Date(Date.now()+9*3600e3), ds = d => d.toISOString().slice(0,10).replace(/-/g,"/");
-  const days = []; for(let i=0;i<=7;i++) days.push(ds(new Date(jst.getTime()+i*86400e3)));
+  const days = []; for(let i=0;i<=21;i++) days.push(ds(new Date(jst.getTime()+i*86400e3)));
   const months = [...new Set(days.map(d=>d.slice(0,7)))];
   const [res, st] = await Promise.all([Promise.all(months.map(m=>call("admin.shifts_month",{month:m}))), call("admin.settings_get")]);
   if (res.some(r=>!r || !r.ok)) return null;
@@ -563,18 +563,18 @@ function renderMisc(){
   if(!DATA) return;
   const o = ops(), p = pnlData(), today = DATA.todayKey, H = new Date().getHours(); const M = [];
   const li = (t, n, btnLabel, fn) => M.push(`<div class="mi"><div><b>${t}</b><small>${n}</small></div>${btnLabel?`<button onclick="${fn}">${btnLabel}</button>`:""}</div>`);
-  SHORT.forEach(x=>li(`<span class="neg">人が足りない</span> ${x.date.slice(5)}(${["日","月","火","水","木","金","土"][new Date(x.date.replace(/\//g,"-")+"T00:00:00+09:00").getDay()]})`, `${x.names.length?x.names.join("・"):"シフトなし"}｜${x.why}${x.draft?"（下書きを含む）":""}`, "シフト", "goApp('staff')"));
+  SHORT.forEach(x=>li(`<span class="neg">人が足りない</span> ${x.date.slice(5)}(${["日","月","火","水","木","金","土"][new Date(x.date.replace(/\//g,"-")+"T00:00:00+09:00").getDay()]})`, `${x.names.length?x.names.join("・"):"シフトなし"}｜${x.why}${x.draft?"（下書きを含む）":""}`, "シフト", "goApp('staff','shift')"));
   if(OSC.q) li(`スタッフからの質問 ${OSC.q}件（未回答）`, OSC.qs, "回答する", "setTab('people');setTimeout(()=>$('osQ').scrollIntoView({behavior:'smooth'}),100)");
   if(OSC.m) li(`メールからの候補 ${OSC.m}件`, OSC.ms, "確認する", "setTab('people');setTimeout(()=>$('osM').scrollIntoView({behavior:'smooth'}),100)");
   if(OSC.k) li(`承認待ちの決まり ${OSC.k}件`, OSC.ks, "確認する", "setTab('people');setTimeout(()=>$('osPK').scrollIntoView({behavior:'smooth'}),100)");
   if(OSC.c) li(`契約・許認可の期限 ${OSC.c}件`, OSC.cs, "見る", "setTab('people');setTimeout(()=>$('osCt').scrollIntoView({behavior:'smooth'}),100)");
   if(!o.shime.find(s=>s.date===today) && H>=16 && (dayByDate(today)||{}).count>0) li("本日のレジ締めがまだです","閉店後にレジの「締め」から入力");
-  o.unclosed.forEach(u=>li(`${u.name} ${u.date.slice(5)} 退勤の打刻がありません`,`出勤 ${hmOnly(u.in)}`,"勤怠アプリ","goApp('staff')"));
-  bizDays().filter(d=>d.date<today && d.date>=openDate()).slice(-7).forEach(d=>{ const l = p.laborDaily[d.date]; if(!l) li(`${d.date.slice(5)}(${youbi(d.date)}) 勤怠がありません`,`売上 ${yen(d.sales)} に対して人件費0`,"勤怠アプリ","goApp('staff')"); else if(l.staff<2 && d.meals>=20) li(`${d.date.slice(5)}(${youbi(d.date)}) 勤怠が${l.staff}人分だけ`,`${(l.minutes/60).toFixed(1)}h・${d.meals}食。打刻漏れか修正申請が未承認`,"勤怠アプリ","goApp('staff')"); });
-  if(o.stockLow.length) li(`在庫が下限以下 ${o.stockLow.length}品目`, o.stockLow.slice(0,5).map(s=>`${s.name} ${s.stock}${s.unit}（下限${s.min}）`).join("、"),"発注アプリ","goApp('hacchu')");
-  if(o.reports.length) li(`備品・不足の報告 ${o.reports.length}件`, o.reports.slice(0,4).map(r=>`${r.name}${r.qty?" "+r.qty:""}（${r.by}）`).join("、"),"発注アプリ","goApp('hacchu')");
-  if(o.receipts.unchecked) li(`経費の未確認 ${o.receipts.unchecked}件`,"経費アプリで内容を確認","経費アプリ","goApp('keihi')");
-  if(o.receipts.unpaid) li(`未払いの経費（掛け） ${yen(o.receipts.unpaid)}`, o.receipts.unpaidList.slice(0,4).map(r=>`${r.date.slice(5)} ${r.vendor} ${num(r.amount)}円`).join("、"),"経費アプリ","goApp('keihi')");
+  o.unclosed.forEach(u=>li(`${u.name} ${u.date.slice(5)} 退勤の打刻がありません`,`出勤 ${hmOnly(u.in)}`,"勤怠","goApp('staff','att')"));
+  bizDays().filter(d=>d.date<today && d.date>=openDate()).slice(-7).forEach(d=>{ const l = p.laborDaily[d.date]; if(!l) li(`${d.date.slice(5)}(${youbi(d.date)}) 勤怠がありません`,`売上 ${yen(d.sales)} に対して人件費0`,"勤怠","goApp('staff','att')"); else if(l.staff<2 && d.meals>=20) li(`${d.date.slice(5)}(${youbi(d.date)}) 勤怠が${l.staff}人分だけ`,`${(l.minutes/60).toFixed(1)}h・${d.meals}食。打刻漏れか修正申請が未承認`,"勤怠","goApp('staff','att')"); });
+  if(o.stockLow.length) li(`在庫が下限以下 ${o.stockLow.length}品目`, o.stockLow.slice(0,5).map(s=>`${s.name} ${s.stock}${s.unit}（下限${s.min}）`).join("、"),"発注","goApp('hacchu')");
+  if(o.reports.length) li(`備品・不足の報告 ${o.reports.length}件`, o.reports.slice(0,4).map(r=>`${r.name}${r.qty?" "+r.qty:""}（${r.by}）`).join("、"),"発注","goApp('hacchu')");
+  if(o.receipts.unchecked) li(`経費の未確認 ${o.receipts.unchecked}件`,"経費タブで内容を確認","経費","goApp('keihi')");
+  if(o.receipts.unpaid) li(`未払いの経費（掛け） ${yen(o.receipts.unpaid)}`, o.receipts.unpaidList.slice(0,4).map(r=>`${r.date.slice(5)} ${r.vendor} ${num(r.amount)}円`).join("、"),"経費","goApp('keihi')");
   if(p.initial && p.initial.pending) li(`開業費の未入力 ${p.initial.pending}件`,"分析シート「開業費」で金額を入力");
   p.fixed.filter(f=>!f.amount && !/収入/.test(f.name)).forEach(f=>li(`固定費が0円のまま：${f.name}`,"実額が分かったら入力", ME?"入力":"", `fixedInput('${f.name}')`));
   $("miscList").innerHTML = M.join("") || "<div class='sub'>確認することはありません</div>";
@@ -1058,7 +1058,7 @@ function renderPnl(){
       (inc ? line("＋ その他収入","j",inc, ops().income.map(i=>i.name).join("・")) : (incNext.length?`<div class="pl"><span class="n">${incNext.map(i=>`${i.name} ${num(i.amount)}円は ${i.from.replace("/","年")}月から算入`).join("、")}</span></div>`:"")) +
       (loanAmt ? line("− 公庫返済","j",-loanAmt,"財務のお金（営業利益から返す）") : "") +
       ((inc||loanAmt) ? `<div class="pl total"><span>最終の手残り</span>${signed(net)}</div>` : "");
-    $("pnlNote").textContent = cur.status + "。原価は商品原価マスター×個数の概算（月末の棚卸しで実際の原価率を出す）。仕入れ実績は経費アプリ・カード明細の仕入高で在庫分を含む。開業前の費用はイニシャル側。";
+    $("pnlNote").textContent = cur.status + "。原価は商品原価マスター×個数の概算（月末の棚卸しで実際の原価率を出す）。仕入れ実績は経費・カード明細の仕入高で在庫分を含む。開業前の費用はイニシャル側。";
   }
   if(fc){
     const fnet = fc.profit + inc - loanAmt;
@@ -1157,7 +1157,10 @@ function renderPeople(){
 // シートの時刻だけのセルが「1899/12/30 10:40:00」で届くので時刻だけにする
 function hmOnly(v){ const m = String(v||"").match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*$/); return m ? `${+m[1]}:${m[2]}` : String(v||""); }
 // 管理者アプリの中ならタブ切替、単体なら管理者アプリへ
-function goApp(id){ try{ if(window.parent !== window && typeof window.parent.show === "function"){ window.parent.show(id); return; } }catch(e){} location.href = "kanri.html#" + id; }
+function goApp(id, sub){ try{ if(window.parent !== window && typeof window.parent.show === "function"){ window.parent.show(id);
+  // 中の画面のタブ（スタッフ画面の勤怠・シフトなど）まで開く。読み込み中なら少し待つ
+  if (sub){ let n = 0; const t = setInterval(()=>{ n++; try{ const w = window.parent.document.getElementById("fr_"+id).contentWindow; const va = w && w.document.getElementById("vApp"); if (w && typeof w.go === "function" && va && !va.classList.contains("hide")){ w.go(sub); clearInterval(t); } }catch(e){} if (n > 40) clearInterval(t); }, 250); }
+  return; } }catch(e){} location.href = "kanri.html#" + id; }
 // 朝の確認に出す件数（人タブの読み込み結果を流用）
 const OSC = {q:0, qs:"", m:0, ms:"", c:0, cs:"", k:0, ks:""};
 // スタッフからの未回答質問（ORION OS）。管理者だけ
