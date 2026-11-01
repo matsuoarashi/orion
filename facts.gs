@@ -53,6 +53,7 @@ function osRpt_(r){ var o = {}; OS_RPT_COLS.forEach(function(c){ o[c] = (c === "
 // ---------- 書き込み ----------
 function handleOsPost(d){
   if (!d || !/^os_/.test(String(d.type||""))) return null;
+  if (d.type === "os_mail_ingest"){ try { return invOut_(osMailIngest_(d)); } catch(e){ return invOut_({ error:String(e) }); } } // 合い言葉認証（スタッフのログイン不要）
   var res;
   try {
     var me = invAuth_(d); if (!me) return invOut_({ error: "auth" });
