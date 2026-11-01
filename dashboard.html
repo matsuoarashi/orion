@@ -558,17 +558,23 @@ async function shortDays(call){
 let SHORT = [];
 async function loadShort(){ const tk = (()=>{ try{ return localStorage.getItem("os-admin-token")||TOKEN; }catch(e){ return TOKEN; } })(); if(!tk) return;
   const call = (action, b)=>fetch(STAFF_API,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify(Object.assign({action, token:tk}, b||{})), busy:false}).then(r=>r.json()).catch(()=>null);
+  // 先出し通知（GAS ops_alerts：人手不足・年収の壁・発注締切・衛生記録・締め）。読めないときは人手不足だけ自分で数える
+  try{ const r = await fetch(SHEET_URL + "?mode=ops_alerts&token=" + encodeURIComponent(tk) + "&t=" + Date.now(), {cache:"no-store", busy:false}).then(r=>r.json());
+    if (r && r.ok){ OPSA = r.alerts || []; SHORT = []; renderMisc(); return; } }catch(e){}
   try{ const r = await shortDays(call); if(r){ SHORT = r; renderMisc(); } }catch(e){} }
+let OPSA = [];
+const OPSA_BTN = { short:["シフト","goApp('staff','shift')"], cap:["シフト","goApp('staff','shift')"], hyg:["勤怠","goApp('staff','att')"], order:["発注","goApp('hacchu')"], shime:["確認","setTab('shime');scrollTo(0,0)"] };
 function renderMisc(){
   if(!DATA) return;
   const o = ops(), p = pnlData(), today = DATA.todayKey, H = new Date().getHours(); const M = [];
   const li = (t, n, btnLabel, fn) => M.push(`<div class="mi"><div><b>${t}</b><small>${n}</small></div>${btnLabel?`<button onclick="${fn}">${btnLabel}</button>`:""}</div>`);
+  OPSA.forEach(x=>{ const bt = OPSA_BTN[x.key] || ["",""]; li(`${x.level==="high"?'<span class="neg">●</span> ':''}${esc(x.title)}`, esc(x.detail||"").replace(/\n/g,"<br>"), bt[0], bt[1]); });
   SHORT.forEach(x=>li(`<span class="neg">人が足りない</span> ${x.date.slice(5)}(${["日","月","火","水","木","金","土"][new Date(x.date.replace(/\//g,"-")+"T00:00:00+09:00").getDay()]})`, `${x.names.length?x.names.join("・"):"シフトなし"}｜${x.why}${x.draft?"（下書きを含む）":""}`, "シフト", "goApp('staff','shift')"));
   if(OSC.q) li(`スタッフからの質問 ${OSC.q}件（未回答）`, OSC.qs, "回答する", "setTab('people');setTimeout(()=>$('osQ').scrollIntoView({behavior:'smooth'}),100)");
   if(OSC.m) li(`メールからの候補 ${OSC.m}件`, OSC.ms, "確認する", "setTab('people');setTimeout(()=>$('osM').scrollIntoView({behavior:'smooth'}),100)");
   if(OSC.k) li(`承認待ちの決まり ${OSC.k}件`, OSC.ks, "確認する", "setTab('people');setTimeout(()=>$('osPK').scrollIntoView({behavior:'smooth'}),100)");
   if(OSC.c) li(`契約・許認可の期限 ${OSC.c}件`, OSC.cs, "見る", "setTab('people');setTimeout(()=>$('osCt').scrollIntoView({behavior:'smooth'}),100)");
-  if(!o.shime.find(s=>s.date===today) && H>=16 && (dayByDate(today)||{}).count>0) li("本日のレジ締めがまだです","閉店後にレジの「締め」から入力");
+  if(!OPSA.some(x=>x.key==="shime") && !o.shime.find(s=>s.date===today) && H>=16 && (dayByDate(today)||{}).count>0) li("本日のレジ締めがまだです","閉店後にレジの「締め」から入力");
   o.unclosed.forEach(u=>li(`${u.name} ${u.date.slice(5)} 退勤の打刻がありません`,`出勤 ${hmOnly(u.in)}`,"勤怠","goApp('staff','att')"));
   bizDays().filter(d=>d.date<today && d.date>=openDate()).slice(-7).forEach(d=>{ const l = p.laborDaily[d.date]; if(!l) li(`${d.date.slice(5)}(${youbi(d.date)}) 勤怠がありません`,`売上 ${yen(d.sales)} に対して人件費0`,"勤怠","goApp('staff','att')"); else if(l.staff<2 && d.meals>=20) li(`${d.date.slice(5)}(${youbi(d.date)}) 勤怠が${l.staff}人分だけ`,`${(l.minutes/60).toFixed(1)}h・${d.meals}食。打刻漏れか修正申請が未承認`,"勤怠","goApp('staff','att')"); });
   if(o.stockLow.length) li(`在庫が下限以下 ${o.stockLow.length}品目`, o.stockLow.slice(0,5).map(s=>`${s.name} ${s.stock}${s.unit}（下限${s.min}）`).join("、"),"発注","goApp('hacchu')");

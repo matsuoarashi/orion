@@ -74,6 +74,8 @@
 - v69（11/2 朝）：ORION START v0.1 を取り付け。start.gs を末尾に追加、handleOsGet / handleOsPost に os_start_ の1行ずつ、osMailIngest_ から startIngestMessages_ を呼ぶ。startSetup 実行済み（「ORION START 事務局台帳」を作成、PRJ-0001 神田・PRJ-0002 飯田橋）
 - v70（11/2 朝）：物件メールの差出人に synchro-food.co.jp を追加（飲食店ドットコムの物件メールはこのドメインから届く）
 - v71〜v74（11/2 朝）：ORION START v0.2（一次判定・まとめメール分割・ページ取り込み・朝の候補メール）。メール送信の権限を追加承認、`startDigestTriggerInstall()` 実行済み（毎朝7時台）、`startRejudgeAll()` 実行済み
+- v75（11/2 朝）：先出し通知 ops_alerts（staffing.gs の後半）。15:30 opsNotifyOrder＝今日が締切の発注で足りなくなる品目、17:00 stfShortNotify＝人手不足（3週間）・年収の壁（設定 annual_caps）・衛生記録の付け忘れ・レジ締めの未入力。送り先 orion.napolitan@gmail.com。分析の「今朝の確認」は doGet mode=ops_alerts（管理者トークン）
+- 注意：ORION START スレッドも同じ GAS を更新している（v69〜v74・start.gs）。編集前にエディタを読み込み直し、デプロイ直前にも相手の関数（startGet_ など）が残っているか確認する
 
 ## 6. 原価（COSTS）の根拠
 

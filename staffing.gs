@@ -59,15 +59,160 @@ function stfShortDays_(n){
   }
   return out;
 }
-function stfShortNotify(){
-  var list = stfShortDays_(21); if (!list.length) return;
-  var subj = "【洋食オリオン】人が足りない日 " + list.length + "件（" + list.map(function(x){ return x.label; }).join("・") + "）";
-  var body = "今日から3週間先までのシフトで、人が足りない日があります。\n\n" + list.map(function(x){ return "・" + x.label + "　" + (x.names.length ? x.names.join("・") : "シフトなし") + "　" + x.why + (x.draft ? "（下書きを含む）" : ""); }).join("\n")
-    + "\n\nシフトの調整：管理者アプリ → スタッフ → シフト\nhttps://matsuoarashi.github.io/orion/kanri.html#staff\n\n（毎日17時に自動で確認しています。足りない日がなければ送りません）";
-  GmailApp.sendEmail(STF_NOTIFY_TO, subj, body, { name: "洋食オリオン" });
-}
 function stfSetupTrigger(){
   ScriptApp.getProjectTriggers().forEach(function(t){ if (t.getHandlerFunction() === "stfShortNotify") ScriptApp.deleteTrigger(t); });
   ScriptApp.newTrigger("stfShortNotify").timeBased().atHour(17).everyDays(1).inTimezone("Asia/Tokyo").create();
 }
 // ===== 人手・人件費 END =====
+// ===== 先出し通知（発注締切・年収の壁・衛生記録・締め未入力・人手不足）=====
+// 15:30 opsNotifyOrder：今日が締切の発注で、足りなくなる品目が未発注なら知らせる
+// 17:00 stfShortNotify：人手不足（3週間先まで）・年収の壁・今日の衛生記録・今日の締めをまとめて1通
+// 分析アプリの「今朝の確認」は doGet mode=ops_alerts（管理者）で同じ内容を読む
+var OPS_TZ = "Asia/Tokyo", OPS_YO = ["日","月","火","水","木","金","土"], OPS_MEALS = 55;
+function opsDay_(dt){ return Utilities.formatDate(dt, OPS_TZ, "yyyy/MM/dd"); }
+function opsDate_(key){ return new Date(key.replace(/\//g, "-") + "T12:00:00+09:00"); }
+function opsAdd_(key, n){ return opsDay_(new Date(opsDate_(key).getTime() + n*86400000)); }
+function opsDow_(key){ return Number(Utilities.formatDate(opsDate_(key), OPS_TZ, "u")) % 7; }
+function opsLabel_(key){ return Number(key.slice(5,7)) + "/" + Number(key.slice(8,10)) + "(" + OPS_YO[opsDow_(key)] + ")"; }
+function opsHM_(v){ var m = String(v||"").match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*$/); if (Object.prototype.toString.call(v) === "[object Date]") return Utilities.formatDate(v, OPS_TZ, "H:mm"); return m ? (+m[1]) + ":" + m[2] : ""; }
+function opsYen_(n){ return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") + "円"; }
+// 営業日の判定（STAFF の設定：定休曜日・休業日・臨時営業・祝日）
+function opsOpenFn_(set){
+  var closedDow = stfList_(set.closed_dow).map(Number), hol = stfList_(set.holidays), extra = stfList_(set.extra_open);
+  return function(key){ if (extra.indexOf(key) >= 0) return true; if (hol.indexOf(key) >= 0 || closedDow.indexOf(opsDow_(key)) >= 0) return false;
+    return !stfJpHoliday_(Number(key.slice(0,4)), Number(key.slice(5,7)), Number(key.slice(8,10))); };
+}
+
+// ---- 発注締切：今日が締切の納品で、その次の納品まで足りなくなる品目 ----
+function opsOrderAlerts_(tk, hm){
+  var st = SpreadsheetApp.openById(INV_STAFF_SS); var isOpen = opsOpenFn_(stfSettings_(st));
+  var now = new Date(), today = tk || opsDay_(now), nowHM = hm || Utilities.formatDate(now, OPS_TZ, "HH:mm");   // tk・hm は試験用
+  var items = invMaster_(), open = invOpenOrders_(), out = [], bySup = {};
+  var sugMin = {}; try { invSuggest_().forEach(function(s){ sugMin[s.id] = s; }); } catch(e){}
+  items.forEach(function(it){
+    var days = String(it.days||"").split("").map(function(c){ return OPS_YO.indexOf(c); }).filter(function(i){ return i >= 0; });
+    var cm = String(it.cutoff||"").match(/前日\s*(\d{1,2}:\d{2})/); if (!days.length || !cm) return;
+    var cut = ("0" + cm[1]).slice(-5);
+    // 次の納品日 D1（締切がまだ来ていないもの）と、その次 D2
+    var D1 = null, D2 = null;
+    for (var i = 1; i <= 14 && !D2; i++){ var k = opsAdd_(today, i); if (days.indexOf(opsDow_(k)) < 0) continue; var ck = opsAdd_(k, -1); if (ck < today || (ck === today && cut <= nowHM)) continue; if (!D1) D1 = k; else D2 = k; }
+    if (!D1 || !D2 || opsAdd_(D1, -1) !== today) return;   // 今日が締切の納品だけ
+    var pending = open.filter(function(o){ return o.item_id === it.id && o["状態"] === "発注済"; }).reduce(function(a, o){ return a + (Number(o["数量"])||0); }, 0);
+    var reason = "";
+    if (it.usage60 !== null && it.usage60 !== undefined && it.stock !== null && it.stockState !== "未計測"){
+      var daily = Number(it.usage60) * OPS_MEALS / 60; if (!(daily > 0)) return;
+      // 在庫を数えた日の翌日から今日までの営業日ぶん減らす（今日の昼は済み）
+      var base = String(it.stockAt||"").slice(0,10).replace(/-/g, "/"); var cur = Number(it.stock);
+      if (/^\d{4}\/\d{2}\/\d{2}$/.test(base)){ for (var d = opsAdd_(base, 1); d <= today; d = opsAdd_(d, 1)) if (isOpen(d)) cur -= daily; }
+      // D1 の昼までの消費（D1 の到着は昼の後）→ 到着後に D2 の昼まで必要な量
+      var use1 = 0; for (var d1 = opsAdd_(today, 1); d1 <= D1; d1 = opsAdd_(d1, 1)) if (isOpen(d1)) use1 += daily;
+      var use2 = 0; for (var d2 = opsAdd_(D1, 1); d2 <= D2; d2 = opsAdd_(d2, 1)) if (isOpen(d2)) use2 += daily;
+      var safety = (Number(it.safety)||0) * daily;
+      var left = cur - use1 + pending; var need = use2 + safety;
+      if (left < need) reason = "今の見込み " + (Math.round(cur*10)/10) + it.unit + "・" + opsLabel_(D2) + "の昼までに約" + (Math.round((need-left)*10)/10) + it.unit + "足りない";
+    } else if (sugMin[it.id]){
+      reason = sugMin[it.id].reason;
+    }
+    if (!reason) return;
+    var sup = it.supplier || "（仕入先未設定）"; var g = bySup[sup] = bySup[sup] || { sup: sup, D1: D1, cut: cut, items: [] };
+    g.items.push(it.name + "（" + reason + "）");
+  });
+  Object.keys(bySup).forEach(function(k){ var g = bySup[k];
+    out.push({ key: "order", level: "high", title: g.sup + "：今日 " + g.cut + " 締切（" + opsLabel_(g.D1) + "納品）の未発注 " + g.items.length + "品目", detail: g.items.join("\n"), app: "hacchu" }); });
+  // 締切の日に今日の在庫が数えられていない
+  try { var lc = invLastChecks_()["シェフ"]; var counted = lc && String(lc.date||lc.at||"").slice(0,10).replace(/-/g,"/") === today;
+    if (!counted && isOpen(today) && items.some(function(it){ return /前日/.test(String(it.cutoff||"")) && String(it.days||"").indexOf(OPS_YO[opsDow_(opsAdd_(today,1))]) >= 0; }))
+      out.push({ key: "order", level: "high", title: "今日の在庫（厨房）がまだ数えられていません", detail: "明日納品の発注締切が今日です。数えないと発注の判断がずれます", app: "hacchu" }); } catch(e){}
+  return out;
+}
+
+// ---- 年収の壁：設定 annual_caps（{staff_id: 上限円}）に対する今年の見込み ----
+function opsCapAlerts_(){
+  var st = SpreadsheetApp.openById(INV_STAFF_SS); var set = stfSettings_(st); var caps = {};
+  try { caps = JSON.parse(set.annual_caps || "{}"); } catch(e){ return []; }
+  var ids = Object.keys(caps); if (!ids.length) return [];
+  var now = new Date(), today = opsDay_(now), year = today.slice(0,4), yEnd = year + "/12/31";
+  var defW = Number(set.default_wage)||0, otMin = Number(set.overtime_daily_min)||480, otRate = Number(set.overtime_rate)||1.25, tcap = Number(set.transport_cap)||0;
+  var staff = {}; invRows_(st.getSheetByName("スタッフ")).forEach(function(r){ staff[r.staff_id] = { name: String(r["名前"]), wage: Number(r["時給"])||defW, tr: Number(r["交通費_日額"])||0 }; });
+  var pay = function(min, w){ return Math.min(min, otMin)/60*w + Math.max(0, min-otMin)/60*w*otRate; };
+  var att = invRows_(st.getSheetByName("勤怠")), sh = invRows_(st.getSheetByName("確定シフト")), out = [];
+  ids.forEach(function(id){
+    var s = staff[id]; if (!s) return; var cap = Number(caps[id])||0; if (!cap) return;
+    var ytd = 0, last28 = 0, d28 = opsAdd_(today, -28);
+    att.forEach(function(r){ if (r.staff_id !== id || String(r["状態"]) !== "done") return; var d = dateKey_(r["日付"]); if (d.slice(0,4) !== year) return;
+      var p = pay(Number(r["実労働分"])||0, s.wage) + (Number(r["交通費"])||0); ytd += p; if (d > d28) last28 += p; });
+    var sched = 0, lastShift = today;
+    sh.forEach(function(r){ if (r.staff_id !== id) return; var stt = String(r["状態"]); if (stt !== "confirmed" && stt !== "draft") return; var d = dateKey_(r["日付"]); if (d < today || d > yEnd) return;
+      var a = opsHM_(r["開始"]).split(":"), b = opsHM_(r["終了"]).split(":"); if (a.length < 2 || b.length < 2) return;
+      var min = (Number(b[0])*60 + Number(b[1])) - (Number(a[0])*60 + Number(a[1])); if (min <= 0) return;
+      sched += pay(min, s.wage) + Math.min(s.tr, tcap || s.tr); if (d > lastShift) lastShift = d; });
+    // シフトが決まっていない残りの週は、直近4週のペースで見込む
+    var restDays = Math.max(0, (opsDate_(yEnd) - opsDate_(lastShift)) / 86400000); var weekly = last28 / 4; var rest = weekly * restDays / 7;
+    var proj = ytd + sched + rest;
+    if (proj >= cap * 0.9 || ytd >= cap * 0.8){
+      out.push({ key: "cap", level: proj >= cap ? "high" : "mid", title: s.name + "さん 年収の上限 " + opsYen_(cap) + (proj >= cap ? " を超える見込み" : " に近づいています") + "（見込み " + opsYen_(proj) + "）",
+        detail: "今年の実績 " + opsYen_(ytd) + "・決まっているシフト " + opsYen_(sched) + "・それ以降は直近ペース 週" + opsYen_(weekly) + "で " + opsYen_(rest) + "。交通費を含む・この店の分だけ", app: "staff" });
+    }
+  });
+  return out;
+}
+
+// ---- 今日の衛生記録（出勤した人の「出勤時」、退勤した人の「退勤時」）----
+function opsHygAlerts_(day){
+  var st = SpreadsheetApp.openById(INV_STAFF_SS); var names = {}; invRows_(st.getSheetByName("スタッフ")).forEach(function(r){ names[r.staff_id] = String(r["名前"]); });
+  var hy = {}; invRows_(st.getSheetByName("衛生")).forEach(function(r){ if (dateKey_(r["日付"]) !== day) return; hy[r.staff_id + "|" + String(r["区分"])] = true; });
+  var miss = [];
+  invRows_(st.getSheetByName("勤怠")).forEach(function(r){ if (dateKey_(r["日付"]) !== day) return; var id = r.staff_id, n = names[id] || "?";
+    if (!hy[id + "|出勤"]) miss.push(n + "（出勤時）");
+    if (String(r["状態"]) === "done" && !hy[id + "|退勤"]) miss.push(n + "（退勤時）"); });
+  return miss.length ? [{ key: "hyg", level: "mid", title: opsLabel_(day) + " 衛生記録の付け忘れ " + miss.length + "件", detail: miss.join("・") + "。勤怠アプリの出勤・退勤で記録します", app: "staff" }] : [];
+}
+
+// ---- 今日の締め（売上があるのにレジ締めがない）----
+function opsShimeAlerts_(day){
+  var ss = SpreadsheetApp.getActiveSpreadsheet(); var tz; try { tz = ss.getSpreadsheetTimeZone() || "GMT"; } catch(e){ tz = "GMT"; }
+  var sh = ss.getSheetByName("売上"), last = sh.getLastRow(), cnt = 0, sales = 0;
+  if (last > 1){ var st0 = Math.max(2, last - 400 + 1); sh.getRange(st0, 1, last - st0 + 1, 5).getValues().forEach(function(r){ if (dateKey(r[0], tz) !== day || r[3] === "ERROR" || r[3] === "取消") return; cnt++; sales += Number(r[4])||0; }); }
+  if (!cnt) return [];
+  var ks = ss.getSheetByName("レジ締め"), done = false;
+  if (ks && ks.getLastRow() > 1){ var s0 = Math.max(2, ks.getLastRow() - 30 + 1); ks.getRange(s0, 1, ks.getLastRow() - s0 + 1, 1).getValues().forEach(function(r){ if (dateKey_(r[0]) === day) done = true; }); }
+  return done ? [] : [{ key: "shime", level: "high", title: opsLabel_(day) + " のレジ締めがまだです", detail: "売上 " + opsYen_(sales) + "（" + cnt + "会計）。勤怠アプリの「店の仕事」→「締め」から入力", app: "shime" }];
+}
+
+// ---- 人手不足（3週間先まで）----
+function opsShortAlerts_(){ return stfShortDays_(21).map(function(x){ return { key: "short", level: "high", title: "人が足りない " + x.label, detail: (x.names.length ? x.names.join("・") : "シフトなし") + "｜" + x.why + (x.draft ? "（下書きを含む）" : ""), app: "staff" }; }); }
+
+// まとめ（which: "order" | "evening" | "all"）。1つが失敗しても他は出す
+function opsAlerts_(which){
+  var today = opsDay_(new Date()), out = [], run = function(f){ try { out = out.concat(f()); } catch(e){ out.push({ key: "err", level: "mid", title: "確認の一部が動きませんでした", detail: String(e).slice(0,120), app: "" }); } };
+  if (which === "order" || which === "all") run(opsOrderAlerts_);
+  if (which === "evening" || which === "all"){
+    run(opsShortAlerts_); run(opsCapAlerts_);
+    var h = Number(Utilities.formatDate(new Date(), OPS_TZ, "H"));
+    // 衛生記録・締めは閉店後（16時以降）に今日の分を見る。それより前は前営業日の分
+    var day = h >= 16 ? today : opsAdd_(today, -1);
+    run(function(){ return opsHygAlerts_(day); }); run(function(){ return opsShimeAlerts_(day); });
+  }
+  return out;
+}
+function opsMail_(list, subjHead){
+  if (!list.length) return;
+  var subj = "【洋食オリオン】" + subjHead + " " + list.length + "件（" + list.slice(0,3).map(function(x){ return x.title.replace(/（.*$/, "").slice(0,24); }).join("／") + (list.length > 3 ? " ほか" : "") + "）";
+  var body = list.map(function(x){ return (x.level === "high" ? "■ " : "□ ") + x.title + "\n　" + String(x.detail||"").replace(/\n/g, "\n　"); }).join("\n\n")
+    + "\n\n管理者アプリ：https://matsuoarashi.github.io/orion/kanri.html\n（自動で確認しています。該当がない日は送りません）";
+  GmailApp.sendEmail(STF_NOTIFY_TO, subj, body, { name: "洋食オリオン" });
+}
+function opsNotifyOrder(){ opsMail_(opsAlerts_("order"), "発注の締切"); }
+// 17時のまとめ（トリガー名は stfShortNotify のまま）
+function stfShortNotify(){ opsMail_(opsAlerts_("evening"), "要確認"); }
+function opsSetupTriggers(){
+  ScriptApp.getProjectTriggers().forEach(function(t){ if (t.getHandlerFunction() === "opsNotifyOrder") ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger("opsNotifyOrder").timeBased().atHour(15).nearMinute(30).everyDays(1).inTimezone(OPS_TZ).create();
+}
+function opsAlertsOut_(p){
+  var me = null; try { me = invAuth_(p); } catch(e){}
+  if (!me || me.role !== "admin") return invOut_({ error: "auth" });
+  return invOut_({ ok: true, at: Utilities.formatDate(new Date(), OPS_TZ, "yyyy/MM/dd HH:mm"), alerts: opsAlerts_("all") });
+}
+function opsTest(){ Logger.log(JSON.stringify({ all: opsAlerts_("all"), order1103: opsOrderAlerts_("2026/11/03", "15:30") })); }
+// ===== 先出し通知 END =====
