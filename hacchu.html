@@ -190,7 +190,9 @@ function simulate(it, daily, from, to, extra){
   (extra||[]).forEach(x=>ev.push(x));
   return ev.sort((a,b)=>a.t-b.t || a.k-b.k);
 }
+function normT(v){ const m = String(v||"").match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*$/); return m ? `${+m[1]}:${m[2]}` : ""; }
 function planItem(it, now){
+  it.time = normT(it.time);
   const daily = it.usage60 !== null && it.usage60 !== undefined ? it.usage60 * MEALS / 60 : null;
   const out = { daily, info:"", sug:null };
   if (it.stockState === "未計測" || it.stock === null){ out.info = "未計測（発注計算から外しています）"; return out; }
