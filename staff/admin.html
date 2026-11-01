@@ -399,10 +399,10 @@ async function noticeSave(id){
 async function noticeArchive(id, restore){ if(!restore && !confirm("このお知らせを取り下げますか？（スタッフには表示されなくなります）")) return; const r = await api("admin.notice_archive", {notice_id:id, restore}); if(!r.ok){ toast(r.error); return; } loadComm(); }
 
 // ───── 今日 ─────
-// 人手が足りない日（今日から7日先まで）。シフトの人数が必要人数（未設定は2人）より少ない日と、ホール・厨房のどちらかがいない日
+// 人手が足りない日（今日から3週間先まで）。シフトの人数が必要人数（未設定は2人）より少ない日と、ホール・厨房のどちらかがいない日
 async function shortDays(call){
   const jst = new Date(Date.now()+9*3600e3), ds = d => d.toISOString().slice(0,10).replace(/-/g,"/");
-  const days = []; for(let i=0;i<=7;i++) days.push(ds(new Date(jst.getTime()+i*86400e3)));
+  const days = []; for(let i=0;i<=21;i++) days.push(ds(new Date(jst.getTime()+i*86400e3)));
   const months = [...new Set(days.map(d=>d.slice(0,7)))];
   const [res, st] = await Promise.all([Promise.all(months.map(m=>call("admin.shifts_month",{month:m}))), call("admin.settings_get")]);
   if (res.some(r=>!r || !r.ok)) return null;
