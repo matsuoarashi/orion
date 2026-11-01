@@ -1,7 +1,7 @@
 // ===== 人手・人件費（STAFF の勤怠・シフト・設定から直接読む）=====
 // 人件費(STAFF) タブ（IMPORTRANGE）は STAFF 側が退勤時に書く日次表なので、あとから承認・修正した勤怠が入らない。
 // 日別人件費は勤怠シートから毎回計算する。人が足りない日は毎日17時にメールで知らせる（stfSetupTrigger を1回実行）
-var STF_NOTIFY_TO = "arashi.matsuo@outta.ooo";
+var STF_NOTIFY_TO = "orion.napolitan@gmail.com";
 function stfSettings_(st){ var o = {}; var sh = st.getSheetByName("設定"); if (!sh || sh.getLastRow() < 2) return o;
   sh.getRange(2,1,sh.getLastRow()-1,2).getValues().forEach(function(r){ o[String(r[0])] = String(r[1]); }); return o; }
 function stfList_(s){ return String(s||"").split(/[,\s]+/).map(function(x){ return x.trim(); }).filter(String); }
@@ -60,9 +60,9 @@ function stfShortDays_(n){
   return out;
 }
 function stfShortNotify(){
-  var list = stfShortDays_(7); if (!list.length) return;
+  var list = stfShortDays_(21); if (!list.length) return;
   var subj = "【洋食オリオン】人が足りない日 " + list.length + "件（" + list.map(function(x){ return x.label; }).join("・") + "）";
-  var body = "今日から7日先までのシフトで、人が足りない日があります。\n\n" + list.map(function(x){ return "・" + x.label + "　" + (x.names.length ? x.names.join("・") : "シフトなし") + "　" + x.why + (x.draft ? "（下書きを含む）" : ""); }).join("\n")
+  var body = "今日から3週間先までのシフトで、人が足りない日があります。\n\n" + list.map(function(x){ return "・" + x.label + "　" + (x.names.length ? x.names.join("・") : "シフトなし") + "　" + x.why + (x.draft ? "（下書きを含む）" : ""); }).join("\n")
     + "\n\nシフトの調整：管理者アプリ → スタッフ → シフト\nhttps://matsuoarashi.github.io/orion/kanri.html#staff\n\n（毎日17時に自動で確認しています。足りない日がなければ送りません）";
   GmailApp.sendEmail(STF_NOTIFY_TO, subj, body, { name: "洋食オリオン" });
 }
