@@ -71,6 +71,8 @@
 
 - 11/1 夜：古い「利益」シート（原価が手入力の旧値）と「経費」シートの見本行（（例）食材 ○○商店・0円）を削除。利益シートを書いていた rebuildProfit も削除（保存のみ・デプロイ v68 のまま）
 
+- v69（11/2 朝）：ORION START v0.1 を取り付け。start.gs を末尾に追加、handleOsGet / handleOsPost に os_start_ の1行ずつ、osMailIngest_ から startIngestMessages_ を呼ぶ。startSetup 実行済み（「ORION START 事務局台帳」を作成、PRJ-0001 神田・PRJ-0002 飯田橋）
+
 ## 6. 原価（COSTS）の根拠（11/1 改定・1皿あたり）
 
 | 材料 | 1皿の量 | 円 | 価格の状態 |
