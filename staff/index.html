@@ -438,6 +438,7 @@ function sheet(html){ $("ov").innerHTML = `<div class="overlay" onclick="if(even
 
 // ───── ログイン ─────
 async function showLogin(msg){
+  try{ closeOv(); }catch(e){}
   $("vLogin").classList.remove("hide"); $("vApp").classList.add("hide");
   showMsg($("loginMsg"), msg||"", "err");
   try{
@@ -514,7 +515,9 @@ function daysSince(s){ const d = ymd(s); if (!d) return null; const [y,m,dd] = d
 async function loadTodoExtra(){
   try{
     const [inv, day] = await Promise.all([osGet("inv_master"), osGet("day_lite")]);
-    TODOX = { last: (inv && inv.lastChecks) || {}, shime: ((day && day.ops && day.ops.shime) || []).slice(-1)[0] || null, at: Date.now() };
+    // どちらかが失敗したら前回の内容を残す（空で上書きして全部「未」に戻さない）
+    if (!inv || inv.error || !inv.lastChecks || !day || day.error || !day.todayKey) return;
+    TODOX = { last: inv.lastChecks, shime: ((day.ops && day.ops.shime) || []).filter(x=>x.date===day.todayKey).slice(-1)[0] || null, at: Date.now() };
     cset("todox", TODOX); renderTodo();
   }catch(e){}
 }
