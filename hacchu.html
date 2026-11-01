@@ -123,7 +123,7 @@ div.sec{font-size:11px;letter-spacing:2px;color:var(--mute);margin:14px 4px 6px}
 <div id="ov"></div>
 <div class="toast" id="toast"></div>
 
-<script src="busy.js"></script>
+<script src="busy.js?v=1101b"></script>
 <script>
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbzFNl4UM3fkoANru-agWmuOox-h3cS1yJmx4UZxpGFemEBnAUv45Gdp1VOvtCqOVUg/exec";
 const STAFF_API = "https://script.google.com/macros/s/AKfycbwgGW6rXzAW2rHVicdoCMdHOT_E3egrXPsaEJerX-_brZr0mYF6Qo_tRorX8PgLc7c/exec";
@@ -439,7 +439,9 @@ function supName(o){ return String(o["業者名"]||o["仕入先"]||o["仕入先�
 const SUP_FIELDS = ["区分","主な品目","発注方法","発注締切","納品曜日","納品時刻","リードタイム","配送/受取","締め・支払","担当・連絡先","代替仕入先","定常","備考"];
 const SUP_HINT = {"発注方法":"例：TOHOオーダーシステム／電話／LINE／Web","発注締切":"例：納品日前日17:00","納品曜日":"例：月水金","納品時刻":"例：14:00","担当・連絡先":"担当者名・電話・メール・URL（改行で複数）","締め・支払":"例：月末締め翌月末払い／都度払い"};
 let SUPS = [];
-function supVal(v){ const s = String(v).trim();
+// シートの時刻だけのセルは「1899/12/30 14:00:00」で届くことがあるので時刻だけにする
+function supPlain(v){ return String(v==null?"":v).trim().replace(/^1899\/12\/30 (\d{1,2}):(\d{2})(?::\d{2})?$/, (_, h, m)=>h.padStart(2,"0")+":"+m); }
+function supVal(v){ const s = supPlain(v);
   if (/^https?:\/\//.test(s)) return `<a href="${esc(s)}" target="_blank" rel="noopener">${esc(s.replace(/^https?:\/\//,"").replace(/\/$/,"").slice(0,40))}</a>`;
   if (/^[\w.+-]+@[\w.-]+\.[a-z]{2,}$/i.test(s)) return `<a href="mailto:${esc(s)}">${esc(s)}</a>`;
   if (/^[0-9０-９()（）+\- ]{9,}$/.test(s)) return `<a href="tel:${esc(s.replace(/[^0-9+]/g,""))}">${esc(s)}</a>`;
@@ -461,7 +463,7 @@ async function supList(){
 }
 function supEdit(i){ const o = i >= 0 ? SUPS[i] : {}; const n = supName(o);
   sheet(`<h3>${n?esc(n)+" を編集":"発注先を追加"}</h3><label>業者名</label><input id="su_name" value="${esc(n)}">
-    ${SUP_FIELDS.map((k,j)=>`<label>${esc(k)}</label>${k==="担当・連絡先"||k==="備考"?`<textarea id="su_${j}" rows="3" placeholder="${esc(SUP_HINT[k]||"")}">${esc(o[k]??"")}</textarea>`:`<input id="su_${j}" value="${esc(o[k]??"")}" placeholder="${esc(SUP_HINT[k]||"")}">`}`).join("")}
+    ${SUP_FIELDS.map((k,j)=>`<label>${esc(k)}</label>${k==="担当・連絡先"||k==="備考"?`<textarea id="su_${j}" rows="3" placeholder="${esc(SUP_HINT[k]||"")}">${esc(o[k]??"")}</textarea>`:`<input id="su_${j}" value="${esc(supPlain(o[k]))}" placeholder="${esc(SUP_HINT[k]||"")}">`}`).join("")}
     <div style="height:12px"></div><button class="btn" onclick="supSave('${esc(n)}')">保存</button><button class="btn sec" style="margin-top:8px" onclick="supList()">やめる</button>`); }
 async function supSave(orig){ const name = $("su_name").value.trim(); if(!name){ toast("業者名を入れてください"); return; }
   const fields = {}; SUP_FIELDS.forEach((k,j)=>{ fields[k] = $("su_"+j).value.trim(); });
