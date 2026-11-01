@@ -1271,6 +1271,7 @@ document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) oPoll(t
 // 画面スリープ防止：レジを開いている間は画面を消さない（充電しながら運用。スリープ中は予約の受信・印刷ができないため）
 let oLock=null; async function oWake(){ try{ if("wakeLock" in navigator && !document.hidden && !oLock){ oLock = await navigator.wakeLock.request("screen"); oLock.addEventListener("release", ()=>{ oLock=null; }); } }catch(e){} }
 oWake(); document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) oWake(); });
+if (location.hash === "#takeout"){ setTimeout(openOrders, 300); history.replaceState(null, "", location.pathname); }
 
 </script>
 </body>
