@@ -597,8 +597,14 @@ async function flushQueue(){
   }
 }
 
+// 「会計完了」の二度押し対策：2回目のタップが閉じた後ろのメニューに当たって次のお客様の注文に入らないよう、0.6秒だけ画面を受け付けない
+let _finishing = false;
+function tapShield(ms){ const d = document.createElement("div"); d.style.cssText = "position:fixed;inset:0;z-index:99999;background:transparent"; ["click","touchstart","pointerdown"].forEach(ev=>d.addEventListener(ev, e=>{ e.preventDefault(); e.stopPropagation(); }, true)); document.body.appendChild(d); setTimeout(()=>d.remove(), ms||600); }
 async function finishSale(){
+  if(_finishing || !items.length) return;
   if(tender < total()) return;
+  _finishing = true; $("doneBtn").disabled = true; tapShield(600);
+  try{
   const saleTotal = total();
   const d = await loadDaily();
   d.count += 1;
@@ -642,6 +648,7 @@ async function finishSale(){
   items = []; tender = 0; payMethod = "cash";
   hidePay(); refresh(); refreshDaily(); refreshVisits();
   oAfterSale();
+  } finally { _finishing = false; }
 }
 
 // ===== 出退勤（この端末に記録。日計と一緒にLINEへ貼る） =====
