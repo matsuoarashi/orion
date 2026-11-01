@@ -56,6 +56,7 @@ nav button .bd{display:inline-block;min-width:16px;padding:0 4px;border-radius:9
 .credo-card .credo{color:#fff;font-size:14px}
 .credo-card .cs{display:block;text-align:center;font-size:10px;letter-spacing:3px;opacity:.75;margin-bottom:6px}
 .motto{display:block;text-align:center;font-size:13px;letter-spacing:1px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.25);opacity:.95}
+.nb{display:inline-block} /* 句のまとまりで改行する */
 .motto-l{text-align:center;color:var(--g);font-size:13px;font-weight:bold;letter-spacing:1px;margin:8px 0 0}
 .tip{border-left:4px solid var(--g)}
 .ntc{border-left:4px solid var(--line)} .ntc.unread{border-left-color:var(--amber);background:#fffdf5} .ntc.imp.unread{border-left-color:var(--red)}
@@ -161,7 +162,7 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
 .summary b{display:block;font-size:20px;line-height:1.2}
 .summary span{font-size:11px;color:var(--mute)}
 .tools{display:flex;gap:8px;margin-top:8px}
-.tools button{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 4px;font-size:13px;min-height:44px}
+.tools button{flex:1;white-space:nowrap;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 4px;font-size:13px;min-height:44px}
 .askin{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px;font-size:17px;font-family:inherit;background:#fff;margin-bottom:10px;resize:none}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px} .chips button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font-size:13px;color:var(--ink)}
 .ans{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px} .ans .q{font-size:13px;color:var(--mute);margin-bottom:6px} .ans .a{font-size:17px;line-height:1.7;white-space:pre-wrap}
@@ -215,7 +216,7 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
   <div id="vLogin" class="login">
     <h1>ORION STAFF</h1>
     <div class="store" id="loginStore">洋食オリオン</div>
-    <div class="credo"><span>古いけれど、清潔。</span><span>下町だけれど、丁寧。</span><span>親しみやすいけれど、雑ではない。</span></div><div class="motto-l">愛嬌よく、明るく。お店もお客様も、朗らかに。</div>
+    <div class="credo"><span>古いけれど、清潔。</span><span>下町だけれど、丁寧。</span><span>親しみやすいけれど、雑ではない。</span></div><div class="motto-l"><span class="nb">愛嬌よく、明るく。</span><span class="nb">お店もお客様も、朗らかに。</span></div>
     <div id="loginMsg"></div>
     <div class="mini" style="margin-bottom:6px">名前を選んでください</div>
     <div class="sel" id="staffSel"></div>
@@ -237,7 +238,7 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
 
       <!-- ホーム -->
       <section id="pHome">
-        <div class="credo-card"><span class="cs">オリオンの約束</span><div class="credo"><span>古いけれど、清潔。</span><span>下町だけれど、丁寧。</span><span>親しみやすいけれど、雑ではない。</span></div><span class="motto">愛嬌よく、明るく。お店もお客様も、朗らかに。</span></div>
+        <div class="credo-card"><span class="cs">オリオンの約束</span><div class="credo"><span>古いけれど、清潔。</span><span>下町だけれど、丁寧。</span><span>親しみやすいけれど、雑ではない。</span></div><span class="motto"><span class="nb">愛嬌よく、明るく。</span><span class="nb">お店もお客様も、朗らかに。</span></span></div>
         <div class="card">
           <h2>本日 <small id="hToday"></small></h2>
           <div class="big" id="hShift">-</div>
@@ -287,7 +288,7 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
             </div>
             <div class="cal" id="wishCal"></div>
             <div class="legend"><span class="ok">出られる</span><span class="time">時間指定</span><span class="off">休み希望</span><span class="closed">定休日</span><span>白＝出られない</span></div>
-            <div class="tools"><button onclick="selectAllOpen()">営業日をぜんぶ○にする</button><button onclick="clearAll()">すべて消す</button></div>
+            <div class="tools"><button onclick="selectAllOpen()">営業日を全部○</button><button onclick="clearAll()">すべて消す</button></div>
           </div>
         </div>
         <div id="wishFoot">
@@ -652,7 +653,7 @@ function moodBlock(){
   MOOD = {why:{customer:[], staff:[], ops:[]}, next:""};
   return `<div class="hyg mood" id="moodBox">
     <div class="hh"><span>今日のふりかえり <span class="cnt" id="moodCnt">0/4</span></span><span class="mini" style="letter-spacing:0">運営だけが見ます</span></div>
-    <div class="motto-l" style="margin:0 0 8px">愛嬌よく、明るく。お店もお客様も、朗らかに。</div>
+    <div class="motto-l" style="margin:0 0 8px"><span class="nb">愛嬌よく、明るく。</span><span class="nb">お店もお客様も、朗らかに。</span></div>
     ${FQ.map(q=>`<div class="mq"><div class="t">${q.t}</div><div class="mo" id="mo_${q.k}">${q.o.map(o=>`<button onclick="moodPick('${q.k}',${o.v},this)"><i>${o.i}</i>${o.l}</button>`).join("")}</div>
       <div id="why_${q.k}" class="hide" style="margin-top:6px"><div class="mini">どこが近い？（任意・いくつでも）</div><div class="chips whyc">${q.why.map(w=>`<button class="chip" style="text-align:left" onclick="whyPick('${q.k}',this)">${w}</button>`).join("")}</div></div></div>`).join("")}
     <div class="mq"><div class="t">次のシフトで一つ変えるとしたら？</div><div class="chips c3" id="nextChips">${Q4.map(n=>`<button class="chip" onclick="nextPick('${n}',this)">${n}</button>`).join("")}</div>
@@ -742,7 +743,7 @@ function openGuide(){
     <h4>5｜お客様との会話</h4>
     <ul><li>自然な会話や笑顔は大歓迎です</li><li>常連のお客様でも、基本的な丁寧語は崩しすぎない</li><li>お客様の話をさえぎらず、まず聞く</li><li>お客様をいじる、強く否定する、上から目線になる言い方は避ける</li><li>会話を切り上げる時も「ありがとうございます、少々お待ちください」など感じよく</li></ul>
     <h4>6｜朗らかなお店をつくる（厨房とホールの連携）</h4>
-    <p><b>愛嬌よく、明るく。お店もお客様も、朗らかに。</b>これがオリオンの目指す空気です。9席のオープンキッチンでは、厨房とホールのやりとりもお客様に全部見えています。スタッフ同士が気持ちよく声を掛け合っていると、それだけでお店は明るく見えます。</p>
+    <p><b><span class="nb">愛嬌よく、明るく。</span><span class="nb">お店もお客様も、朗らかに。</span></b>これがオリオンの目指す空気です。9席のオープンキッチンでは、厨房とホールのやりとりもお客様に全部見えています。スタッフ同士が気持ちよく声を掛け合っていると、それだけでお店は明るく見えます。</p>
     <table><tr><th>こんな時</th><th>こう言う</th></tr><tr><td>呼ばれた</td><td>「はい！」</td></tr><tr><td>何かを頼む</td><td>「○○お願いします」</td></tr><tr><td>頼まれた</td><td>「はい、○○ですね」（復唱）</td></tr><tr><td>助けてもらった</td><td>「ありがとうございます」「助かります」</td></tr><tr><td>料理が出る</td><td>「○○あがります、お願いします」</td></tr></table>
     <ul><li>呼ばれたら、厨房もホールもまず「はい」と返事をする</li><li>頼む時は「お願いします」、受けたら復唱。これだけで伝え漏れがなくなる</li><li>忙しい時ほど、明るく短く。笑顔と声のトーンは、お客様にも伝わる</li><li>「ありがとう」「助かります」は1日に何度言ってもいい</li></ul>
     <h4>7｜厨房での立ち振る舞い</h4>
