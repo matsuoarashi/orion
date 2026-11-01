@@ -60,6 +60,9 @@
 - v62：未回答の質問を決まりを作らずに閉じる `os_q_close`、os_home に承認待ちの決まり `pendingKnow` を追加（facts.gs）
 - v63：`day_lite` に PayPay 取引メールの今日の合計（ppMail）と `date=yyyy/MM/dd`（過去日の確認用）を追加。商品原価（COSTS）を最新の仕入価格で改定
 
+- v65：staffing.gs を ORION OS END の下に追加。日別人件費は STAFF の勤怠シートから直接計算（人件費(STAFF) タブ＝IMPORTRANGE は退勤時に書かれた日次表で、あとから承認・修正した勤怠が入らないため）。doGet の pnl.laborDaily を上書き
+- v66：rebuildPnl（月次損益）と開業費の研修費も stfLaborRows_ で勤怠から計算。人が足りない日のメール通知 stfShortNotify（毎日17時のトリガー、stfSetupTrigger で設定済み、送り先 STF_NOTIFY_TO）
+
 ## 6. 原価（COSTS）の根拠（11/1 改定・1皿あたり）
 
 | 材料 | 1皿の量 | 円 | 価格の状態 |
