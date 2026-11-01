@@ -1134,9 +1134,9 @@ function renderAll(){
   renderAlerts(); renderDay(); renderWeek(); renderItems(); renderPnl(); renderPeople();
 }
 
-let _loading = false;
+let _loading = false, _again = false; // 読み込み中に頼まれた読み直しは、終わってからもう一度行う
 async function load(keep){
-  if(_loading) return; _loading = true;
+  if(_loading){ _again = true; return; } _loading = true;
   try{
     $("err").style.display = "none";
     // 前回の内容を先に出す（初回のみ）。通信は20秒で打ち切り、失敗したら自動でもう1回
@@ -1152,7 +1152,7 @@ async function load(keep){
     if(!keep){ $("err").style.display = "block";
       $("err").innerHTML = (DATA ? "前回の内容を表示しています。更新できませんでした（Google側の応答待ちか通信エラー）。" : "データを取得できませんでした。通信状態を確認してください。") + ' <button onclick="load()">もう一度読み込む</button>'; }
     console.error(e);
-  }finally{ _loading = false; }
+  }finally{ _loading = false; if(_again){ _again = false; setTimeout(()=>load(true), 300); } }
 }
 
 try{ if(/embed=1/.test(location.search)) setTab("shime"); else { const t = localStorage.getItem("dash-tab"); if(t && $("tab-"+t)) setTab(t); } }catch(e){}
