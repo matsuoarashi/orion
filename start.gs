@@ -461,7 +461,7 @@ function startExtract(body, subject){
 }
 // orion.napolitan@gmail.com の収集スクリプト（collector.gs）経由の取り込み。mail.gs の osMailIngest_ から呼ぶ
 //  orion 側の Gmail フィルタ: 下の差出人ドメイン → ラベル「ORION/物件」・迷惑メールにしない・カテゴリ「メイン」（収集はプロモーションを除外するため）
-var START_MAIL_DOMAINS = ["inshokuten.com","i-tenpo.com","abc-tenpo.com","bukenavi.jp","homes.co.jp","lifull.com","lifull.jp","athome.co.jp","athome.jp"];
+var START_MAIL_DOMAINS = ["inshokuten.com","synchro-food.co.jp","i-tenpo.com","abc-tenpo.com","bukenavi.jp","homes.co.jp","lifull.com","lifull.jp","athome.co.jp","athome.jp"];
 function startIsPropertyMail_(from){ var f = String(from||"").toLowerCase(); return START_MAIL_DOMAINS.some(function(d){ return f.indexOf("@" + d) >= 0 || f.indexOf("." + d) >= 0; }); }
 function startIngestMessages_(msgs, mailbox){
   if (!PropertiesService.getScriptProperties().getProperty(START_PROP)) return 0; // START 未設定なら何もしない
