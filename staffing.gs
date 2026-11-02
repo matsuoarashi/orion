@@ -120,9 +120,9 @@ function opsOrderAlerts_(tk, hm){
   Object.keys(bySup).forEach(function(k){ var g = bySup[k];
     out.push({ key: "order", level: "high", title: g.sup + "：今日 " + g.cut + " 締切（" + opsLabel_(g.D1) + "納品）の未発注 " + g.items.length + "品目", detail: g.items.join("\n"), app: "hacchu" }); });
   // 締切の日に今日の在庫が数えられていない
-  try { var lc = invLastChecks_()["シェフ"]; var counted = lc && String(lc.date||lc.at||"").slice(0,10).replace(/-/g,"/") === today;
-    if (!counted && isOpen(today) && items.some(function(it){ return /前日/.test(String(it.cutoff||"")) && String(it.days||"").indexOf(OPS_YO[opsDow_(opsAdd_(today,1))]) >= 0; }))
-      out.push({ key: "order", level: "high", title: "今日の在庫（厨房）がまだ数えられていません", detail: "明日納品の発注締切が今日です。数えないと発注の判断がずれます", app: "hacchu" }); } catch(e){}
+  try { var lc = invLastChecks_()["シェフ"]; var lcd = lc ? String(lc.date||lc.at||"").slice(0,10).replace(/-/g,"/") : ""; var counted = !!lcd && lcd > opsAdd_(today, -14);   // 棚卸しは2週に1回（在庫は売上と仕込みから計算）
+    if (!counted && isOpen(today))
+      out.push({ key: "order", level: "mid", title: "厨房の棚卸し（2週に1回）の時期です", detail: "前回 " + (lcd || "なし") + "。売上から計算している在庫と実際のずれを直すため、全品目を数えてください", app: "hacchu" }); } catch(e){}
   return out;
 }
 

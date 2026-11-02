@@ -176,8 +176,9 @@ async function doLogin(){
 const FROM_STAFF = /[?&]from=staff/.test(location.search);
 function enterApp(h){ $("vBoot").classList.add("hide"); $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); applyHome(h);
   const hk = (location.hash||"").slice(1);
-  if (hk==="chef"){ OWNER="シェフ"; go("stock"); } else if (hk==="hall"){ OWNER="ホール"; go("stock"); } else if (hk==="report"){ go("report"); } else { go("home"); if (hk==="recv") setTimeout(()=>{ const c = document.querySelectorAll("#pHome .card")[2]; if (c) c.scrollIntoView({behavior:"smooth"}); }, 200); } loadPrices().then(()=>{ if(PAGE==="master") renderMaster(); }); }
-const TITLES = {home:"発 注", stock:"在庫を数える", order:"発 注", report:"不足・破損の報告", master:"品目と価格"};
+  loadPreps();
+  if (hk==="chef"){ OWNER="シェフ"; go("home"); setTimeout(()=>{ const c = $("prepCard"); if (c) c.scrollIntoView({behavior:"smooth"}); }, 200); } else if (hk==="hall"){ OWNER="ホール"; go("stock"); } else if (hk==="report"){ go("report"); } else { go("home"); if (hk==="recv") setTimeout(()=>{ const c = document.querySelectorAll("#pHome .card")[2]; if (c) c.scrollIntoView({behavior:"smooth"}); }, 200); } loadPrices().then(()=>{ if(PAGE==="master") renderMaster(); }); }
+const TITLES = {home:"発 注", stock:"棚卸し（在庫を数える）", order:"発 注", report:"不足・破損の報告", master:"品目と価格"};
 function go(p){ if(p==="order") p="home"; PAGE = p; ["home","stock","order","report","master"].forEach(x=>{ $("p"+x[0].toUpperCase()+x.slice(1)).classList.toggle("hide", x!==p); }); showMsg(""); closeOv();
   $("hTitle").textContent = TITLES[p]||"発 注"; $("hBack").classList.toggle("hide", p==="home" && !FROM_STAFF); $("hBack").textContent = (FROM_STAFF && (p==="home" || /chef|hall|report/.test(location.hash))) ? "‹ 勤怠" : "‹ 戻る";
   if(p==="home") renderHome(); if(p==="stock") renderStock(); if(p==="report") renderReport(); if(p==="master"){ renderMaster(); if(!PRICES.length) loadPrices().then(renderMaster); } $("main").scrollTo(0,0); }
@@ -227,7 +228,9 @@ function baseMeals(d){
 }
 // 分析の売上データが1時間以内なら取り直さない（分析と同じ重い読み込みを増やさないため）
 (function(){ try{ const c = JSON.parse(localStorage.getItem("dash-data")||"null"); const u = c && pDate(c.updated); if (u && Date.now() - u.getTime() < 3600000) return; }catch(e){} refreshDaily(); })();
-function mealsOn(d){ return baseMeals(d).v + (Number(EXTRA[dayKey(d)])||0); }
+// 過ぎた日（今日は営業終了後）は実際の食数で減らす。毎日数えなくても在庫が合うように
+function actualMeals(d){ const k = dayKey(d), now = new Date(); if (!DAILY) return null; if (k > dayKey(now) || (k === dayKey(now) && now < atTime(d, CLOSE))) return null; const x = DAILY.find(z=>z.date===k); return x ? x.meals : null; }
+function mealsOn(d){ const a = actualMeals(d); if (a !== null) return a; return baseMeals(d).v + (Number(EXTRA[dayKey(d)])||0); }
 function setExtra(key, n){ if (n) EXTRA[key] = n; else delete EXTRA[key]; Object.keys(EXTRA).forEach(k=>{ if (k < dayKey(new Date())) delete EXTRA[k]; }); try{ localStorage.setItem("inv-extra", JSON.stringify(EXTRA)); }catch(e){} closeOv(); applyHome(HOME); go(PAGE); }
 function editExtra(key){ const d = pDate(key), b = baseMeals(d), x = Number(EXTRA[key])||0;
   sheet(`<h3>${md(d)} の見込み</h3><div class="mini" style="margin-bottom:10px">いつもは約 <b>${b.v}食</b>（${esc(b.src)}）。イベント・貸切・天気などで増減がわかっているときだけ足してください。</div>
@@ -328,23 +331,53 @@ function buildPlan(){
 }
 
 
+
+// ───── 仕込み（毎日入れるのは仕込んだ数だけ。残り＝仕込み−売れた分。食材の在庫は売上から計算し、棚卸しは2週に1回）─────
+const STOCKTAKE_DAYS = 14;
+const PREP_DEF = [
+  { key:"noodle", name:"麺の小分け", unit:"個", note:"ハーフ1個分（乾麺 約94g）。フルは2個", per:(name)=>/ハーフ/.test(name) ? 1 : 2 },
+  { key:"sauce",  name:"ナポリタンソース", unit:"人前", note:"フル1人前・ハーフ0.5人前", per:(name)=>/ハーフ/.test(name) ? 0.5 : 1 }
+];
+let PREPS = null;
+async function loadPreps(){ const r = await get("prep_get"); if (r && r.ok){ PREPS = r.preps||[]; if (PAGE==="home") renderHome(); } }
+// その日に売れた分（麺はハーフ個、ソースは人前）。オリオン・ナシナシ（持ち帰り含む）
+function soldOn(key, date){ const def = PREP_DEF.find(x=>x.key===key), x = DAILY && DAILY.find(z=>z.date===date); if (!x) return null;
+  return Object.entries(x.items||{}).reduce((a,[n,c])=> a + (/オリオン|ナシナシ/.test(n) ? def.per(n)*c : 0), 0); }
+function prepOn(key, date){ const r = (PREPS||[]).find(p=>p.key===key && p.date===date); return r ? r.qty : null; }
+// 残り：最初に仕込みを入れた日から、毎日「前の残り＋仕込み−売れた分」（マイナスは0）
+function prepLeft(key, upto){ const ds = (PREPS||[]).filter(p=>p.key===key).map(p=>p.date).sort(); if (!ds.length) return null;
+  let left = 0; for (let k = ds[0]; k <= upto; k = dayKey(addD(pDate(k),1))){ const q = prepOn(key,k)||0, sold = soldOn(key,k)||0; left = Math.max(0, left + q - sold); } return left; }
+function perMeal(key){ if (!DAILY) return key==="noodle" ? 1.6 : 0.8; const r = DAILY.filter(x=>x.meals>0).slice(-10); const m = r.reduce((a,x)=>a+x.meals,0), u = r.reduce((a,x)=>a+(soldOn(key,x.date)||0),0); return m ? u/m : 1; }
+function prepCard(){
+  const today = dayKey(new Date()), y = dayKey(addD(new Date(),-1)), open = isOpen(new Date()), exp = Math.round(mealsOn(new Date()));
+  const rows = PREP_DEF.map(def=>{ const left = prepLeft(def.key, y), need = Math.ceil(exp*perMeal(def.key)), sug = Math.max(0, Math.ceil(need - (left||0))), q = prepOn(def.key, today), sold = soldOn(def.key, today);
+    return `<div class="row"><span class="l">${esc(def.name)}<small>${left===null?"昨日の残り —（最初の入力から計算します）":`昨日の残り ${Math.round(left*10)/10}${def.unit}`}・今日の見込み${exp}食で 約${need}${def.unit}${open?` → <b>仕込み 約${sug}${def.unit}</b>`:""}${q!==null&&sold!==null&&new Date()>=atTime(new Date(),CLOSE)?`<br>今日：仕込み ${q}・売れた ${Math.round(sold*10)/10} → 残り ${Math.round(Math.max(0,(left||0)+q-sold)*10)/10}${def.unit}`:""}</small></span>
+      <span style="display:flex;align-items:center;gap:4px"><input class="qty" type="number" inputmode="decimal" id="pp_${def.key}" value="${q===null?"":q}" placeholder="${open?sug:""}"><span class="mini">${esc(def.unit)}</span></span></div>`; }).join("");
+  return `<div class="mini" style="margin:2px 0 6px"><b>今日の仕込み</b>（仕込んだ数だけ入れる。食材の在庫は売上と仕込みから計算するので毎日は数えません）</div>${rows}
+    <button class="btn" style="margin-top:8px" onclick="savePrep()">仕込み数を記録</button>`;
+}
+async function savePrep(){ const items = {}; PREP_DEF.forEach(def=>{ const v = $("pp_"+def.key).value.trim(); items[def.key] = v===""? "" : Number(v); });
+  const r = await post("prep_save", { date: dayKey(new Date()), items }); if (r.error){ showMsg(r.error); return; } toast("仕込み数を記録しました"); loadPreps(); }
 // ───── ホーム：今日やること ─────
 function dueItems(owner){
-  return MASTER.filter(it=>it.owner===owner).filter(it=>{ const ago = daysAgo(it.stockAt); if(it.freq==="毎日") return ago===null || ago>=1; if(it.freq==="週次") return ago===null || ago>=7; return false; });
+  return MASTER.filter(it=>it.owner===owner).filter(it=>{ const ago = daysAgo(it.stockAt); if(it.freq==="毎日") return ago===null || ago>=STOCKTAKE_DAYS; if(it.freq==="週次") return ago===null || ago>=7; return false; });
 }
 function renderHome(){
   const h = HOME; const chefDue = dueItems("シェフ"), hallDue = dueItems("ホール"); const lc = h.lastChecks||{};
   const sug = h.suggest||[], rep = h.reports||[], open = (h.orders||[]).filter(o=>o.status==="発注済"), cand = (h.orders||[]).filter(o=>o.status==="候補");
   const bySup = {}; sug.forEach(s=>{ const k = s.supplier||"（仕入先未設定）"; (bySup[k]=bySup[k]||[]).push(s); });
   const openBySup = {}; open.forEach(o=>{ const k = o.supplier||"（仕入先未設定）"; (openBySup[k]=openBySup[k]||[]).push(o); });
-  const n1 = chefDue.length + hallDue.length, n2 = sug.length + cand.length, n3 = open.length;
+  const prepTodo = isOpen(new Date()) && PREPS && PREP_DEF.some(d=>prepOn(d.key, dayKey(new Date()))===null) ? 1 : 0;
+  const n1 = chefDue.length + hallDue.length + prepTodo, n2 = sug.length + cand.length, n3 = open.length;
+  const nextTake = lc["シェフ"] && lc["シェフ"].date ? fmtD(dayKey(addD(pDate(String(lc["シェフ"].date).replace(/-/g,"/")) || new Date(), STOCKTAKE_DAYS))) : "—";
   const stepHead = (no, title, n, doneMsg) => `<div class="stp"><span class="no ${n?"on":"ok"}">${n?no:"✓"}</span><b>${title}</b><span class="cnt">${n?n+"件":doneMsg}</span></div>`;
   $("pHome").innerHTML = `
-    <div class="flowbar"><span class="${n1?"on":""}">① 数える ${n1||"✓"}</span><i>›</i><span class="${n2?"on":""}">② 発注 ${n2||"✓"}</span><i>›</i><span class="${n3?"on":""}">③ 届く ${n3||"✓"}</span></div>
+    <div class="flowbar"><span class="${n1?"on":""}">① 仕込み・在庫 ${n1||"✓"}</span><i>›</i><span class="${n2?"on":""}">② 発注 ${n2||"✓"}</span><i>›</i><span class="${n3?"on":""}">③ 届く ${n3||"✓"}</span></div>
 
-    <div class="card">${stepHead("①","在庫を数える", n1, "今日の分は済み")}
-      <div class="mini" style="margin:2px 0 10px">数えると、足りない物が下の「② 発注する」に自動で出ます</div>
-      <button class="todo ${chefDue.length?"urgent":""}" onclick="OWNER='シェフ';go('stock')"><span class="ic">🍳</span><span class="tt"><b>食材（厨房・毎日）</b><small>${chefDue.length?chefDue.length+"品目 未入力":"入力済み"}・前回 ${lc["シェフ"]?fmtD(lc["シェフ"].date)+" "+esc(lc["シェフ"].by):"—"}</small></span><span class="ar">›</span></button>
+    <div class="card" id="prepCard">${stepHead("①","仕込みと在庫", n1, "今日の分は済み")}
+      ${prepCard()}
+      <div class="mini" style="margin:12px 0 6px">在庫は売上と仕込みから計算しています。ずれを直すため、食材は2週に1回だけ全部数えます（棚卸し）</div>
+      <button class="todo ${chefDue.length?"urgent":""}" onclick="OWNER='シェフ';go('stock')"><span class="ic">🍳</span><span class="tt"><b>食材の棚卸し（厨房・2週に1回）</b><small>${chefDue.length?chefDue.length+"品目 数える時期です":"次は "+nextTake+" ごろ"}・前回 ${lc["シェフ"]?fmtD(lc["シェフ"].date)+" "+esc(lc["シェフ"].by):"—"}</small></span><span class="ar">›</span></button>
       <button class="todo ${hallDue.length?"urgent":""}" onclick="OWNER='ホール';go('stock')"><span class="ic">🥤</span><span class="tt"><b>備品・飲料（ホール・週1）</b><small>${hallDue.length?hallDue.length+"品目 未入力":"入力済み"}・前回 ${lc["ホール"]?fmtD(lc["ホール"].date)+" "+esc(lc["ホール"].by):"—"}</small></span><span class="ar">›</span></button>
     </div>
 
@@ -387,7 +420,7 @@ function renderStock(){
     <div class="seg"><button class="${isChef?"on":""}" onclick="OWNER='シェフ';renderStock()">食材（厨房）</button><button class="${!isChef?"on":""}" onclick="OWNER='ホール';renderStock()">備品・飲料（ホール）</button></div>
     <div class="mini" style="margin:0 4px 8px">${isChef?"残っている量を入れてください。± で直すか、数字をタップして入力。":"週1回、3択でタップ。「少」「無」は発注候補・買い出しリストに載ります。"}</div>
     ${Object.keys(groups).map(cat=>`<div class="sec">${esc(cat)}</div><div class="card">${groups[cat].map(it=>{
-      const due = (it.freq==="毎日" && (daysAgo(it.stockAt)===null||daysAgo(it.stockAt)>=1)) || (it.freq==="週次" && (daysAgo(it.stockAt)===null||daysAgo(it.stockAt)>=7));
+      const due = (it.freq==="毎日" && (daysAgo(it.stockAt)===null||daysAgo(it.stockAt)>=STOCKTAKE_DAYS)) || (it.freq==="週次" && (daysAgo(it.stockAt)===null||daysAgo(it.stockAt)>=7));
       if(isChef){ // 数量入力（厨房の食材）。ホールは数えず「十分・少・無」の3択（サーバー側で目安の在庫数に換算）
         return `<div class="row"><span class="l">${esc(it.name)} ${due?"":"<span class='pill'>入力済</span>"}<small>${esc(it.freq)}${it.stockAt?"・前回 "+fmtD(it.stockAt):""}${PLAN[it.id]&&PLAN[it.id].info?`<br><span style="color:${PLAN[it.id].short?"var(--red)":"var(--mute)"}">${esc(PLAN[it.id].info)}</span>`:(it.min!==null?"・最低 "+it.min+esc(it.unit):"")}${it.perPack&&it.baseUnit&&it.baseUnit!==it.unit?`<br>1${esc(it.unit)}＝${it.perPack.toLocaleString()}${esc(it.baseUnit)}`:""}</small></span>
           <span class="step"><button onclick="stAdd('${it.id}',-1)">−</button><span class="v ${STK[it.id]?"chg":""}" id="v_${it.id}" onclick="stEdit('${it.id}')" style="cursor:pointer">${STK[it.id]&&STK[it.id].qty!==undefined?STK[it.id].qty:(it.stock===null?"—":it.stock)}<small>${esc(it.unit)}</small></span><button onclick="stAdd('${it.id}',1)">＋</button></span></div>`;
