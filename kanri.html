@@ -16,16 +16,17 @@ html,body{height:100%;overflow:hidden}
 body{font-family:-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:var(--cream);color:var(--ink);font-size:16px}
 .hide{display:none!important}
 .app{display:flex;flex-direction:column;height:100%}
-header{background:var(--g-d);color:#fff;padding:calc(6px + var(--sat)) 10px 0;flex:none}
+header{background:var(--g-d);color:#fff;padding:calc(6px + var(--sat)) 10px 4px;flex:none}
 .top{display:flex;align-items:center;gap:8px;padding:2px 2px 6px}
 .top .t{font-size:11px;letter-spacing:3px;opacity:.8}
 .top .n{font-size:14px;font-weight:bold;flex:1}
 .top button{background:rgba(255,255,255,.14);border:0;color:#fff;border-radius:8px;padding:6px 10px;font-size:12px}
-nav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
-nav::-webkit-scrollbar{display:none}
-nav button{flex:1 0 auto;border:0;background:none;color:rgba(255,255,255,.7);padding:9px 12px 10px;font-size:14px;font-weight:bold;border-bottom:3px solid transparent;white-space:nowrap}
-nav button.on{color:#fff;border-bottom-color:#e8c26a}
-nav .bd{display:inline-block;min-width:16px;padding:0 4px;border-radius:999px;background:var(--red);color:#fff;font-size:10px;line-height:16px;margin-left:4px;vertical-align:1px}
+/* 下のタブ（スタッフアプリ・経費と同じ形）。ホームバーにかからないよう下に余白 */
+nav{flex:none;display:flex;background:#fff;border-top:1px solid var(--line);padding-bottom:max(var(--sab), 6px)}
+nav button{flex:1;border:0;background:none;padding:7px 1px 5px;font-size:11px;color:var(--mute);min-height:54px;white-space:nowrap;position:relative}
+nav button i{display:block;font-style:normal;font-size:19px;line-height:1.2;margin-bottom:1px}
+nav button.on{color:var(--g);font-weight:bold}
+nav .bd{position:absolute;top:3px;right:calc(50% - 22px);min-width:16px;padding:0 4px;border-radius:999px;background:var(--red);color:#fff;font-size:10px;line-height:16px}
 #frames{flex:1;position:relative;background:var(--cream)}
 #frames iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--cream)}
 .login{max-width:400px;margin:0 auto;padding:calc(40px + var(--sat)) 20px 20px}
@@ -52,10 +53,10 @@ select,input{width:100%;padding:12px;border:1px solid var(--line);border-radius:
 
 <div id="vApp" class="app hide">
   <header>
-    <div class="top"><div><div class="t">管理者</div></div><div class="n" id="who">-</div><button onclick="reloadCur()">更新</button><button onclick="logout()">ログアウト</button></div>
-    <nav id="nav"></nav>
+    <div class="top"><div><div class="t">管理者</div></div><div class="n" id="who">-</div><button onclick="reloadCur()">更新</button><button onclick="location.href='staff/'">勤怠</button><button onclick="logout()">ログアウト</button></div>
   </header>
   <div id="frames"></div>
+  <nav id="nav"></nav>
 </div>
 
 <script src="busy.js?v=1101b"></script>
@@ -63,14 +64,14 @@ select,input{width:100%;padding:12px;border:1px solid var(--line);border-radius:
 // 管理者アプリ：1 つの入口。中身は既存の画面を順に移していく（段階統合の第1段）
 const STAFF_API = "https://script.google.com/macros/s/AKfycbwgGW6rXzAW2rHVicdoCMdHOT_E3egrXPsaEJerX-_brZr0mYF6Qo_tRorX8PgLc7c/exec";
 // 中の画面を更新したら V を変える（スマホに残った古い画面を読み直させるため）
-const V = "1102h";
+const V = "1102i";
 const SECTIONS = [
-  { id:"shime", label:"分析", src:"dashboard.html?embed=1&v="+V },
-  { id:"hacchu", label:"発注", src:"hacchu.html?embed=1&v="+V },
-  { id:"keihi", label:"経費", src:"keihi.html?embed=1&v="+V },
-  { id:"staff", label:"スタッフ", src:"staff/admin.html?embed=1&v="+V },
-  { id:"recruit", label:"採用", src:"recruit.html?embed=1&v="+V },
-  { id:"start", label:"出店", src:"start.html?embed=1&v="+V },
+  { id:"shime", label:"分析", ic:"▤", src:"dashboard.html?embed=1&v="+V },
+  { id:"hacchu", label:"発注", ic:"▣", src:"hacchu.html?embed=1&v="+V },
+  { id:"keihi", label:"経費", ic:"¥", src:"keihi.html?embed=1&v="+V },
+  { id:"staff", label:"スタッフ", ic:"☺", src:"staff/admin.html?embed=1&v="+V },
+  { id:"recruit", label:"採用", ic:"✚", src:"recruit.html?embed=1&v="+V },
+  { id:"start", label:"出店", ic:"⚑", src:"start.html?embed=1&v="+V },
 ];
 const $ = id => document.getElementById(id);
 const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -118,7 +119,7 @@ function enter(tok, me){
   // 中の画面は同じ場所のログイン情報を読むので、両方の鍵に入れておく
   ls("os-token", tok); ls("os-admin-token", tok); try{ ls("kanri-me", JSON.stringify({name:me.name, role:me.role, staff_id:me.staff_id})); }catch(e){}
   $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); $("who").textContent = me.name + "（管理者）";
-  $("nav").innerHTML = SECTIONS.map(s=>`<button id="nb_${s.id}" onclick="show('${s.id}')">${esc(s.label)}</button>`).join("");
+  $("nav").innerHTML = SECTIONS.map(s=>`<button id="nb_${s.id}" onclick="show('${s.id}')"><i>${s.ic||"•"}</i>${esc(s.label)}</button>`).join("");
   const first = (location.hash||"").slice(1); show(SECTIONS.some(s=>s.id===first) ? first : (ls("kanri-tab")||"shime"));
 }
 // 画面は開いたときに初めて読み込み、以後は切り替えても保持（行き来しても入力が消えない）
@@ -130,7 +131,7 @@ function show(id){
 // 中の画面の見出し・ログイン表示は管理者アプリと重なるので隠す。中から別の画面を開くときは管理者アプリのタブで開く
 const HIDE_CSS = {
   shime: ".app > header{display:none!important}",
-  keihi: "header{display:none!important}",
+  keihi: "header{display:none!important} nav{order:-1;border-top:0!important;border-bottom:1px solid #d9d1bd;padding-bottom:0!important}",   // 経費の切り替えは上に（下は管理者アプリのタブ）
   staff: "header{display:none!important} .tabs{top:0!important}",
   hacchu: "",
   recruit: "",
