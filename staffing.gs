@@ -10,13 +10,16 @@ function stfLaborRows_(lsh){ try { var ld = stfLaborDaily_(); return Object.keys
 function stfLaborDaily_(){
   var st = SpreadsheetApp.openById(INV_STAFF_SS); var set = stfSettings_(st);
   var defW = Number(set.default_wage)||0, otMin = Number(set.overtime_daily_min)||480, otRate = Number(set.overtime_rate)||1.25;
-  var wage = {}; invRows_(st.getSheetByName("スタッフ")).forEach(function(r){ wage[r.staff_id] = Number(r["時給"]) || defW; });
+  // 時給0＝管理者のサポート：人件費・人数・時間に入れない（出勤の時間帯だけ spans に「サポート」として残す）。空欄は既定の時給
+  var wage = {}; invRows_(st.getSheetByName("スタッフ")).forEach(function(r){ var w = String(r["時給"] == null ? "" : r["時給"]).trim(); wage[r.staff_id] = w === "" ? defW : (Number(w)||0); });
   var out = {};
   invRows_(st.getSheetByName("勤怠")).forEach(function(r){
     if (String(r["状態"]) !== "done") return; var d = dateKey_(r["日付"]); if (!d) return;
-    var min = Number(r["実労働分"])||0, w = wage[r.staff_id] || defW;
+    var min = Number(r["実労働分"])||0, w = (r.staff_id in wage) ? wage[r.staff_id] : defW;
+    var o = out[d] = out[d] || {staff:0, minutes:0, cost:0, spans:[]};
+    o.spans.push([opsHM_(r["出勤"]), opsHM_(r["退勤"]), w > 0 ? 1 : 0]);   // 時間帯ごとの人数用（出勤・退勤・有給=1／サポート=0）
+    if (!(w > 0)) return;
     var pay = Math.min(min, otMin)/60*w + Math.max(0, min-otMin)/60*w*otRate;
-    var o = out[d] = out[d] || {staff:0, minutes:0, cost:0};
     o.staff++; o.minutes += min; o.cost += Math.round(pay) + (Number(r["交通費"])||0);
   });
   return out;
