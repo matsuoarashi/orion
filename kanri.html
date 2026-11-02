@@ -68,7 +68,7 @@ select,input{width:100%;padding:12px;border:1px solid var(--line);border-radius:
 // 管理者アプリ：1 つの入口。中身は既存の画面を順に移していく（段階統合の第1段）
 const STAFF_API = "https://script.google.com/macros/s/AKfycbwgGW6rXzAW2rHVicdoCMdHOT_E3egrXPsaEJerX-_brZr0mYF6Qo_tRorX8PgLc7c/exec";
 // 中の画面を更新したら V を変える（スマホに残った古い画面を読み直させるため）
-const V = "1103b";
+const V = "1103c";
 const SECTIONS = [
   { id:"shime", label:"分析", ic:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20v-5M10 20v-9M15 20v-6M20 20V7"/></svg>', src:"dashboard.html?embed=1&v="+V },
   { id:"hacchu", label:"発注", ic:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8l8-4 8 4v8.5L12 21l-8-4.5z"/><path d="M4 8l8 4.3L20 8M12 12.3V21"/></svg>', src:"hacchu.html?embed=1&v="+V },
