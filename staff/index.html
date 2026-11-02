@@ -20,10 +20,16 @@ main{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;paddin
 nav{flex:none;background:#fff;border-top:1px solid var(--line);display:flex;padding-bottom:var(--sab)}
 html.iosgap,html.iosgap body{background:#fff}
 nav{padding-bottom:max(var(--sab), 6px)}   /* ホームバーにかからないよう、どの端末でも下に余白 */
-nav button{flex:1;border:0;background:none;padding:8px 2px 6px;font-size:11px;color:var(--mute);min-height:56px}
+nav button{flex:1;border:0;background:none;padding:10px 2px 6px;font-size:11px;color:var(--mute);min-height:56px}
 nav button i{display:block;font-style:normal;font-size:20px;line-height:1.2;margin-bottom:1px}
 nav button.on{color:var(--g);font-weight:bold}
-nav button .bd{display:inline-block;min-width:16px;padding:0 4px;border-radius:999px;background:var(--red);color:#fff;font-size:10px;line-height:16px;margin-left:3px;vertical-align:top}
+nav button{position:relative}
+nav button .bd{position:absolute;top:4px;right:calc(50% - 24px);min-width:16px;padding:0 4px;border-radius:999px;background:var(--red);color:#fff;font-size:10px;line-height:16px}
+/* タブのアイコン：アプリアイコンと同じ太めの線。選んでいるタブには金の三つ星 */
+nav button i{display:flex!important;justify-content:center;align-items:center;height:24px;margin:0 auto 2px;font-size:0!important;position:relative;width:24px}
+nav button i svg{display:block}
+nav button.on i::before{content:"";position:absolute;top:-4px;left:50%;width:3px;height:3px;margin-left:-1.5px;border-radius:50%;background:#c9a24a;box-shadow:-5px 1.5px 0 #c9a24a,5px -1.5px 0 #c9a24a}
+
 .hide{display:none !important}
 .card{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
 .card h2{font-size:12px;letter-spacing:3px;color:var(--g);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
@@ -361,12 +367,12 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
       </section>
     </main>
     <nav>
-      <button id="n_home" class="on" onclick="go('home')"><i>⌂</i>ホーム</button>
-      <button id="n_comm" onclick="go('comm')"><i>✉</i>連絡<span class="bd hide" id="bdComm">!</span></button>
-      <button id="n_wish" onclick="go('wish')"><i>✎</i>希望<span class="bd hide" id="bdWish">!</span></button>
-      <button id="n_shift" onclick="go('shift')"><i>▦</i>シフト</button>
-      <button id="n_hist" onclick="go('hist')"><i>≡</i>履歴</button>
-      <button id="n_ask" onclick="go('ask')"><i>?</i>聞く<span class="bd hide" id="bdAsk">!</span></button>
+      <button id="n_home" class="on" onclick="go('home')"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11.2L12 4.5l8 6.7"/><path d="M6.3 9.5V20h11.4V9.5"/></svg></i>ホーム</button>
+      <button id="n_comm" onclick="go('comm')"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="6" width="17" height="12.5" rx="2"/><path d="M4.5 7.5l7.5 6 7.5-6"/></svg></i>連絡<span class="bd hide" id="bdComm">!</span></button>
+      <button id="n_wish" onclick="go('wish')"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.5 4.5l4 4L9 19H5v-4z"/><path d="M13 7l4 4"/></svg></i>希望<span class="bd hide" id="bdWish">!</span></button>
+      <button id="n_shift" onclick="go('shift')"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></svg></i>シフト</button>
+      <button id="n_hist" onclick="go('hist')"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 7h11M9 12h11M9 17h11"/><path d="M4.5 7h.01M4.5 12h.01M4.5 17h.01"/></svg></i>履歴</button>
+      <button id="n_ask" onclick="go('ask')"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16v11H10l-4.5 3.8V16.5H4z"/><path d="M10 9.4a2 2 0 1 1 2.6 1.9c-.4.2-.6.5-.6.9v.4M12 14.4h.01"/></svg></i>聞く<span class="bd hide" id="bdAsk">!</span></button>
     </nav>
   </div>
 </div>
