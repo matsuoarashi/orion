@@ -76,6 +76,23 @@
   .fcmsg{margin-top:8px;font-size:13px;line-height:1.65}
   .fcmsg li{margin:2px 0}
   .chip{display:inline-block;font-size:11px;border-radius:999px;padding:1px 8px;background:var(--cream-d);color:var(--ink);margin:0 4px 4px 0}
+  .fold>h2{cursor:pointer}
+  .fold>h2::after{content:"▾";margin-left:6px;color:var(--mute);font-size:12px}
+  .fold.closed>h2::after{content:"▸"}
+  .fold.closed>:not(h2){display:none!important}
+  .wd{border-top:1px dashed var(--line)}
+  .wd:first-child{border-top:0}
+  .wd .h{display:flex;align-items:center;gap:8px;padding:10px 0;cursor:pointer}
+  .wd .h .dt{width:62px;font-weight:bold;flex:none}
+  .wd .h .m{flex:1;font-size:13px;color:var(--mute)}
+  .wd .h .m b{font-size:17px;color:var(--ink);margin-right:6px}
+  .wd .h .tg{font-size:11px;border-radius:999px;padding:1px 8px;font-weight:bold;white-space:nowrap}
+  .wd .h .tg.p{background:#e4eee7;color:var(--midori)}.wd .h .tg.n{background:#f6e3df;color:var(--enji)}
+  .wd .h .ar{color:var(--mute);font-size:12px}
+  .wd .b{padding:0 0 12px}
+  .wd .b .pnlGrid{margin-top:0}
+  .wd .b .ln{font-size:13px;line-height:1.7;margin-top:6px}
+  .wd.off .h{opacity:.55;cursor:default}
   .rv h2{display:flex;justify-content:space-between;align-items:baseline}
   .ins{display:flex;gap:10px;padding:10px 0;border-top:1px dashed var(--line)}
   .ins:first-child{border-top:0}
@@ -312,20 +329,21 @@
     <div class="cards">
       <div class="card wide rv" id="rvCard"><h2 id="rvTitle">週のまとめ</h2><div class="pnlGrid" id="rvTop"></div>
         <div id="rvIns" style="margin-top:10px"></div><div id="rvNext"></div></div>
-      <div class="card wide"><h2>この週 <span class="r" id="wkSub"></span></h2>
+      <div class="card wide" id="wkDaysCard"><h2>この週の毎日 <span class="r">タップで詳しく</span></h2><div id="wkDays"></div></div>
+      <div class="card wide fold"><h2>この週 <span class="r" id="wkSub"></span></h2>
         <div class="pnlGrid" id="wkTop"></div>
         <div class="sub" id="wkNote"></div></div>
-      <div class="card wide"><h2>曜日別の食数 <span class="r">濃い=この週・薄い=過去4週平均</span></h2>
+      <div class="card wide fold"><h2>曜日別の食数 <span class="r">濃い=この週・薄い=過去4週平均</span></h2>
         <div id="dowChart"></div></div>
-      <div class="card wide"><h2>ピークの変化 <span class="r">15分枠の食数・実線=この週 点線=前週</span></h2>
+      <div class="card wide fold"><h2>ピークの変化 <span class="r">15分枠の食数・実線=この週 点線=前週</span></h2>
         <div id="wkSlot"></div>
         <div class="pnlGrid" id="wkSlotGrid" style="margin-top:8px"></div></div>
-      <div class="card wide"><h2>週ごとの推移（直近8週）</h2>
+      <div class="card wide fold"><h2>週ごとの推移（直近8週）</h2>
         <div class="scroll"><table class="daygrid" id="weekTable"></table></div>
         <div class="sub">食数/日は営業日あたり。括弧は前週との差</div></div>
-      <div class="card wide"><h2>週ごとの人件費率</h2>
+      <div class="card wide fold"><h2>週ごとの人件費率</h2>
         <div class="scroll"><table class="daygrid" id="ppWeeks"></table></div></div>
-      <div class="card wide"><h2>月ごとの集計</h2><div id="monthTable"></div>
+      <div class="card wide fold"><h2>月ごとの集計</h2><div id="monthTable"></div>
         <div class="sub">※営業日=会計が1件以上あった日</div></div>
     </div>
   </div>
@@ -333,12 +351,12 @@
   <!-- ===== 商品 ===== -->
   <div id="view-items" class="hide">
     <div class="cards">
-      <div class="card wide"><h2>期間 <span class="seg" id="itemSeg"><button onclick="setItemPeriod('day')">この日</button><button class="on" onclick="setItemPeriod('week')">この週</button><button onclick="setItemPeriod('month')">今月</button><button onclick="setItemPeriod('all')">全期間</button></span></h2>
+      <div class="card wide fold"><h2>期間 <span class="seg" id="itemSeg"><button onclick="setItemPeriod('day')">この日</button><button class="on" onclick="setItemPeriod('week')">この週</button><button onclick="setItemPeriod('month')">今月</button><button onclick="setItemPeriod('all')">全期間</button></span></h2>
         <div class="camGrid" id="itemMix"></div>
         <div class="sub" id="itemNote"></div></div>
-      <div class="card wide"><h2>売れ数ランキング <span class="r">括弧は前の同じ期間との差</span></h2>
+      <div class="card wide fold"><h2>売れ数ランキング <span class="r">括弧は前の同じ期間との差</span></h2>
         <div id="itemRank"></div></div>
-      <div class="card wide"><h2>比率の推移（週ごと）</h2>
+      <div class="card wide fold"><h2>比率の推移（週ごと）</h2>
         <div class="scroll"><table class="daygrid" id="itemTrend"></table></div>
         <div class="sub">計画はオリオン:ナシナシ=50:50、ドリンク率30%、ハーフ比率は客単価に効く</div></div>
     </div>
@@ -1078,6 +1096,39 @@ function rvStats(mon){
     nasi: (nasi+ori) ? nasi/(nasi+ori) : null, drink: x.meals ? x.drinks/x.meals : null, togo: x.meals ? x.mealsTogo/x.meals : null };
 }
 function rvAvg(arr, k){ const v = arr.map(a=>a[k]).filter(z=>z!==null && z!==undefined && isFinite(z)); return v.length ? v.reduce((a,b)=>a+b,0)/v.length : null; }
+
+// ───── 週：1日ずつのカード（タップで開く）と、ほかのカードの開け閉め ─────
+let WD_OPEN = {}, FOLD_OPEN = {}; try{ FOLD_OPEN = JSON.parse(localStorage.getItem("dash-fold")||"{}")||{}; }catch(e){}
+function initFolds(){ document.querySelectorAll(".fold").forEach((c,i)=>{ const h = c.querySelector("h2"); const key = (h.textContent||"").replace(/\s.*$/,"").slice(0,12) || ("f"+i);
+  c.classList.toggle("closed", !FOLD_OPEN[key]);
+  if (!h._fold){ h._fold = 1; h.addEventListener("click", e=>{ if (e.target.closest("button")) return; const open = c.classList.contains("closed"); c.classList.toggle("closed", !open); FOLD_OPEN[key] = open; try{ localStorage.setItem("dash-fold", JSON.stringify(FOLD_OPEN)); }catch(_){} }); } }); }
+// 1日の損益（固定費は月額÷その月の営業日、人件費は勤怠、原価は概算）
+function dayEcon(dt, d){
+  const p = pnlData(), mk = dt.slice(0,7), fx = p.fixed.filter(f=>!/収入/.test(f.name) && !/公庫|返済/.test(f.name)), fixM = fx.reduce((a,f)=>a+f.amount,0);
+  let open = 0; for (let x = mk+"/01"; x.slice(0,7)===mk; x = dateAdd(x,1)) if (isOpenDay(x)) open++;
+  const fixD = open ? fixM/open : 0, l = p.laborDaily[dt], lab = l ? l.cost : 0, cost = p.costDaily[dt] || 0, cr = d.sales ? cost/d.sales : 0.3, tk = d.meals ? d.sales/d.meals : 1000;
+  const be = (fixD + lab)/(1 - cr), beM = Math.ceil(be/tk);
+  return { fixD, lab, l, cost, cr, beM, profit: d.sales - cost - lab - fixD, gp: d.sales - cost - lab };
+}
+function renderWeekDays(){
+  const mon = viewWeek, out = [];
+  for (let i=0; i<7; i++){ const dt = dateAdd(mon,i), d = dayByDate(dt) || {count:0,meals:0,sales:0}; if ((i>=5 && !d.count) ) continue;
+    if (!d.count){ out.push(`<div class="wd off"><div class="h"><span class="dt">${+dt.slice(5,7)}/${+dt.slice(8)}(${youbi(dt)})</span><span class="m">${dt > DATA.todayKey ? "これから" : (isOpenDay(dt) ? "会計なし" : "休み")}</span></div></div>`); continue; }
+    const e = dayEcon(dt, d), w = WX && WX[dt], wt = w ? wxText(w.code) : null, gap = d.meals - e.beM, open = WD_OPEN[dt];
+    const hs = hourStats(d), fl = d.slots ? firstLast(d) : null;
+    const top = Object.entries(d.items||{}).filter(([k])=>/オリオン|ナシナシ/.test(k)).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([k,v])=>`${k} ${v}`).join("・");
+    out.push(`<div class="wd"><div class="h" onclick="WD_OPEN['${dt}']=!WD_OPEN['${dt}'];renderWeekDays()"><span class="dt">${+dt.slice(5,7)}/${+dt.slice(8)}(${youbi(dt)})</span>
+      <span class="m"><b>${d.meals}食</b>${num(d.sales)}円${wt?` ${wt[0]}`:""}</span><span class="tg ${gap>=0?"p":"n"}">${gap>=0?"+"+gap:gap}食</span><span class="ar">${open?"▴":"▾"}</span></div>
+      ${open ? `<div class="b"><div class="pnlGrid">${[
+        ["客単価", d.meals ? num(Math.round(d.sales/d.meals))+"円" : "-", `${d.count}会計`],
+        ["損益分岐", `約${e.beM}食`, `この日の利益 ${signed(e.profit)}`],
+        ["人件費", e.l ? num(e.lab)+"円" : "-", e.l ? `${e.l.staff}人・${(e.l.minutes/60).toFixed(1)}h・${pct(e.lab/d.sales)}` : "勤怠なし"],
+        ["原価率 <em class='tag g'>概算</em>", pct(e.cr), `粗利 ${signed(e.gp)}`]
+      ].map(a=>cell(...a)).join("")}</div>
+      <div class="ln">${w ? `天気：${wt[0]}${wt[1]}・最高${Math.round(w.tmax)}℃・昼の雨 ${Math.round(w.rain*10)/10}mm<br>` : ""}${hs ? `時間帯：${hs.filter(r=>r.meals||r.h>=11&&r.h<=13).map(r=>`${r.h}時 ${r.meals}食/${Math.round((r.ppl+r.sup)*10)/10}人`).join("・")}<br>` : ""}${fl ? `会計：${fl[0]}〜${fl[1]}<br>` : ""}${top ? `よく出た：${esc(top)}` : ""}</div>
+      <button style="margin-top:8px;border:2px solid var(--wood-d);background:var(--cream-d);border-radius:10px;padding:8px 12px;font-size:13px;font-weight:bold;color:var(--ink)" onclick="viewDate='${dt}';setTab('today');renderDay();scrollTo(0,0)">この日を「今日」タブで見る</button></div>` : ""}</div>`); }
+  $("wkDays").innerHTML = out.join("") || `<div class="sub">この週の記録はまだありません</div>`;
+}
 function renderReview(){
   const mon = viewWeek, thisMon = mondayOf(DATA.todayKey), cur = rvStats(mon);
   const prev = rvStats(dateAdd(mon,-7)), hist = [1,2,3,4].map(k=>rvStats(dateAdd(mon,-7*k))).filter(h=>h.days);
@@ -1147,6 +1198,7 @@ function renderReview(){
 function weekDays(mon){ return DATA.daily.filter(d=>d.date>=mon && d.date<=dateAdd(mon,6)); }
 function renderWeek(){
   try{ renderReview(); }catch(e){ console.error(e); }
+  try{ renderWeekDays(); initFolds(); }catch(e){ console.error(e); }
   const mon = viewWeek; const end = dateAdd(mon,6);
   $("weekLabel").textContent = `${+mon.slice(5,7)}/${+mon.slice(8)}(月)〜${+end.slice(5,7)}/${+end.slice(8)}(${youbi(end)})`;
   $("weekJump").outerHTML = mon===mondayOf(DATA.todayKey) ? `<span id="weekJump" class="now">今週</span>` : `<button id="weekJump" class="jump" onclick="goThisWeek()">今週へ戻る</button>`;
