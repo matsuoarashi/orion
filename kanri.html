@@ -63,7 +63,7 @@ select,input{width:100%;padding:12px;border:1px solid var(--line);border-radius:
 // 管理者アプリ：1 つの入口。中身は既存の画面を順に移していく（段階統合の第1段）
 const STAFF_API = "https://script.google.com/macros/s/AKfycbwgGW6rXzAW2rHVicdoCMdHOT_E3egrXPsaEJerX-_brZr0mYF6Qo_tRorX8PgLc7c/exec";
 // 中の画面を更新したら V を変える（スマホに残った古い画面を読み直させるため）
-const V = "1102g";
+const V = "1102h";
 const SECTIONS = [
   { id:"shime", label:"分析", src:"dashboard.html?embed=1&v="+V },
   { id:"hacchu", label:"発注", src:"hacchu.html?embed=1&v="+V },
@@ -145,9 +145,16 @@ function tidy(f){
     w.open = function(url){ const u = String(url||""); const m = OPEN_MAP.find(x=>x[0].test(u)); if (m){ show(m[1]); return null; } return orig.apply(w, arguments); };
   }catch(e){}
 }
-function reloadCur(){ const f = $("fr_"+CUR); if (f) f.contentWindow.location.reload(); }
+// 新しい版が出ていたらアプリごと読み直す（ホーム画面のアプリは古い画面を持ち続けるため）。開いたとき・戻ってきたとき・「更新」で確認
+async function checkUpdate(){
+  try{ const t = await (await fetch("kanri.html?check="+Date.now(), {cache:"no-store", busy:false})).text(); const m = t.match(/const V = "([^"]+)"/);
+    if (m && m[1] !== V){ location.replace("kanri.html?v="+encodeURIComponent(m[1])+location.hash); return true; } }catch(e){}
+  return false;
+}
+document.addEventListener("visibilitychange", ()=>{ if (document.visibilityState === "visible") checkUpdate(); });
+async function reloadCur(){ if (await checkUpdate()) return; const f = $("fr_"+CUR); if (f) f.contentWindow.location.reload(); }
 function logout(){ if(!confirm("ログアウトしますか？")) return; ls("os-admin-token", null); ls("os-token", null); ls("kanri-me", null); $("frames").innerHTML = ""; showLogin(); }
-boot();
+boot(); checkUpdate();
 </script>
 </body>
 </html>
