@@ -796,7 +796,10 @@ function renderBE(d){
   let open = 0; for (let x = mk+"/01"; x.slice(0,7)===mk; x = dateAdd(x,1)) if (isOpenDay(x)) open++;
   const fixD = open ? fixM/open : 0;
   const recent = DATA.daily.filter(x=>x.count>0 && x.date<dt).slice(-10);
-  const lab = p.laborDaily[dt] ? { v: p.laborDaily[dt].cost, est:false } : (()=>{ const ls = recent.map(x=>p.laborDaily[x.date]).filter(Boolean).slice(-5); return ls.length ? { v: ls.reduce((a,l)=>a+l.cost,0)/ls.length, est:true } : { v:0, est:true }; })();
+  const avgLab = (()=>{ const ls = recent.map(x=>p.laborDaily[x.date]).filter(Boolean).slice(-5); return ls.length ? ls.reduce((a,l)=>a+l.cost,0)/ls.length : 0; })();
+  // 今日は退勤した人の分しか入っていないので、直近の平均より少なければ平均を使う
+  const act = p.laborDaily[dt] ? p.laborDaily[dt].cost : null;
+  const lab = act !== null && !(dt===DATA.todayKey && act < avgLab) ? { v: act, est:false } : { v: avgLab, est:true };
   const rs = recent.reduce((a,x)=>a+x.sales,0), rc = recent.reduce((a,x)=>a+(p.costDaily[x.date]||0),0), rm = recent.reduce((a,x)=>a+x.meals,0);
   const cr = (d.sales && p.costDaily[dt]) ? p.costDaily[dt]/d.sales : (rs ? rc/rs : 0.3);
   const tk = d.meals ? d.sales/d.meals : (rm ? rs/rm : 1000);
@@ -807,7 +810,7 @@ function renderBE(d){
     [done ? "結果" : "今", d.meals ? (gap>=0 ? `<span class="pos">+${gap}食</span>` : `<span class="neg">あと${-gap}食</span>`) : "—",
       d.sales ? `${done?"":"今の"}利益 ${signed(d.sales*(1-cr) - fixD - lab.v)}` : "まだ会計がありません"]
   ].map(c=>`<div class="w"><small>${c[0]}</small><b>${c[1]}</b><i>${c[2]}</i></div>`).join("");
-  $("beNote").innerHTML = `固定費 ${num(Math.round(fixD))}円/日（月 ${num(fixM)}円 ÷ 営業 ${open}日）＋ 人件費 ${num(Math.round(lab.v))}円${lab.est?"（勤怠がまだなので直近の平均）":""}、原価率 ${pct(cr)}。`
+  $("beNote").innerHTML = `固定費 ${num(Math.round(fixD))}円/日（月 ${num(fixM)}円 ÷ 営業 ${open}日）＋ 人件費 ${num(Math.round(lab.v))}円${lab.est?"（まだ全員の退勤が入っていないので直近の平均）":""}、原価率 ${pct(cr)}。`
     + (loan ? `公庫の返済（月 ${num(loan)}円）まで含めると 約${Math.ceil(beL/tk)}食。` : "") + (fx.some(f=>!f.amount) ? " ※固定費に0円の項目があるので、実際の分岐はもう少し上です。" : "");
 }
 function renderDay(){
