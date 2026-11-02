@@ -213,7 +213,7 @@ function opsSetupTriggers(){
 function opsAlertsOut_(p){
   var me = null; try { me = invAuth_(p); } catch(e){}
   if (!me || me.role !== "admin") return invOut_({ error: "auth" });
-  return invOut_({ ok: true, at: Utilities.formatDate(new Date(), OPS_TZ, "yyyy/MM/dd HH:mm"), alerts: opsAlerts_("all") });
+  return invOut_({ ok: true, at: Utilities.formatDate(new Date(), OPS_TZ, "yyyy/MM/dd HH:mm"), alerts: dashCached_("alerts", function(){ return opsAlerts_("all"); }) });   // 10分ごとの作り置き（dashcache.gs）
 }
 function opsTest(){ Logger.log(JSON.stringify({ all: opsAlerts_("all"), order1103: opsOrderAlerts_("2026/11/03", "15:30") })); }
 // ===== 先出し通知 END =====

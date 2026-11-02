@@ -225,7 +225,8 @@ function baseMeals(d){
   }
   return MEAL_MEMO[key] = { v, src };
 }
-refreshDaily();
+// 分析の売上データが1時間以内なら取り直さない（分析と同じ重い読み込みを増やさないため）
+(function(){ try{ const c = JSON.parse(localStorage.getItem("dash-data")||"null"); const u = c && pDate(c.updated); if (u && Date.now() - u.getTime() < 3600000) return; }catch(e){} refreshDaily(); })();
 function mealsOn(d){ return baseMeals(d).v + (Number(EXTRA[dayKey(d)])||0); }
 function setExtra(key, n){ if (n) EXTRA[key] = n; else delete EXTRA[key]; Object.keys(EXTRA).forEach(k=>{ if (k < dayKey(new Date())) delete EXTRA[k]; }); try{ localStorage.setItem("inv-extra", JSON.stringify(EXTRA)); }catch(e){} closeOv(); applyHome(HOME); go(PAGE); }
 function editExtra(key){ const d = pDate(key), b = baseMeals(d), x = Number(EXTRA[key])||0;
