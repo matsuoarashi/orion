@@ -944,7 +944,7 @@ function renderReview(){
   $("rvTitle").innerHTML = `${lab}<span class="r">営業 ${cur.days}日${hist.length?`・比べるのは前週と過去${hist.length}週の平均`:""}</span>`;
   if (!cur.days){ $("rvTop").innerHTML = ""; $("rvIns").innerHTML = `<div class="sub">この週はまだ営業日がありません。◀ で前の週を見られます</div>`; $("rvNext").innerHTML = ""; return; }
   const A = k => rvAvg(hist, k);
-  const cmp = (v, pv, av, f) => [pv!==null&&pv!==undefined ? "前週 "+f(pv) : "", av!==null ? "平均 "+f(av) : ""].filter(Boolean).join("・");
+  const cmp = (pv, _u, av, f) => [pv!==null&&pv!==undefined ? "前週 "+f(pv) : "", av!==null ? "平均 "+f(av) : ""].filter(Boolean).join("・");
   const fPct = v => v===null ? "-" : (Math.round(v*1000)/10)+"%", fYen = v => v===null ? "-" : num(Math.round(v))+"円", fM = v => v===null ? "-" : v.toFixed(1)+"食";
   $("rvTop").innerHTML = [
     ["売上", yen(cur.x.sales), prev.days ? "前週 "+yen(prev.x.sales) : ""],
@@ -960,8 +960,12 @@ function renderReview(){
     const dl = cur.list.filter(d=>p.laborDaily[d.date] && p.laborDaily[d.date].minutes).map(d=>{ const l = p.laborDaily[d.date]; return { d, l, spmh: d.sales/(l.minutes/60) }; }).sort((a,b)=>a.spmh-b.spmh);
     const w = dl[0];
     if (cur.labor > 0.30){
+      // 30%に収めるのに必要な人時売上＝1時間あたりの人件費（時給・交通費込み）÷0.30
+      const hrs = cur.x.minutes/60, cph = hrs ? cur.x.labor/hrs : 0, need = cph ? cph/0.30 : 0;
       ins.push({ s: (cur.labor-0.30)*400, c:"bad", t:`人件費率 ${fPct(cur.labor)}（目安30%を ${Math.round((cur.labor-0.30)*1000)/10}pt 超え）`,
-        p: w ? `いちばん効率が低かったのは <em>${w.d.date.slice(5)}(${youbi(w.d.date)})</em>：${w.d.meals}食を ${w.l.staff}人・${(w.l.minutes/60).toFixed(1)}h で回し、人時売上 ${num(Math.round(w.spmh))}円（目安3,500円）。この曜日の人数か時間を見直す余地があります` : "" });
+        p: (need ? `30%に収めるには、1時間あたり <em>約${num(Math.round(need/100)*100)}円</em>の売上が必要です（人件費が交通費込みで1時間 約${num(Math.round(cph))}円のため）。` : "")
+          + (w ? `いちばん低かったのは ${w.d.date.slice(5)}(${youbi(w.d.date)})：${w.d.meals}食・${w.l.staff}人・${(w.l.minutes/60).toFixed(1)}h で 1時間 ${num(Math.round(w.spmh))}円。` : "")
+          + (cur.ticket !== null && need ? `客単価 ${num(Math.round(cur.ticket))}円だと、1時間に約${Math.ceil(need/cur.ticket)}食。人数・時間を減らすか、ドリンク・副菜で客単価を上げるかのどちらかです` : "") });
     } else if (cur.labor < 0.24 && cur.days >= 3){
       ins.push({ s: 2, c:"good", t:`人件費率 ${fPct(cur.labor)}。目安より低く、少ない人数で回せています`, p: w ? `ただし ${w.d.date.slice(5)}(${youbi(w.d.date)}) は人時売上 ${num(Math.round(w.spmh))}円。忙しい日に無理が出ていないかも見てください` : "" });
     }
