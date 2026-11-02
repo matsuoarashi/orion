@@ -736,11 +736,11 @@ async function fxRestore(date, row){
 const WX_URL = "https://api.open-meteo.com/v1/forecast?latitude=35.6955&longitude=139.7675&hourly=precipitation,temperature_2m&daily=weather_code,temperature_2m_max,precipitation_probability_max&timezone=Asia%2FTokyo&past_days=92&forecast_days=7";
 let WX = null;
 async function loadWx(){
-  try{ const c = JSON.parse(localStorage.getItem("wx-cache")||"null"); if (c && Date.now()-c.at < 2*3600000){ WX = c.map; return; } }catch(e){}
+  try{ const c = JSON.parse(localStorage.getItem("wx-cache2")||"null"); if (c && Date.now()-c.at < 2*3600000){ WX = c.map; return; } }catch(e){}
   try{ const j = await (await fetch(WX_URL, {busy:false})).json(); const map = {};
     (j.daily.time||[]).forEach((t,i)=>{ map[t.replace(/-/g,"/")] = { code:j.daily.weather_code[i], tmax:j.daily.temperature_2m_max[i], pp:j.daily.precipitation_probability_max[i], rain:0 }; });
-    (j.hourly.time||[]).forEach((t,i)=>{ const k = t.slice(0,10).replace(/-/g,"/"), h = +t.slice(11,13); if (map[k] && h>=11 && h<=13) map[k].rain += j.hourly.precipitation[i]||0; });
-    WX = map; try{ localStorage.setItem("wx-cache", JSON.stringify({at:Date.now(), map})); }catch(e){}
+    (j.hourly.time||[]).forEach((t,i)=>{ const k = t.slice(0,10).replace(/-/g,"/"), h = +t.slice(11,13); if (map[k] && h>=12 && h<=14) map[k].rain += j.hourly.precipitation[i]||0; /* 各時刻の値は直前1時間分 → 12〜14時の値＝11:00〜14:00（営業中）の雨 */ });
+    WX = map; try{ localStorage.setItem("wx-cache2", JSON.stringify({at:Date.now(), map})); }catch(e){}
     if (DATA) renderForecast();
   }catch(e){}
 }
@@ -797,9 +797,9 @@ function renderBE(d){
   const fixD = open ? fixM/open : 0;
   const recent = DATA.daily.filter(x=>x.count>0 && x.date<dt).slice(-10);
   const avgLab = (()=>{ const ls = recent.map(x=>p.laborDaily[x.date]).filter(Boolean).slice(-5); return ls.length ? ls.reduce((a,l)=>a+l.cost,0)/ls.length : 0; })();
-  // 今日は退勤した人の分しか入っていないので、直近の平均より少なければ平均を使う
-  const act = p.laborDaily[dt] ? p.laborDaily[dt].cost : null;
-  const lab = act !== null && !(dt===DATA.todayKey && act < avgLab) ? { v: act, est:false } : { v: avgLab, est:true };
+  // 今日は営業中（15時前）だけ直近の平均で仮置き。15時を過ぎたら勤怠の実績（1人の日は1人分）
+  const act = p.laborDaily[dt] ? p.laborDaily[dt].cost : null, early = dt===DATA.todayKey && new Date().getHours() < 15;
+  const lab = act !== null && !early ? { v: act, est:false } : { v: early ? Math.max(act||0, avgLab) : avgLab, est:true };
   const rs = recent.reduce((a,x)=>a+x.sales,0), rc = recent.reduce((a,x)=>a+(p.costDaily[x.date]||0),0), rm = recent.reduce((a,x)=>a+x.meals,0);
   const cr = (d.sales && p.costDaily[dt]) ? p.costDaily[dt]/d.sales : (rs ? rc/rs : 0.3);
   const tk = d.meals ? d.sales/d.meals : (rm ? rs/rm : 1000);
@@ -810,7 +810,7 @@ function renderBE(d){
     [done ? "結果" : "今", d.meals ? (gap>=0 ? `<span class="pos">+${gap}食</span>` : `<span class="neg">あと${-gap}食</span>`) : "—",
       d.sales ? `${done?"":"今の"}利益 ${signed(d.sales*(1-cr) - fixD - lab.v)}` : "まだ会計がありません"]
   ].map(c=>`<div class="w"><small>${c[0]}</small><b>${c[1]}</b><i>${c[2]}</i></div>`).join("");
-  $("beNote").innerHTML = `固定費 ${num(Math.round(fixD))}円/日（月 ${num(fixM)}円 ÷ 営業 ${open}日）＋ 人件費 ${num(Math.round(lab.v))}円${lab.est?"（まだ全員の退勤が入っていないので直近の平均）":""}、原価率 ${pct(cr)}。`
+  $("beNote").innerHTML = `固定費 ${num(Math.round(fixD))}円/日（月 ${num(fixM)}円 ÷ 営業 ${open}日）＋ 人件費 ${num(Math.round(lab.v))}円${lab.est?"（退勤前なので直近の平均で仮置き）":`（勤怠から${p.laborDaily[dt]?`・${p.laborDaily[dt].staff}人`:""}）`}、原価率 ${pct(cr)}。`
     + (loan ? `公庫の返済（月 ${num(loan)}円）まで含めると 約${Math.ceil(beL/tk)}食。` : "") + (fx.some(f=>!f.amount) ? " ※固定費に0円の項目があるので、実際の分岐はもう少し上です。" : "");
 }
 function renderDay(){
