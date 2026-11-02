@@ -547,7 +547,8 @@ const SHOP = {
   hall:   ["🥤","備品・飲料を数える","ホール・週1・十分／少／無で","openShop('hall')"],
   recv:   ["📦","届いた物を受け取る・発注","納品書と数を確認","openShop('recv')"],
   shime:  ["💴","締め（閉店後）","現金・PayPay・注文票を数えて記録","location.href='../shime.html'"],
-  report: ["!","不足・破損を報告","備品が壊れた・足りない","openShop('report')"]
+  report: ["!","不足・破損を報告","備品が壊れた・足りない","openShop('report')"],
+  learn:  ["📘","覚えること","手順を見る・自分の習熟度をつける","location.href='../learn.html'"]
 };
 function shopBtn(k){ const b = SHOP[k]; return `<button class="shopbtn" onclick="${b[3]}"><span>${b[0]}</span><b>${b[1]}<small>${b[2]}</small></b><i>›</i></button>`; }
 function renderShop(){
@@ -555,9 +556,9 @@ function renderShop(){
   const admin = ME && ME.role === "admin";
   const cm = COMM || cget("comm"); const kitchen = !!(cm && cm.kitchen);
   let main, more, title;
-  if (admin){ main = ["chef","hall","recv","shime","report"]; more = []; title = "店の仕事"; }
-  else if (kitchen){ main = ["chef","recv","report"]; more = ["hall","shime"]; title = "店の仕事（厨房）"; }
-  else { main = ["hall","shime","recv","report"]; more = ["chef"]; title = "店の仕事（ホール）"; }
+  if (admin){ main = ["chef","hall","recv","shime","report","learn"]; more = []; title = "店の仕事"; }
+  else if (kitchen){ main = ["chef","recv","report","learn"]; more = ["hall","shime"]; title = "店の仕事（厨房）"; }
+  else { main = ["hall","shime","recv","report","learn"]; more = ["chef"]; title = "店の仕事（ホール）"; }
   $("shopTitle").textContent = title;
   $("shopMain").innerHTML = main.map(shopBtn).join("");
   $("shopMoreWrap").classList.toggle("hide", !more.length);
