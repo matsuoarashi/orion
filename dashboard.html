@@ -273,7 +273,7 @@
         <div class="camGrid" id="mixGrid"></div>
         <div class="sub" id="mixNote"></div></div>
 
-      <div class="card wide"><h2>15分ごとの食数（ばらけ具合）</h2>
+      <div class="card wide"><h2>15分ごとの食数と席の埋まり</h2>
         <div id="slotChart"></div>
         <div class="pnlGrid" id="slotGrid" style="margin-top:8px"></div>
         <div class="sub" id="slotNote"></div></div>
@@ -938,16 +938,21 @@ function renderSlots(d){
   const total = vals.reduce((a,b)=>a+b,0);
   const peakI = vals.indexOf(Math.max(...vals)); const peak = vals[peakI]||0;
   const top3 = vals.slice().sort((a,b)=>b-a).slice(0,3).reduce((a,b)=>a+b,0);
-  const busy = vals.filter(v=>v>=SEATS).length;
-  const idle = ks.filter((k,i)=>k>="11:30"&&k<"13:30"&&vals[i]===0).length;
-  const noon = ks.reduce((a,k,i)=>a+((k>="12:00"&&k<"13:00")?vals[i]:0),0);
+  // 席の埋まり：1人の滞在を15分として、15分ごとの店内の食数（持ち帰りの割合を除く）÷ 席数
+  const eatShare = d.meals ? (d.mealsEatin!=null ? d.mealsEatin/d.meals : 1) : 1;
+  const occ = vals.map(v=>v*eatShare/SEATS);
+  const lunch = ks.map((k,i)=>[k,i]).filter(([k])=>k>="11:30"&&k<"13:30").map(([k,i])=>occ[i]);
+  const full = occ.filter(o=>o>=1).length, near = occ.filter(o=>o>=0.8).length;
+  const avgOcc = lunch.length ? lunch.reduce((a,b)=>a+b,0)/lunch.length : 0;
+  const pkO = Math.max(...occ);
   $("slotGrid").innerHTML = [
-    ["ピーク15分", peak?`${ks[peakI]}〜 ${peak}食`:"-", "最も集中した枠"],
-    ["上位3枠の集中度", total?pct(top3/total):"-", "45分に何割入ったか（高いほど山型）"],
-    ["待ちが出やすい枠", `${busy}枠`, `15分に${SEATS}食以上（席数相当）`],
-    ["12時台の比率", total?pct(noon/total):"-", `11:30〜13:30で空白の枠 ${idle}`]
+    ["満席の時間", full?`${full*15}分`:"なし", `席が埋まった枠（${SEATS}席・滞在15分で計算）${near>full?`・8割以上は${near*15}分`:""}`],
+    ["ピークの埋まり", pkO?pct(pkO):"-", peak?`${ks[peakI]}〜 ${peak}食`:""],
+    ["昼の平均の埋まり", pct(avgOcc), "11:30〜13:30"],
+    ["上位3枠の集中度", total?pct(top3/total):"-", "45分に何割入ったか（高いほど山型）"]
   ].map(a=>cell(...a)).join("");
-  $("slotNote").textContent = `緑の棒＝この日の食数（赤は${SEATS}食以上）、点線＝過去${past.length}営業日の平均。上位3枠の集中度が低いほど客が時間に散らばっている＝回転に余裕がある。`;
+  const tip = full >= 2 ? `満席が${full*15}分続きました。この時間は席が売上の上限になっているので、テイクアウトの予約を勧める・提供を速くする余地があります。` : (avgOcc < 0.4 && total ? "昼の席にはまだ余裕があります。席数より集客が課題です。" : "");
+  $("slotNote").textContent = `棒＝この日の食数（赤は満席相当）、点線＝過去${past.length}営業日の平均。埋まり＝15分ごとの店内の食数 ÷ ${SEATS}席（1人15分の滞在として計算・持ち帰りは除く）。` + (tip ? " " + tip : "");
 }
 // ===== 来店と滞在（入口ボタン） データがある日だけ表示 =====
 function renderVisits(d){
