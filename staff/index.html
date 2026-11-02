@@ -550,7 +550,7 @@ function renderTodo(){
 // 店の仕事：担当（厨房／ホール）ごとに並べ替える。厨房担当は管理画面の設定 kitchen_ids で決まる（COMM.kitchen）。管理者は全部
 let SHOP_MORE = false;
 const SHOP = {
-  chef:   ["🍳","食材を数える","厨房・毎日","openShop('chef')"],
+  chef:   ["🍳","仕込み数・棚卸し","仕込みは毎日入力・食材の棚卸しは2週に1回","openShop('chef')"],
   hall:   ["🥤","備品・飲料を数える","ホール・週1・十分／少／無で","openShop('hall')"],
   recv:   ["📦","届いた物を受け取る・発注","納品書と数を確認","openShop('recv')"],
   shime:  ["💴","締め（閉店後）","現金・PayPay・注文票を数えて記録","location.href='../shime.html'"],
