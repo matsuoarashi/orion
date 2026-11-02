@@ -56,6 +56,7 @@ textarea{min-height:80px;line-height:1.55}
 .sheet{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:50;display:flex;align-items:flex-end;justify-content:center}
 .sheet .in{background:var(--cream);width:100%;max-width:560px;max-height:92vh;overflow-y:auto;border-radius:18px 18px 0 0;padding:14px 14px calc(18px + var(--sab))}
 .sheet h3{margin:0 0 4px;font-size:16px;color:var(--g)}
+.del{display:block;width:100%;margin-top:10px;border:0;background:none;color:var(--red);font-size:13px;padding:8px;text-decoration:underline}
 .toast{position:fixed;left:50%;bottom:calc(24px + var(--sab));transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 16px;border-radius:999px;font-size:13px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.on{opacity:.92}
 .msg{background:var(--red-l);color:var(--red);padding:10px 12px;border-radius:10px;font-size:14px;margin-bottom:10px}
@@ -109,7 +110,8 @@ const ST_CLS = { "新規":"red", "連絡済":"amber", "面接予定":"blue", "�
 
 function toast(t){ const e = $("toast"); e.textContent = t; e.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(()=>e.classList.remove("on"), 1800); }
 function showErr(t){ $("err").textContent = t; $("err").classList.toggle("hide", !t); }
-async function api(){ const r = await fetch(SHEET_URL+"?mode=rec_list&token="+encodeURIComponent(TOKEN)); return r.json(); }
+// ブラウザが前の結果を使い回さないよう、毎回ちがう URL で読む
+async function api(){ const r = await fetch(SHEET_URL+"?mode=rec_list&_="+Date.now()+"&token="+encodeURIComponent(TOKEN), {cache:"no-store"}); return r.json(); }
 async function post(type, body){ try{ const r = await fetch(SHEET_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(Object.assign({type, token:TOKEN}, body||{}))}); return await r.json(); }catch(e){ return {error:"通信エラー"}; } }
 
 async function load(){
@@ -157,6 +159,7 @@ function editApp(id){
     ${id ? "" : `<div class="row2"><div><label>媒体</label><select id="eMd">${["電話","紹介","Indeed","タイミー","貼り紙","その他"].map(m=>`<option ${m===a["媒体"]?"selected":""}>${m}</option>`).join("")}</select></div><div><label>求人</label><select id="eJb"><option value="">—</option>${jobs.map(j=>`<option>${esc(j)}</option>`).join("")}</select></div></div>`}
     <label>メモ（希望曜日・経験・面接の印象など）</label><textarea id="eMm">${esc(a["メモ"])}</textarea>
     <div class="row2" style="margin-top:14px"><button class="btn sec" onclick="closeSheet()">閉じる</button><button class="btn" id="eSv" onclick="saveApp('${id?esc(id):""}')">保存</button></div>
+    ${id ? `<button class="del" onclick="delRow('rec_app_delete','${esc(id)}')">この応募者を削除（間違えて入れたとき）</button>` : ""}
     ${id ? `<button class="btn sec" style="margin-top:10px" onclick="copyReply('${esc(id)}')">連絡文をコピー（面接のご案内）</button><a class="btn sec" style="margin-top:10px;text-align:center;text-decoration:none" href="${INDEED}" target="_blank" rel="noopener">Indeed の管理画面を開く</a>` : ""}
   </div></div>`;
 }
@@ -213,6 +216,7 @@ function editJob(id){
     <label>メモ（費用・結果・次回の注意など）</label><textarea id="j_メモ" rows="3">${esc(j["メモ"])}</textarea>
     ${JOB_TEXT.map(ta).join("")}
     <div class="row2" style="margin-top:14px"><button class="btn sec" onclick="closeSheet()">閉じる</button><button class="btn" id="jSv" onclick="saveJob('${id?esc(id):""}')">保存</button></div>
+    ${id ? `<button class="del" onclick="delRow('rec_job_delete','${esc(id)}')">この求人票を削除</button>` : ""}
   </div></div>`;
 }
 async function saveJob(id){
@@ -222,6 +226,11 @@ async function saveJob(id){
   $("jSv").disabled = true; const r = await post("rec_job_save", { id: id||"", fields: f }); $("jSv").disabled = false;
   if (!r.ok){ alert(r.error||"保存できませんでした"); return; }
   closeSheet(); toast("保存しました"); load();
+}
+async function delRow(type, id){
+  if (!confirm("削除しますか？（元に戻せません）")) return;
+  const r = await post(type, { id }); if (!r.ok){ alert(r.error||"削除できませんでした"); return; }
+  closeSheet(); toast("削除しました"); load();
 }
 if (/[?&]tab=job/.test(location.search)) tab("job");
 load();

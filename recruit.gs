@@ -58,6 +58,11 @@ function recPost_(d){
       if (d.id){ var j = recRowsObj_(js, REC_JOB_COLS).filter(function(x){ return x.job_id === d.id; })[0]; if (!j) return invOut_({ error: "見つかりません" }); recSet_(js, REC_JOB_COLS, j._row, q); return invOut_({ ok: true, id: d.id }); }
       var jid = recId_("job_"); q.job_id = jid; invAppend_(js, q); return invOut_({ ok: true, id: jid });
     }
+    if (d.type === "rec_app_delete" || d.type === "rec_job_delete"){   // 間違えて入れた行を消す（行ごと削除）
+      var isApp = d.type === "rec_app_delete", ds = isApp ? recSheet_(REC_APP, REC_APP_COLS) : recSheet_(REC_JOB, REC_JOB_COLS), key = isApp ? "app_id" : "job_id";
+      var hit = recRowsObj_(ds, isApp ? REC_APP_COLS : REC_JOB_COLS).filter(function(x){ return x[key] === String(d.id||""); })[0];
+      if (!hit) return invOut_({ error: "見つかりません" }); ds.deleteRow(hit._row); return invOut_({ ok: true });
+    }
     return invOut_({ error: "type" });
   } finally { lock.releaseLock(); }
 }

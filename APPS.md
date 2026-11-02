@@ -78,6 +78,7 @@
 - v75（11/2 朝）：先出し通知 ops_alerts（staffing.gs の後半）。15:30 opsNotifyOrder＝今日が締切の発注で足りなくなる品目、17:00 stfShortNotify＝人手不足（3週間）・年収の壁（設定 annual_caps）・衛生記録の付け忘れ・レジ締めの未入力。送り先 orion.napolitan@gmail.com。分析の「今朝の確認」は doGet mode=ops_alerts（管理者トークン）
 - v76（11/2 朝）：LINE 通知（staffing.gs 末尾の LINE ブロック）。Messaging API（公式アカウント「洋食オリオン」）。doPost の先頭で LINE の webhook を受けてグループIDを LINE_CANDIDATES に保存。LINE_TOKEN を貼り、管理者グループに招待したあと linePickGroup() を 1 回実行すると LINE_TO が決まり、opsMail_ と同じ内容が LINE にも流れる（未設定なら何もしない）
 - v77〜v78（11/2 朝）：採用（recruit.gs）。分析シートに「求人票」「応募者」タブ。doGet mode=rec_list／doPost rec_app_save・rec_job_save（管理者トークン）。メール取り込み（osMailIngest_）で Indeed の応募通知を応募者に自動追加（メールIDで重複なし）。未連絡（新規）の応募は ops_alerts の key "rec" で今朝の確認・17時のまとめに出る。求人票に Indeed の下書き（ホール・平日ランチ 10:30〜15:00・時給1,500円）と 9/29 の店舗スタッフ（休止・応募24）を登録
+- v79（11/2 朝）：採用に rec_app_delete・rec_job_delete（誤登録の行を削除）。※ GAS の GET はブラウザにキャッシュされることがあるので、recruit.html は毎回 `_=時刻` を付けて読む
 - 注意：ORION START スレッドも同じ GAS を更新している（v69〜v74・start.gs）。編集前にエディタを読み込み直し、デプロイ直前にも相手の関数（startGet_ など）が残っているか確認する
 
 ## 6. 原価（COSTS）の根拠
