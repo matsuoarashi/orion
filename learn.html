@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>覚えること | 洋食オリオン</title>
+<meta name="theme-color" content="#2c4f39">
+<style>
+:root{ --g:#2c4f39; --g-d:#1f3a2a; --g-l:#e4eee7; --cream:#faf6ee; --cream-d:#ece4d2; --ink:#2b2a26; --mute:#7a7265; --red:#a33c2e; --red-l:#f6e3df; --amber:#b7791f; --amber-l:#f7ebd3; --line:#d9d1bd; --r:14px; --sat:env(safe-area-inset-top); --sab:env(safe-area-inset-bottom); }
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%}
+body{font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic',sans-serif;background:var(--cream);color:var(--ink);font-size:15px;line-height:1.55}
+.hide{display:none!important}
+button{font-family:inherit;cursor:pointer}
+header{background:var(--g);color:#fff;padding:calc(10px + var(--sat)) 14px 10px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:5}
+header .t{font-size:11px;letter-spacing:4px;opacity:.85}header .n{font-size:16px;font-weight:bold}
+header button{margin-left:auto;background:rgba(255,255,255,.15);border:0;color:#fff;border-radius:8px;padding:6px 10px;font-size:12px}
+.wrap{max-width:560px;margin:0 auto;padding:12px 12px calc(30px + var(--sab))}
+.seg{display:flex;background:var(--cream-d);border-radius:10px;padding:3px;margin-bottom:12px}
+.seg button{flex:1;border:0;background:none;padding:9px;border-radius:8px;font-size:14px;color:var(--mute);font-weight:bold}
+.seg button.on{background:#fff;color:var(--g);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:12px}
+.card h2{font-size:12px;letter-spacing:2px;color:var(--g);margin:0 0 8px;display:flex;justify-content:space-between;align-items:center}
+.card h2 small{letter-spacing:0;color:var(--mute);font-weight:normal}
+.mini{font-size:12px;color:var(--mute)}
+.credo{text-align:center;color:var(--g);font-weight:bold;font-size:14px;line-height:1.8;padding:6px 0}
+.bar{height:8px;background:var(--cream-d);border-radius:999px;overflow:hidden;display:flex;margin:6px 0 4px}
+.bar i{display:block;height:100%}
+.bar .ok{background:var(--g)}.bar .mid{background:var(--amber)}
+.it{border-top:1px solid var(--cream-d);padding:10px 0}
+.it:first-of-type{border-top:0}
+.it .hd{display:flex;align-items:center;gap:8px}
+.it .ti{flex:1;font-weight:bold;font-size:15px}
+.it .hd button.op{border:0;background:none;color:var(--g);font-size:13px;font-weight:bold;padding:4px 0}
+.it .body{margin-top:6px;font-size:14px}
+.it ol{margin:4px 0 6px;padding-left:1.3em}
+.it ol li{margin:3px 0}
+.it .tip{background:var(--amber-l);color:#6b4a12;border-radius:10px;padding:7px 10px;font-size:13px;margin:6px 0}
+.it .app{display:inline-block;margin:2px 0 6px;font-size:13px;color:var(--g);font-weight:bold;text-decoration:none;border:1px solid var(--line);border-radius:8px;padding:4px 10px}
+.lv{display:flex;gap:6px;margin-top:8px}
+.lv button{flex:1;border:2px solid var(--line);background:#fff;border-radius:10px;padding:8px 2px;font-size:13px;font-weight:bold;color:var(--mute)}
+.lv button.on.s0{border-color:var(--line);background:var(--cream-d);color:var(--ink)}
+.lv button.on.s1{border-color:var(--amber);background:var(--amber-l);color:var(--amber)}
+.lv button.on.s2{border-color:var(--g);background:var(--g);color:#fff}
+.pill{display:inline-block;font-size:11px;border-radius:999px;padding:2px 8px;font-weight:bold;white-space:nowrap}
+.pill.s1{background:var(--amber-l);color:var(--amber)}.pill.s2{background:var(--g-l);color:var(--g)}.pill.s0{background:var(--cream-d);color:var(--mute)}
+.who{padding:8px 0;border-top:1px solid var(--cream-d)}
+.who:first-of-type{border-top:0}
+.who .nm{display:flex;justify-content:space-between;font-weight:bold}
+.msg{background:var(--red-l);color:var(--red);padding:10px 12px;border-radius:10px;font-size:14px;margin-bottom:10px}
+.toast{position:fixed;left:50%;bottom:calc(24px + var(--sab));transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 16px;border-radius:999px;font-size:13px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:.92}
+</style>
+</head>
+<body>
+<header><div><div class="t">洋食オリオン</div><div class="n">覚えること</div></div><button onclick="back()">戻る</button></header>
+<div class="wrap">
+  <div class="msg hide" id="err"></div>
+  <div class="seg" id="seg"></div>
+  <div id="view"></div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="busy.js?v=1101b"></script>
+<script>
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbzFNl4UM3fkoANru-agWmuOox-h3cS1yJmx4UZxpGFemEBnAUv45Gdp1VOvtCqOVUg/exec";
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function ls(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+const TOKEN = ls("os-token") || ls("os-admin-token") || "";
+const STATES = ["まだ","自信ない","できる"];
+
+// ───── 中身（ここを書き換えれば項目が変わる。id は変えない）─────
+// stage：初日／1週目／2週目。app：関係するアプリの画面
+const ITEMS = [
+  // ── ホール ──
+  { id:"h_credo", role:"hall", stage:"初日", title:"お店の約束と1日の流れ",
+    steps:["お店の約束「古いけれど、清潔。下町だけれど、丁寧。親しみやすいけれど、雑ではない。」を読んで、自分の言葉で言えるようにする","ランチの勤務は 10:30〜15:00 が基本。開店前の準備 → ランチ営業（14:00まで）→ 片付け・締め の順","メニューはナポリタン専門。オリオン／ナシナシ（それぞれハーフあり）と瓶のドリンク（コカ・コーラ、コカ・コーラ ゼロ、ジンジャーエール、キリンラガー小瓶）"],
+    tip:"迷ったら「丁寧なほう」「清潔なほう」を選ぶ。それがこの店の答えです" },
+  { id:"h_punch", role:"hall", stage:"初日", title:"出勤・退勤と衛生チェック",
+    steps:["来たらスタッフアプリで「出勤」。そのとき体調・手洗いなどの衛生チェックに答える","帰るときに「退勤」。退勤の衛生チェックも忘れずに","打刻を忘れたら、履歴から修正を申請する（自分で直せます）"], app:["スタッフアプリ（ホーム）","staff/"] },
+  { id:"h_menu", role:"hall", stage:"初日", title:"メニューと注文の受け方",
+    steps:["オリオンとナシナシの違い、ハーフとフルの違いを説明できるようにする","テイクアウトは「TG」が付いた商品。折箱代・副菜追加も別の商品として打つ","ドリンクは瓶のまま出す。冷蔵庫の残りが少なければ「備品・飲料を数える」で知らせる"],
+    tip:"聞かれて分からないことは、その場で無理に答えず「確認します」でOK" },
+  { id:"h_regi", role:"hall", stage:"1週目", title:"レジ（会計）",
+    steps:["店の端末のレジ画面で、注文の商品をタップして数を合わせる","支払い方法（現金／PayPay）を選んで会計する。PayPay はお客様の画面で支払い完了を確認してから","会計を間違えたら、自分で消さずに管理者へ連絡する"] },
+  { id:"h_togo", role:"hall", stage:"1週目", title:"テイクアウトの受け取りとお渡し",
+    steps:["予約はレジ端末の「テイクアウト」に届く（プリンターから伝票も出る）","受け取り時間に合わせて厨房へ伝え、折箱・袋を用意する","お渡しのときに名前と内容を確認してから渡す"] },
+  { id:"h_stock", role:"hall", stage:"1週目", title:"備品・飲料を数える（週1）",
+    steps:["スタッフアプリの「店の仕事」→「備品・飲料を数える」","品目ごとに 十分／少／無 を選ぶだけ","壊れた・足りない物は「不足・破損を報告」から"], app:["備品・飲料を数える","hacchu.html?from=staff#hall"] },
+  { id:"h_clean", role:"hall", stage:"1週目", title:"片付けと清掃",
+    steps:["テーブル・椅子・カウンターを拭き、床を掃く","洗い物は食器を種類ごとに分けて片付ける","ごみの分別をして、決まった場所へ"],
+    tip:"「古いけれど、清潔」。見えない所（椅子の脚、カウンターの端）まで" },
+  { id:"h_shime", role:"hall", stage:"2週目", title:"締め（閉店後）",
+    steps:["スタッフアプリの「締め（閉店後）」を開く","現金を数えて入力、PayPay の合計、注文票の枚数を入れる","レジの合計とずれたら、そのまま記録して管理者へ連絡（無理に合わせない）"], app:["締め","shime.html"] },
+  { id:"h_recv", role:"hall", stage:"2週目", title:"届いた物の受け取り",
+    steps:["納品は営業終了（14時）以降に届く","納品書と実物の数を確認して、スタッフアプリの「届いた物を受け取る」で記録","数が違う・傷んでいる物は「不足・破損を報告」へ"], app:["受け取り","hacchu.html?from=staff#recv"] },
+  { id:"h_solo", role:"hall", stage:"2週目", title:"ひとりでホールを回す",
+    steps:["ピーク（11:30〜13:30ごろ）に、案内・注文・提供・会計を順番に回せる","厨房と声を掛け合って、提供の順番を伝えられる","困ったことはスタッフアプリの「聞く」で質問して、次から迷わないようにする"] },
+  // ── 厨房 ──
+  { id:"k_credo", role:"kitchen", stage:"初日", title:"お店の約束と1日の流れ",
+    steps:["お店の約束「古いけれど、清潔。下町だけれど、丁寧。親しみやすいけれど、雑ではない。」","開店前の仕込み → ランチ営業（14:00まで）→ 片付け・在庫の確認 の順"] },
+  { id:"k_punch", role:"kitchen", stage:"初日", title:"出勤・退勤と衛生チェック",
+    steps:["来たらスタッフアプリで「出勤」。衛生チェックに答える","帰るときに「退勤」。退勤の衛生チェックも","冷蔵・冷凍の温度など、衛生記録をつける"], app:["スタッフアプリ（ホーム）","staff/"] },
+  { id:"k_pasta", role:"kitchen", stage:"1週目", title:"麺の量と小分け",
+    steps:["乾麺 3kg でハーフ 32個分。ハーフ 1個＝乾麺 約94g（茹で上がり 約240g）、フル＝ハーフ 2個分","60食の日は小分け 70個（乾麺 約6.6kg）が目安","その日の見込み食数は発注画面の「見込み食数」で見られる"], app:["見込み食数","hacchu.html?from=staff#chef"] },
+  { id:"k_stock", role:"kitchen", stage:"1週目", title:"食材を数える（毎日）",
+    steps:["スタッフアプリの「店の仕事」→「食材を数える」","数えると、足りなくなる物が発注に自動で出る","数え忘れると発注の判断がずれるので、毎日同じタイミングで"], app:["食材を数える","hacchu.html?from=staff#chef"] },
+  { id:"k_recv", role:"kitchen", stage:"1週目", title:"届いた物の受け取り",
+    steps:["納品書と実物の数を確認して「届いた物を受け取る」で記録","数が違う・傷んでいる物は「不足・破損を報告」へ"], app:["受け取り","hacchu.html?from=staff#recv"] },
+  { id:"k_plate", role:"kitchen", stage:"2週目", title:"盛り付けと提供の基準",
+    steps:["オリオン・ナシナシそれぞれの盛り付けを、見本どおりにそろえられる","ハーフとフルの量をそろえられる","テイクアウトの詰め方をそろえられる"], tip:"写真の見本はこれから追加します" },
+  { id:"k_solo", role:"kitchen", stage:"2週目", title:"ひとりで厨房を回す",
+    steps:["ピークに、注文の順番どおりに出し続けられる","仕込みの量を見込み食数から決められる","片付けと翌日の準備まで終えられる"] }
+];
+const ROLE_NAME = { hall:"ホール", kitchen:"厨房" }, STAGES = ["初日","1週目","2週目"];
+
+let ME = null, MINE = {}, ALL = null, ROLE = "hall", VIEW = "list", OPEN = {};
+function toast(t){ const e = $("toast"); e.textContent = t; e.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(()=>e.classList.remove("on"), 1600); }
+function back(){ if (history.length > 1) history.back(); else location.href = "staff/"; }
+function stateOf(id){ return (MINE[id] && MINE[id].state) || "まだ"; }
+function sIdx(s){ return Math.max(0, STATES.indexOf(s)); }
+
+async function load(){
+  if (!TOKEN){ $("err").textContent = "スタッフアプリからログインして開いてください"; $("err").classList.remove("hide"); return; }
+  // 前回の内容をすぐ出す
+  try{ const c = JSON.parse(ls("learn-cache")||"null"); if (c){ apply(c); } }catch(e){}
+  try{ const r = await (await fetch(SHEET_URL+"?mode=learn_get&_="+Date.now()+"&token="+encodeURIComponent(TOKEN), {cache:"no-store", busy:!ME})).json();
+    if (!r.ok){ $("err").textContent = r.error==="auth" ? "ログインが切れました。スタッフアプリでログインし直してください" : (r.error||"読み込めません"); $("err").classList.remove("hide"); return; }
+    try{ localStorage.setItem("learn-cache", JSON.stringify(r)); }catch(e){}
+    apply(r); }catch(e){ if (!ME){ $("err").textContent = "通信できません"; $("err").classList.remove("hide"); } }
+}
+function apply(r){
+  const first = !ME; ME = r.me; MINE = r.mine || {}; ALL = r.all || null;
+  if (first){ let kitchen = false; try{ const c = JSON.parse(ls("os-cache")||"{}"); kitchen = !!(c.comm && c.comm.kitchen); }catch(e){} ROLE = kitchen ? "kitchen" : "hall"; }
+  render();
+}
+function render(){
+  const tabs = [["hall","ホール"],["kitchen","厨房"]]; if (ALL) tabs.push(["team","みんな"]);
+  $("seg").innerHTML = tabs.map(t=>`<button class="${(VIEW==="team"?"team":ROLE)===t[0]?"on":""}" onclick="pick('${t[0]}')">${t[1]}</button>`).join("");
+  $("view").innerHTML = VIEW === "team" ? teamView() : listView();
+}
+function pick(t){ if (t === "team") VIEW = "team"; else { VIEW = "list"; ROLE = t; } render(); scrollTo(0,0); }
+function listView(){
+  const items = ITEMS.filter(i=>i.role===ROLE), n = items.length;
+  const ok = items.filter(i=>stateOf(i.id)==="できる").length, mid = items.filter(i=>stateOf(i.id)==="自信ない").length;
+  let h = `<div class="card"><h2>${ROLE_NAME[ROLE]}で覚えること <small>${esc(ME?ME.name:"")}さん</small></h2>
+    <div class="bar"><i class="ok" style="width:${100*ok/n}%"></i><i class="mid" style="width:${100*mid/n}%"></i></div>
+    <div class="mini">できる ${ok}・自信ない ${mid}・まだ ${n-ok-mid}（全${n}項目）。自分でつけるだけでOK。自信がないものは「自信ない」にしておくと、次に何を練習するかが分かります。</div></div>`;
+  STAGES.forEach(st=>{ const list = items.filter(i=>i.stage===st); if (!list.length) return;
+    h += `<div class="card"><h2>${st}</h2>${list.map(itemHtml).join("")}</div>`; });
+  return h;
+}
+function itemHtml(i){
+  const s = stateOf(i.id), k = sIdx(s), open = OPEN[i.id];
+  return `<div class="it"><div class="hd"><span class="ti">${esc(i.title)}</span><span class="pill s${k}">${s}</span><button class="op" onclick="OPEN['${i.id}']=!OPEN['${i.id}'];render()">${open?"閉じる":"見る"}</button></div>
+    ${open ? `<div class="body"><ol>${i.steps.map(x=>`<li>${esc(x)}</li>`).join("")}</ol>${i.tip?`<div class="tip">${esc(i.tip)}</div>`:""}${i.app?`<a class="app" href="${esc(i.app[1])}">${esc(i.app[0])} を開く ›</a>`:""}</div>` : ""}
+    <div class="lv">${STATES.map((x,j)=>`<button class="s${j} ${x===s?"on":""}" onclick="setState('${i.id}','${x}')">${x}</button>`).join("")}</div></div>`;
+}
+async function setState(id, st){
+  const prev = MINE[id]; MINE[id] = { state: st, at: "" }; render();
+  try{ const r = await (await fetch(SHEET_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({type:"learn_save", token:TOKEN, item:id, state: st==="まだ" ? "" : st}), busy:false})).json();
+    if (!r.ok){ MINE[id] = prev; render(); alert(r.error||"保存できませんでした"); return; }
+    if (st==="まだ") delete MINE[id];
+    try{ const c = JSON.parse(ls("learn-cache")||"null"); if (c){ c.mine = MINE; localStorage.setItem("learn-cache", JSON.stringify(c)); } }catch(e){}
+    toast(st==="できる" ? "できる にしました" : st==="自信ない" ? "自信ない にしました。また練習しましょう" : "まだ に戻しました");
+  }catch(e){ MINE[id] = prev; render(); alert("通信できません"); }
+}
+// 管理者：みんなの進み具合（つけたのは本人）
+function teamView(){
+  const by = {}; (ALL||[]).forEach(r=>{ const o = by[r.staff_id] = by[r.staff_id] || { name:r.name, items:{} }; o.items[r.item] = r.state; });
+  const ids = Object.keys(by); if (!ids.length) return `<div class="card"><div class="mini">まだ誰もつけていません</div></div>`;
+  return `<div class="card"><h2>みんなの進み具合 <small>本人がつけたもの</small></h2>${ids.map(id=>{ const o = by[id];
+    return ["hall","kitchen"].map(role=>{ const its = ITEMS.filter(i=>i.role===role), got = its.filter(i=>o.items[i.id]); if (!got.length) return "";
+      const ok = its.filter(i=>o.items[i.id]==="できる").length, mid = its.filter(i=>o.items[i.id]==="自信ない");
+      return `<div class="who"><div class="nm"><span>${esc(o.name)}（${ROLE_NAME[role]}）</span><span class="mini">できる ${ok}/${its.length}</span></div>
+        <div class="bar"><i class="ok" style="width:${100*ok/its.length}%"></i><i class="mid" style="width:${100*mid.length/its.length}%"></i></div>
+        ${mid.length ? `<div class="mini">自信ない：${mid.map(i=>esc(i.title)).join("・")}</div>` : ""}</div>`; }).join(""); }).join("")}</div>`;
+}
+load();
+</script>
+</body>
+</html>
