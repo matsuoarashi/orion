@@ -50,7 +50,7 @@
   .bar div{flex:1;background:var(--enji);border-radius:3px 3px 0 0;position:relative;min-height:2px}
   .bar div.today{background:var(--midori)}
   .bar div.off{background:#c9b891}
-  .bar span{position:absolute;bottom:-16px;left:0;right:0;font-size:8px;text-align:center;color:var(--mute)}
+  .bar span{position:absolute;bottom:-27px;left:0;right:0;font-size:10px;line-height:1.2;text-align:center;color:var(--mute)}
   .bar b{position:absolute;top:-13px;left:0;right:0;font-size:9px;text-align:center;font-weight:normal;color:var(--ink)}
   .camGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px}
   .camGrid .c{background:var(--cream-d);border-radius:10px;padding:8px 4px;text-align:center}
@@ -260,6 +260,9 @@
       <div class="card"><h2>売上 <em class="tag j">実績</em></h2><div class="big" id="dSales">-</div>
         <div class="sub" id="dCount"></div></div>
 
+      <div class="card wide" id="beCard"><h2>この日の損益分岐 <span class="r">固定費・人件費・原価から</span></h2>
+        <div class="fc" id="beGrid"></div><div class="sub" id="beNote"></div></div>
+
       <div class="card wide"><h2 id="paceTitle">今日のペース</h2>
         <div class="pnlGrid" id="paceGrid"></div>
         <table id="paceTable" style="margin-top:8px"></table>
@@ -280,7 +283,7 @@
         <div id="splitBox"></div></div>
 
       <div class="card wide"><h2>直近14日の食数<span class="r">緑=表示中の日・灰=休み</span></h2>
-        <div class="bar" id="chart"></div><div style="height:16px"></div></div>
+        <div class="bar" id="chart"></div><div style="height:28px"></div></div>
 
       <div class="card wide hide" id="visCard"><h2>来店と滞在時間（入口カウンター）</h2>
         <div class="pnlGrid" id="visGrid"></div>
@@ -784,6 +787,29 @@ function renderForecast(){
   $("fcMsg").innerHTML = msg.length ? `<ul style="margin:0;padding-left:1.2em">${msg.map(m=>`<li>${m}</li>`).join("")}</ul>` : "";
 }
 loadWx();
+
+// ───── この日の損益分岐：固定費（月額÷その月の営業日）＋人件費（勤怠。まだなら直近の平均）を、原価を引いた残りでまかなうのに必要な売上 ─────
+function renderBE(d){
+  if (!$("beGrid")) return;
+  const p = pnlData(), dt = viewDate, mk = dt.slice(0,7);
+  const fx = p.fixed.filter(f=>!/収入/.test(f.name)), loan = fx.filter(f=>/公庫|返済/.test(f.name)).reduce((a,f)=>a+f.amount,0), fixM = fx.reduce((a,f)=>a+f.amount,0) - loan;
+  let open = 0; for (let x = mk+"/01"; x.slice(0,7)===mk; x = dateAdd(x,1)) if (isOpenDay(x)) open++;
+  const fixD = open ? fixM/open : 0;
+  const recent = DATA.daily.filter(x=>x.count>0 && x.date<dt).slice(-10);
+  const lab = p.laborDaily[dt] ? { v: p.laborDaily[dt].cost, est:false } : (()=>{ const ls = recent.map(x=>p.laborDaily[x.date]).filter(Boolean).slice(-5); return ls.length ? { v: ls.reduce((a,l)=>a+l.cost,0)/ls.length, est:true } : { v:0, est:true }; })();
+  const rs = recent.reduce((a,x)=>a+x.sales,0), rc = recent.reduce((a,x)=>a+(p.costDaily[x.date]||0),0), rm = recent.reduce((a,x)=>a+x.meals,0);
+  const cr = (d.sales && p.costDaily[dt]) ? p.costDaily[dt]/d.sales : (rs ? rc/rs : 0.3);
+  const tk = d.meals ? d.sales/d.meals : (rm ? rs/rm : 1000);
+  const be = (fixD + lab.v) / (1 - cr), beM = Math.ceil(be / tk), beL = (fixD + loan/(open||1) + lab.v) / (1 - cr);
+  const gap = d.meals - beM, done = dt < DATA.todayKey || (dt===DATA.todayKey && new Date().getHours()>=15);
+  $("beGrid").innerHTML = [
+    ["損益分岐", `約${beM}食`, `売上 ${num(Math.round(be/100)*100)}円（客単価 ${num(Math.round(tk))}円）`],
+    [done ? "結果" : "今", d.meals ? (gap>=0 ? `<span class="pos">+${gap}食</span>` : `<span class="neg">あと${-gap}食</span>`) : "—",
+      d.sales ? `${done?"":"今の"}利益 ${signed(d.sales*(1-cr) - fixD - lab.v)}` : "まだ会計がありません"]
+  ].map(c=>`<div class="w"><small>${c[0]}</small><b>${c[1]}</b><i>${c[2]}</i></div>`).join("");
+  $("beNote").innerHTML = `固定費 ${num(Math.round(fixD))}円/日（月 ${num(fixM)}円 ÷ 営業 ${open}日）＋ 人件費 ${num(Math.round(lab.v))}円${lab.est?"（勤怠がまだなので直近の平均）":""}、原価率 ${pct(cr)}。`
+    + (loan ? `公庫の返済（月 ${num(loan)}円）まで含めると 約${Math.ceil(beL/tk)}食。` : "") + (fx.some(f=>!f.amount) ? " ※固定費に0円の項目があるので、実際の分岐はもう少し上です。" : "");
+}
 function renderDay(){
   const d = dayByDate(viewDate) || {count:0,meals:0,drinks:0,sales:0,eatin:0,togo:0,
     salesEatin:0,salesTogo:0,mealsEatin:0,mealsTogo:0,items:{},hours:{},camera:null};
@@ -798,6 +824,7 @@ function renderDay(){
   $("dPnlCard").classList.toggle("hide", isToday);
   renderDayPnl(d);
   try{ renderForecast(); }catch(e){ console.error(e); }
+  try{ renderBE(d); }catch(e){ console.error(e); }
 
   // 14日チャート
   const days = [];
@@ -806,7 +833,7 @@ function renderDay(){
   const max = Math.max(1, ...rows.map(r=>r.meals));
   $("chart").innerHTML = rows.map(r=>{
     const h = Math.max(2, Math.round(100*r.meals/max));
-    return `<div class="${r.dt===viewDate?"today":(r.off&&!r.meals?"off":"")}" style="height:${h}%" title="${r.dt}: ${r.meals}食">${r.meals?`<b>${r.meals}</b>`:""}<span>${r.dt.slice(5)}</span></div>`;
+    return `<div class="${r.dt===viewDate?"today":(r.off&&!r.meals?"off":"")}" style="height:${h}%" title="${r.dt}: ${r.meals}食">${r.meals?`<b>${r.meals}</b>`:""}<span>${+r.dt.slice(8)}<br>${youbi(r.dt)}</span></div>`;
   }).join("");
 
   renderPace(d);
