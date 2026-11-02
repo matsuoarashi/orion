@@ -66,6 +66,16 @@
   .osmore>summary::-webkit-details-marker{display:none}
   .osmore>summary::after{content:" ▾"}
   .osmore[open]>summary::after{content:" ▴"}
+  .tabs button{position:relative}
+  .tbd{display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;border-radius:999px;background:var(--enji);color:#fff;font-size:11px;line-height:18px;vertical-align:1px}
+  .fc{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .fc .w{background:var(--cream-d);border-radius:10px;padding:8px 10px}
+  .fc .w small{display:block;font-size:10px;letter-spacing:2px;color:var(--midori)}
+  .fc .w b{display:block;font-size:20px;line-height:1.25}
+  .fc .w i{display:block;font-style:normal;font-size:12px;color:var(--mute)}
+  .fcmsg{margin-top:8px;font-size:13px;line-height:1.65}
+  .fcmsg li{margin:2px 0}
+  .chip{display:inline-block;font-size:11px;border-radius:999px;padding:1px 8px;background:var(--cream-d);color:var(--ink);margin:0 4px 4px 0}
   .rv h2{display:flex;justify-content:space-between;align-items:baseline}
   .ins{display:flex;gap:10px;padding:10px 0;border-top:1px dashed var(--line)}
   .ins:first-child{border-top:0}
@@ -214,6 +224,7 @@
     <button id="tab-today" class="on" onclick="setTab('today')">今日</button>
     <button id="tab-wk" onclick="setTab('wk')">週</button>
     <button id="tab-money" onclick="setTab('money')">月・お金</button>
+    <button id="tab-check" onclick="setTab('check')">確認<span class="tbd hide" id="chkBadge"></span></button>
   </div>
 
   <!-- ===== 締め（毎朝の確認） ===== -->
@@ -241,6 +252,8 @@
     </div>
     <div style="height:10px"></div>
     <div class="cards">
+      <div class="card wide" id="fcCard"><h2 id="fcTitle">今日の見立て <span class="r" id="fcSub"></span></h2>
+        <div class="fc" id="fcGrid"></div><div class="fcmsg" id="fcMsg"></div></div>
       <div class="card"><h2>食数</h2><div class="big" id="dMeals">-</div>
         <div class="sub" id="dGoal"></div>
         <div class="goal"><i id="goalBar" style="width:0%"></i></div></div>
@@ -252,17 +265,19 @@
         <table id="paceTable" style="margin-top:8px"></table>
         <div class="sub" id="paceNote"></div></div>
 
-      <div class="card wide"><h2>売上の内訳 <span class="r" id="splitSub"></span></h2>
-        <div id="splitBox"></div></div>
+
+      <div class="card wide"><h2>商品ミックス <span class="r">（ ）内は過去平均との差</span></h2>
+        <div class="camGrid" id="mixGrid"></div>
+        <div class="sub" id="mixNote"></div></div>
 
       <div class="card wide"><h2>15分ごとの食数（ばらけ具合）</h2>
         <div id="slotChart"></div>
         <div class="pnlGrid" id="slotGrid" style="margin-top:8px"></div>
         <div class="sub" id="slotNote"></div></div>
 
-      <div class="card wide"><h2>商品ミックス <span class="r">（ ）内は過去平均との差</span></h2>
-        <div class="camGrid" id="mixGrid"></div>
-        <div class="sub" id="mixNote"></div></div>
+
+      <div class="card wide"><h2>売上の内訳 <span class="r" id="splitSub"></span></h2>
+        <div id="splitBox"></div></div>
 
       <div class="card wide"><h2>直近14日の食数<span class="r">緑=表示中の日・灰=休み</span></h2>
         <div class="bar" id="chart"></div><div style="height:16px"></div></div>
@@ -397,12 +412,12 @@ const num = n => (n||0).toLocaleString();
 let DATA = null, viewDate = null, viewWeek = null, itemPeriod = "week", curTab = "today";
 
 // タブは3つ：今日（やること＋今日の数字）／週（振り返りの中心）／月・お金。前の名前（shime・day・week・items・pnl・people）でも呼べる
-const TAB_OF = { shime:"today", day:"today", week:"wk", items:"wk", pnl:"money", people:"money", today:"today", wk:"wk", money:"money" };
-const TAB_VIEWS = { today:["shime","day"], wk:["week","items"], money:["pnl"] };
+const TAB_OF = { shime:"check", day:"today", week:"wk", items:"wk", pnl:"money", people:"money", today:"today", wk:"wk", money:"money", check:"check" };
+const TAB_VIEWS = { today:["day"], wk:["week","items"], money:["pnl"], check:["shime"] };
 function setTab(t){
   t = TAB_OF[t] || "today"; curTab = t;
   ["shime","day","week","items","pnl","people"].forEach(x=>$("view-"+x).classList.toggle("hide", !TAB_VIEWS[t].includes(x)));
-  ["today","wk","money"].forEach(x=>$("tab-"+x).classList.toggle("on", x===t));
+  ["today","wk","money","check"].forEach(x=>$("tab-"+x).classList.toggle("on", x===t));
   try{ localStorage.setItem("dash-tab", t); }catch(e){}
 }
 function dayByDate(dt){ return DATA.daily.find(d=>d.date===dt) || null; }
@@ -462,7 +477,7 @@ function renderAlerts(){
   const today = DATA.todayKey;
   const days = bizDays().filter(d=>d.date<today).slice(-10).reverse().map(d=>dayStatus(d.date));
   const open = days.filter(r=>r.issues.length && !r.acked && !r.reason);
-  const box = $("alerts"); box.classList.toggle("ok", !open.length);
+  const box = $("alerts"); box.classList.toggle("ok", !open.length); box.classList.toggle("hide", !open.length); window._openShime = open.length;   // 全部確認済みなら出さない
   $("alertList").innerHTML = open.length
     ? `<div class="bar1"><b>締めの確認 ${open.length}日</b><span>${open.slice(0,3).map(r=>`${r.date.slice(5)}（${r.issues.join("・")}）`).join("　")}${open.length>3?" …":""}</span><span class="st">タップで開く ▶</span></div>`
     : `<div class="bar1"><b style="color:var(--midori)">締めはすべて確認済み</b><span class="st">${days.length?`直近 ${days[0].date.slice(5)} まで`:""}</span></div>`;
@@ -586,10 +601,10 @@ function renderMisc(){
   const li = (t, n, btnLabel, fn) => M.push(`<div class="mi"><div><b>${t}</b><small>${n}</small></div>${btnLabel?`<button onclick="${fn}">${btnLabel}</button>`:""}</div>`);
   OPSA.forEach(x=>{ const bt = OPSA_BTN[x.key] || ["",""]; li(`${x.level==="high"?'<span class="neg">●</span> ':''}${esc(x.title)}`, esc(x.detail||"").replace(/\n/g,"<br>"), bt[0], bt[1]); });
   SHORT.forEach(x=>li(`<span class="neg">人が足りない</span> ${x.date.slice(5)}(${["日","月","火","水","木","金","土"][new Date(x.date.replace(/\//g,"-")+"T00:00:00+09:00").getDay()]})`, `${x.names.length?x.names.join("・"):"シフトなし"}｜${x.why}${x.draft?"（下書きを含む）":""}`, "シフト", "goApp('staff','shift')"));
-  if(OSC.q) li(`スタッフからの質問 ${OSC.q}件（未回答）`, OSC.qs, "回答する", "setTab('today');$('osMore').open=true;setTimeout(()=>$('osQ').scrollIntoView({behavior:'smooth'}),100)");
-  if(OSC.m) li(`メールからの候補 ${OSC.m}件`, OSC.ms, "確認する", "setTab('today');$('osMore').open=true;setTimeout(()=>$('osM').scrollIntoView({behavior:'smooth'}),100)");
-  if(OSC.k) li(`承認待ちの決まり ${OSC.k}件`, OSC.ks, "確認する", "setTab('today');$('osMore').open=true;setTimeout(()=>$('osPK').scrollIntoView({behavior:'smooth'}),100)");
-  if(OSC.c) li(`契約・許認可の期限 ${OSC.c}件`, OSC.cs, "見る", "setTab('today');$('osMore').open=true;setTimeout(()=>$('osCt').scrollIntoView({behavior:'smooth'}),100)");
+  if(OSC.q) li(`スタッフからの質問 ${OSC.q}件（未回答）`, OSC.qs, "回答する", "setTab('check');$('osMore').open=true;setTimeout(()=>$('osQ').scrollIntoView({behavior:'smooth'}),100)");
+  if(OSC.m) li(`メールからの候補 ${OSC.m}件`, OSC.ms, "確認する", "setTab('check');$('osMore').open=true;setTimeout(()=>$('osM').scrollIntoView({behavior:'smooth'}),100)");
+  if(OSC.k) li(`承認待ちの決まり ${OSC.k}件`, OSC.ks, "確認する", "setTab('check');$('osMore').open=true;setTimeout(()=>$('osPK').scrollIntoView({behavior:'smooth'}),100)");
+  if(OSC.c) li(`契約・許認可の期限 ${OSC.c}件`, OSC.cs, "見る", "setTab('check');$('osMore').open=true;setTimeout(()=>$('osCt').scrollIntoView({behavior:'smooth'}),100)");
   if(!OPSA.some(x=>x.key==="shime") && !o.shime.find(s=>s.date===today) && H>=16 && (dayByDate(today)||{}).count>0) li("本日のレジ締めがまだです","閉店後にレジの「締め」から入力");
   o.unclosed.forEach(u=>li(`${u.name} ${u.date.slice(5)} 退勤の打刻がありません`,`出勤 ${hmOnly(u.in)}`,"勤怠","goApp('staff','att')"));
   bizDays().filter(d=>d.date<today && d.date>=openDate()).slice(-7).forEach(d=>{ const l = p.laborDaily[d.date]; if(!l) li(`${d.date.slice(5)}(${youbi(d.date)}) 勤怠がありません`,`売上 ${yen(d.sales)} に対して人件費0`,"勤怠","goApp('staff','att')"); else if(l.staff<2 && d.meals>=20) li(`${d.date.slice(5)}(${youbi(d.date)}) 勤怠が${l.staff}人分だけ`,`${(l.minutes/60).toFixed(1)}h・${d.meals}食。打刻漏れか修正申請が未承認`,"勤怠","goApp('staff','att')"); });
@@ -600,6 +615,7 @@ function renderMisc(){
   if(p.initial && p.initial.pending) li(`開業費の未入力 ${p.initial.pending}件`,"分析シート「開業費」で金額を入力");
   p.fixed.filter(f=>!f.amount && !/収入/.test(f.name)).forEach(f=>li(`固定費が0円のまま：${f.name}`,"実額が分かったら入力", ME?"入力":"", `fixedInput('${f.name}')`));
   $("miscList").innerHTML = M.join("") || "<div class='sub'>確認することはありません</div>";
+  const nb = M.length + (window._openShime||0); $("chkBadge").textContent = nb; $("chkBadge").classList.toggle("hide", !nb);   // 「確認」タブの件数
 }
 
 // ===== ログインと訂正（要確認の解消） =====
@@ -712,6 +728,62 @@ async function fxRestore(date, row){
 }
 
 // ===== 今日 =====
+
+// ───── 今日の見立て：天気（Open-Meteo）と曜日の実績から見込み食数。雨の影響は実績から計算（データが少ないうちは足さない）─────
+const WX_URL = "https://api.open-meteo.com/v1/forecast?latitude=35.6955&longitude=139.7675&hourly=precipitation,temperature_2m&daily=weather_code,temperature_2m_max,precipitation_probability_max&timezone=Asia%2FTokyo&past_days=92&forecast_days=7";
+let WX = null;
+async function loadWx(){
+  try{ const c = JSON.parse(localStorage.getItem("wx-cache")||"null"); if (c && Date.now()-c.at < 2*3600000){ WX = c.map; return; } }catch(e){}
+  try{ const j = await (await fetch(WX_URL, {busy:false})).json(); const map = {};
+    (j.daily.time||[]).forEach((t,i)=>{ map[t.replace(/-/g,"/")] = { code:j.daily.weather_code[i], tmax:j.daily.temperature_2m_max[i], pp:j.daily.precipitation_probability_max[i], rain:0 }; });
+    (j.hourly.time||[]).forEach((t,i)=>{ const k = t.slice(0,10).replace(/-/g,"/"), h = +t.slice(11,13); if (map[k] && h>=11 && h<=13) map[k].rain += j.hourly.precipitation[i]||0; });
+    WX = map; try{ localStorage.setItem("wx-cache", JSON.stringify({at:Date.now(), map})); }catch(e){}
+    if (DATA) renderForecast();
+  }catch(e){}
+}
+function wxText(c){ if(c==null) return ["",""]; if(c===0) return ["☀️","快晴"]; if(c<=2) return ["🌤","晴れ"]; if(c===3) return ["☁️","くもり"]; if(c<=48) return ["🌫","霧"]; if(c<=57) return ["🌦","霧雨"]; if(c<=67) return ["🌧","雨"]; if(c<=77) return ["🌨","雪"]; if(c<=82) return ["🌦","にわか雨"]; return ["⛈","雷雨"]; }
+function isRainy(w, future){ if(!w) return false; return future ? (w.pp>=50 || w.rain>=0.5) : w.rain>=0.5; }
+function isOpenDay(dt){ const w = dow(dt); return w>=1 && w<=5 && !jpHol(dt); }
+function jpHol(dt){ const [y,m,d] = dt.split("/").map(Number); const x = new Date(y,m-1,d);
+  const nm = (mo,n)=>{ const f = new Date(y,mo-1,1).getDay(); return 1+((8-f)%7)+(n-1)*7; };
+  const base = (yy,mo,dd)=>{ if(["1/1","2/11","2/23","4/29","5/3","5/4","5/5","8/11","11/3","11/23"].includes(mo+"/"+dd)) return true; if((mo===1&&dd===nm(1,2))||(mo===7&&dd===nm(7,3))||(mo===9&&dd===nm(9,3))||(mo===10&&dd===nm(10,2))) return true; const k=yy-1980; return (mo===3&&dd===Math.floor(20.8431+0.242194*k-Math.floor(k/4)))||(mo===9&&dd===Math.floor(23.2488+0.242194*k-Math.floor(k/4))); };
+  if (base(y,m,d)) return true; if (x.getDay()===1){ const s = new Date(y,m-1,d-1); if (base(s.getFullYear(),s.getMonth()+1,s.getDate())) return true; } return false; }
+// その日のいつもの食数：同じ曜日の直近4回（その日より前・営業した日）
+function baseMeals(dt){ const vs = []; for (let k=1; k<=8 && vs.length<4; k++){ const x = dayByDate(dateAdd(dt,-7*k)); if (x && x.count>0) vs.push(x.meals); } return vs.length ? { v: vs.reduce((a,b)=>a+b,0)/vs.length, n: vs.length } : null; }
+function rainEffect(){ if(!WX) return null; const ds = DATA.daily.filter(x=>x.count>0 && x.date<DATA.todayKey && WX[x.date] && isRainy(WX[x.date])).map(x=>{ const b = baseMeals(x.date); return b ? x.meals-b.v : null; }).filter(v=>v!==null);
+  return { n: ds.length, v: ds.length >= 2 ? ds.reduce((a,b)=>a+b,0)/ds.length : null }; }
+function expectMeals(dt){ const b = baseMeals(dt); if(!b) return null; const fut = dt >= DATA.todayKey, w = WX && WX[dt], re = rainEffect(); let v = b.v, adj = 0;
+  if (w && isRainy(w, fut) && re && re.v !== null) adj = re.v; return { v: Math.round(v+adj), base: Math.round(b.v), adj: Math.round(adj), n: b.n }; }
+function dayChips(dt){ const c = [], [y,m,d] = dt.split("/").map(Number); const prev = dateAdd(dt,-1), prev2 = dateAdd(dt,-3);
+  if (jpHol(prev) || (dow(dt)===1 && jpHol(prev2))) c.push("祝日明け");
+  let pay = `${y}/${String(m).padStart(2,"0")}/25`; while(!isOpenDay(pay) && +pay.slice(8)>20) pay = dateAdd(pay,-1); if (dt===pay) c.push("給料日（25日）");
+  let next = dateAdd(dt,1); while(!isOpenDay(next)) next = dateAdd(next,1); if (next.slice(5,7)!==dt.slice(5,7)) c.push("月末の最終営業日");
+  if (!isOpenDay(dateAdd(dt,1)) && !isOpenDay(dateAdd(dt,2)) && !isOpenDay(dateAdd(dt,3))) c.push("連休前");
+  return c; }
+function wxCell(dt, fut){ const w = WX && WX[dt]; if(!w) return ["天気", "—", WX ? "予報の範囲外" : "読み込み中…"]; const t = wxText(w.code);
+  return ["天気", `${t[0]} ${t[1]}`, `最高 ${Math.round(w.tmax)}℃・${fut ? `雨の確率 ${w.pp==null?"-":w.pp+"%"}` : `昼の雨 ${Math.round(w.rain*10)/10}mm`}`]; }
+function renderForecast(){
+  if (!DATA || !viewDate || !$("fcGrid")) return;
+  const dt = viewDate, today = DATA.todayKey, fut = dt >= today, d = dayByDate(dt) || {meals:0,count:0}, e = expectMeals(dt), re = rainEffect(), w = WX && WX[dt];
+  $("fcTitle").firstChild.textContent = dt===today ? "今日の見立て " : fut ? "この日の見立て " : "この日の天気と結果 ";
+  $("fcSub").textContent = dayChips(dt).join("・");
+  const cells = [wxCell(dt, fut)];
+  if (e) cells.push(fut && !(dt===today && new Date().getHours()>=15)
+      ? ["見込み食数", `約${e.v}食`, `いつもの${youbi(dt)}曜 ${e.base}食${e.adj?`・雨 ${e.adj>0?"+":""}${e.adj}食`:""}`]
+      : ["結果", `${d.meals}食`, `見込み ${e.v}食に対して ${d.meals-e.v>=0?"+":""}${d.meals-e.v}食`]);
+  $("fcGrid").innerHTML = cells.map(c=>`<div class="w"><small>${c[0]}</small><b>${c[1]}</b><i>${c[2]}</i></div>`).join("");
+  const msg = [];
+  if (re){ if (re.v !== null) msg.push(`雨の昼は、いつもの同じ曜日より平均 <b>${re.v>=0?"+":""}${Math.round(re.v)}食</b>（雨だった営業日 ${re.n}日から）。`); else msg.push(`雨の昼の営業日がまだ ${re.n}日なので、雨の影響はまだ見込みに入れていません（2日たまったら自動で入ります）。`); }
+  const done = !fut || (dt===today && new Date().getHours()>=15);
+  if (done && e && Math.abs(d.meals-e.v) >= 6) msg.push(`見込みと ${Math.abs(d.meals-e.v)}食ずれました。${w && isRainy(w) ? "雨の影響が大きかった可能性があります。" : "天気以外の理由（近所の予定・イベント・休み明けなど）に心当たりがあれば、週のまとめと一緒に残しておくと次の見込みに活かせます。"}`);
+  // 次の営業日の見込みと仕込みの目安（麺は60食で小分け70個が基準）
+  let nx = dateAdd(dt>today?dt:today, 1); for (let i=0; i<10 && !isOpenDay(nx); i++) nx = dateAdd(nx, 1);
+  const ne = expectMeals(nx), nw = WX && WX[nx];
+  if (ne && dt <= today){ const t = nw ? wxText(nw.code) : ["",""];
+    msg.push(`<b>次の営業日 ${nx.slice(5)}(${youbi(nx)})</b>：${nw ? `${t[0]}${t[1]}・最高${Math.round(nw.tmax)}℃・雨${nw.pp}%` : "天気は予報待ち"} → 見込み <b>約${ne.v}食</b>。麺の小分けは<b>約${Math.ceil(ne.v*70/60)}個</b>が目安${dayChips(nx).length?`（${dayChips(nx).join("・")}）`:""}。`); }
+  $("fcMsg").innerHTML = msg.length ? `<ul style="margin:0;padding-left:1.2em">${msg.map(m=>`<li>${m}</li>`).join("")}</ul>` : "";
+}
+loadWx();
 function renderDay(){
   const d = dayByDate(viewDate) || {count:0,meals:0,drinks:0,sales:0,eatin:0,togo:0,
     salesEatin:0,salesTogo:0,mealsEatin:0,mealsTogo:0,items:{},hours:{},camera:null};
@@ -725,6 +797,7 @@ function renderDay(){
   $("goalBar").style.width = Math.min(100, 100*d.meals/GOAL_MEALS) + "%";
   $("dPnlCard").classList.toggle("hide", isToday);
   renderDayPnl(d);
+  try{ renderForecast(); }catch(e){ console.error(e); }
 
   // 14日チャート
   const days = [];
@@ -790,10 +863,8 @@ function renderPace(d){
   const sameDow = past.filter(x=>dow(x.date)===dow(viewDate));
   const avgDow = sameDow.length ? sameDow.reduce((a,x)=>a+x.meals,0)/sameDow.length : null;
   $("paceGrid").innerHTML = (isToday ? [
-      ["現在の食数", d.meals+"食", pos?`同時刻の平均 ${pos.avgAt}食`:""],
-      ["着地見込み", proj!==null ? "約"+proj+"食" : (H>15&&d.count?d.meals+"食（終了）":"—"), proj!==null ? `目標${GOAL_MEALS}食まで ${proj>=GOAL_MEALS?"届く見込み":"あと"+(GOAL_MEALS-proj)+"食"}` : (H<11?"11時以降に表示":"営業時間外")],
+      ["現在の食数", d.meals+"食", pos?`同時刻の平均 ${pos.avgAt}食（${d.meals>=pos.avgAt?"+":""}${Math.round((d.meals-pos.avgAt)*10)/10}）`:""],
       ["過去の平均", Math.round(avgTotal)+"食/日", `営業${cums.length}日${avgDow!==null?`・${youbi(viewDate)}曜は ${Math.round(avgDow)}食`:""}`],
-      ["今日の位置", pos?`${pos.n}日中 ${pos.rank}位`:"—", "同時刻の食数で比較"]
     ] : (()=>{
       const all = DATA.daily.filter(x=>x.count>0 && x.date<DATA.todayKey);
       const rank = all.filter(x=>x.meals>d.meals).length + 1;
@@ -813,7 +884,7 @@ function renderPace(d){
     + `<tr><td>${isToday?"今日":"この日"}</td>` + hs.map(h=>`<td><b>${mine[h]}</b></td>`).join("") + "</tr>"
     + `<tr><td>平均</td>` + hs.map(h=>`<td>${Math.round(avgCum[h])}</td>`).join("") + "</tr>"
     + `<tr><td>最高</td>` + hs.map(h=>`<td>${best[h]}</td>`).join("") + "</tr>";
-  $("paceNote").textContent = "数字は食数の累計。着地見込み = 現在の食数 ÷ 過去の営業日の同時刻までの平均構成比";
+  $("paceNote").textContent = "数字はその時刻までの食数の累計";
 }
 // ===== 15分ごとの食数 =====
 function slotKeys(){ const ks=[]; for(let h=10;h<=14;h++) for(let m=0;m<60;m+=15) ks.push(String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")); ks.push("15:00"); return ks; }
