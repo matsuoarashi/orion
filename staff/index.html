@@ -18,7 +18,8 @@ header .n{font-size:17px;font-weight:bold}
 header button{background:rgba(255,255,255,.15);border:0;color:#fff;border-radius:8px;padding:7px 12px;font-size:13px}
 main{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px 24px}
 nav{flex:none;background:#fff;border-top:1px solid var(--line);display:flex;padding-bottom:var(--sab)}
-html.iosgap,html.iosgap body{background:#fff} html.iosgap nav{padding-bottom:2px}
+html.iosgap,html.iosgap body{background:#fff}
+nav{padding-bottom:max(var(--sab), 6px)}   /* ホームバーにかからないよう、どの端末でも下に余白 */
 nav button{flex:1;border:0;background:none;padding:8px 2px 6px;font-size:11px;color:var(--mute);min-height:56px}
 nav button i{display:block;font-style:normal;font-size:20px;line-height:1.2;margin-bottom:1px}
 nav button.on{color:var(--g);font-weight:bold}
@@ -231,7 +232,7 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
   <div id="vApp" class="hide" style="display:flex;flex-direction:column;flex:1;min-height:0">
     <header>
       <div><div class="t">ORION STAFF</div><div class="n" id="hName">-</div></div>
-      <button onclick="doLogout()">ログアウト</button>
+      <div style="display:flex;gap:6px"><button id="hAdmin" class="hide" onclick="location.href='../kanri.html'">管理者</button><button onclick="doLogout()">ログアウト</button></div>
     </header>
     <main id="main">
       <div id="msg"></div>
@@ -682,7 +683,7 @@ function renderHome(r, stale){
   try{ renderShop(); }catch(e){}
   setTimeout(()=>{ try{ renderTodo(); }catch(e){} }, 0);
   HOME = r; ME = r.staff; SET = r.settings; $("pHome").classList.toggle("stale", !!stale);
-  $("hName").textContent = ME.name + (ME.role==="admin" ? "（管理者）" : "");
+  $("hName").textContent = ME.name + (ME.role==="admin" ? "（管理者）" : ""); $("hAdmin").classList.toggle("hide", ME.role !== "admin");   // 管理者は管理者アプリへ戻れる
   $("hToday").textContent = mdLabel(r.today);
   if (r.todayShift){ $("hShift").textContent = r.todayShift.start+" 〜 "+r.todayShift.end; $("hShiftSub").textContent = "本日の勤務予定"; }
   else { $("hShift").textContent = "予定なし"; $("hShiftSub").textContent = "予定外に働く場合もそのまま出勤を押せます"; }
