@@ -351,21 +351,21 @@
     </div>
     <div class="cards">
       <div class="wide" id="wkList"></div>
-      <div class="wide sub" style="margin:4px 2px -2px;color:#e8dcc2">下のカードは、開いている週（いちばん最後に開いた週）の詳しい数字です</div>
-      <div class="card wide fold"><h2>この週 <span class="r" id="wkSub"></span></h2>
+
+      <div class="card wide fold hide"><h2>この週 <span class="r" id="wkSub"></span></h2>
         <div class="pnlGrid" id="wkTop"></div>
         <div class="sub" id="wkNote"></div></div>
-      <div class="card wide fold"><h2>曜日別の食数 <span class="r">濃い=この週・薄い=過去4週平均</span></h2>
+      <div class="card wide fold hide"><h2>曜日別の食数 <span class="r">濃い=この週・薄い=過去4週平均</span></h2>
         <div id="dowChart"></div></div>
-      <div class="card wide fold"><h2>ピークの変化 <span class="r">15分枠の食数・実線=この週 点線=前週</span></h2>
+      <div class="card wide fold hide"><h2>ピークの変化 <span class="r">15分枠の食数・実線=この週 点線=前週</span></h2>
         <div id="wkSlot"></div>
         <div class="pnlGrid" id="wkSlotGrid" style="margin-top:8px"></div></div>
-      <div class="card wide fold"><h2>週ごとの推移（直近8週）</h2>
+      <div class="card wide fold hide"><h2>週ごとの推移（直近8週）</h2>
         <div class="scroll"><table class="daygrid" id="weekTable"></table></div>
         <div class="sub">食数/日は営業日あたり。括弧は前週との差</div></div>
-      <div class="card wide fold"><h2>週ごとの人件費率</h2>
+      <div class="card wide fold hide"><h2>週ごとの人件費率</h2>
         <div class="scroll"><table class="daygrid" id="ppWeeks"></table></div></div>
-      <div class="card wide fold"><h2>月ごとの集計</h2><div id="monthTable"></div>
+      <div class="card wide fold hide"><h2>月ごとの集計</h2><div id="monthTable"></div>
         <div class="sub">※営業日=会計が1件以上あった日</div></div>
     </div>
   </div>
@@ -457,7 +457,7 @@ let DATA = null, viewDate = null, viewWeek = null, itemPeriod = "week", curTab =
 
 // タブは3つ：今日（やること＋今日の数字）／週（振り返りの中心）／月・お金。前の名前（shime・day・week・items・pnl・people）でも呼べる
 const TAB_OF = { shime:"check", day:"today", week:"wk", items:"wk", pnl:"money", people:"money", today:"today", wk:"wk", money:"money", check:"check" };
-const TAB_VIEWS = { today:["day"], wk:["week","items"], money:["pnl"], check:["shime"] };
+const TAB_VIEWS = { today:["day"], wk:["week"], money:["pnl"], check:["shime"] };   // 週は週のカードだけ（細かい集計は出さない）
 function setTab(t){
   t = TAB_OF[t] || "today"; curTab = t;
   ["shime","day","week","items","pnl","people"].forEach(x=>$("view-"+x).classList.toggle("hide", !TAB_VIEWS[t].includes(x)));
