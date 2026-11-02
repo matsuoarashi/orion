@@ -61,6 +61,20 @@
   footer{text-align:center;color:#c8a866;font-size:11px;padding-bottom:8px}
   footer button{background:none;border:1px solid #a98d5c;color:#e8d5ac;border-radius:8px;padding:6px 14px;font-size:12px;margin:6px 4px 0}
   .hide{display:none}
+  .osmore{grid-column:1/-1}
+  .osmore>summary{list-style:none;cursor:pointer;background:var(--cream);border:2px solid var(--wood-d);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:bold;color:var(--midori)}
+  .osmore>summary::-webkit-details-marker{display:none}
+  .osmore>summary::after{content:" ▾"}
+  .osmore[open]>summary::after{content:" ▴"}
+  .rv h2{display:flex;justify-content:space-between;align-items:baseline}
+  .ins{display:flex;gap:10px;padding:10px 0;border-top:1px dashed var(--line)}
+  .ins:first-child{border-top:0}
+  .ins .k{flex:none;width:22px;height:22px;border-radius:50%;background:var(--midori);color:#fff;font-size:12px;font-weight:bold;display:flex;align-items:center;justify-content:center;margin-top:2px}
+  .ins.bad .k{background:var(--enji)}.ins.good .k{background:var(--gold)}
+  .ins b{display:block;font-size:15px;line-height:1.45}
+  .ins p{margin:3px 0 0;font-size:13px;color:var(--mute);line-height:1.55}
+  .ins p em{font-style:normal;color:var(--midori);font-weight:bold}
+  .rvnext{margin-top:10px;background:var(--cream-d);border-radius:10px;padding:8px 12px;font-size:13px;line-height:1.6}
   .pnlGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
   .pnlGrid .c{background:var(--cream-d);border-radius:10px;padding:8px 10px;min-width:0}
   .pnlGrid .c small{display:block;font-size:10px;letter-spacing:2px;color:var(--midori)}
@@ -197,12 +211,9 @@
   <div id="ov"></div><div class="toast" id="toast"></div>
 
   <div class="tabs">
-    <button id="tab-shime" onclick="setTab('shime')">確認</button>
-    <button id="tab-day" class="on" onclick="setTab('day')">今日</button>
-    <button id="tab-week" onclick="setTab('week')">週</button>
-    <button id="tab-items" onclick="setTab('items')">商品</button>
-    <button id="tab-pnl" onclick="setTab('pnl')">収支</button>
-    <button id="tab-people" onclick="setTab('people')">人</button>
+    <button id="tab-today" class="on" onclick="setTab('today')">今日</button>
+    <button id="tab-wk" onclick="setTab('wk')">週</button>
+    <button id="tab-money" onclick="setTab('money')">月・お金</button>
   </div>
 
   <!-- ===== 締め（毎朝の確認） ===== -->
@@ -210,6 +221,13 @@
     <div class="cards">
       <div class="card wide" style="padding:8px 14px"><div class="sub" id="shimeHelp">昨日の締めを上から順に確認します。レジ記録と実際（数えた現金・PayPay画面・伝票）の差を見て、違っていれば会計一覧の行をタップして直し、最後に「確認済み」。</div></div>
       <div class="card wide"><h2>今朝の確認</h2><div class="sub" style="margin-bottom:6px">質問・メール・契約・勤怠・在庫・経費。ボタンでその画面に移ります</div><div id="miscList"></div></div>
+      <details class="wide osmore" id="osMore"><summary>そのほかの確認（勤怠・契約の期限・メールの候補・質問・決まり）</summary><div class="cards" style="margin-top:8px">
+      <div class="card wide"><h2>勤怠の確認</h2><div id="ppOps"></div></div>
+      <div class="card wide"><h2>契約・許認可の期限 <small id="osctN"></small></h2><div class="sub" style="margin-bottom:8px">契約台帳の終了日・更新期限が 90 日以内のもの</div><div id="osCt">読み込み中…</div></div>
+      <div class="card wide"><h2>メールからの候補 <small id="osmN"></small></h2><div class="sub" style="margin-bottom:8px">店の Gmail（PayPay・トーホー・取引先）から自動で拾ったもの。確認して「反映済」か「不要」に</div><div id="osM">読み込み中…</div></div>
+      <div class="card wide"><h2>スタッフからの質問 <small id="osqN"></small></h2><div class="sub" style="margin-bottom:8px">勤怠アプリ「聞く」で答えられなかった質問。回答すると Knowledge に入り、次からアプリが答えます</div><div id="osQ">読み込み中…</div></div>
+      <div class="card wide"><h2>承認待ちの決まり <small id="ospkN"></small></h2><div class="sub" style="margin-bottom:8px">「確認中」のままの決まり。内容を直して「承認」すると、勤怠アプリの「聞く」で答えに使われます</div><div id="osPK">読み込み中…</div></div>
+      </div></details>
       <div id="shimeCards" class="wide"></div>
     </div>
   </div>
@@ -273,6 +291,8 @@
     </div>
     <div style="height:10px"></div>
     <div class="cards">
+      <div class="card wide rv" id="rvCard"><h2 id="rvTitle">週のまとめ</h2><div class="pnlGrid" id="rvTop"></div>
+        <div id="rvIns" style="margin-top:10px"></div><div id="rvNext"></div></div>
       <div class="card wide"><h2>この週 <span class="r" id="wkSub"></span></h2>
         <div class="pnlGrid" id="wkTop"></div>
         <div class="sub" id="wkNote"></div></div>
@@ -284,6 +304,8 @@
       <div class="card wide"><h2>週ごとの推移（直近8週）</h2>
         <div class="scroll"><table class="daygrid" id="weekTable"></table></div>
         <div class="sub">食数/日は営業日あたり。括弧は前週との差</div></div>
+      <div class="card wide"><h2>週ごとの人件費率</h2>
+        <div class="scroll"><table class="daygrid" id="ppWeeks"></table></div></div>
       <div class="card wide"><h2>月ごとの集計</h2><div id="monthTable"></div>
         <div class="sub">※営業日=会計が1件以上あった日</div></div>
     </div>
@@ -292,7 +314,7 @@
   <!-- ===== 商品 ===== -->
   <div id="view-items" class="hide">
     <div class="cards">
-      <div class="card wide"><h2>期間 <span class="seg" id="itemSeg"><button class="on" onclick="setItemPeriod('day')">この日</button><button onclick="setItemPeriod('week')">この週</button><button onclick="setItemPeriod('month')">今月</button><button onclick="setItemPeriod('all')">全期間</button></span></h2>
+      <div class="card wide"><h2>期間 <span class="seg" id="itemSeg"><button onclick="setItemPeriod('day')">この日</button><button class="on" onclick="setItemPeriod('week')">この週</button><button onclick="setItemPeriod('month')">今月</button><button onclick="setItemPeriod('all')">全期間</button></span></h2>
         <div class="camGrid" id="itemMix"></div>
         <div class="sub" id="itemNote"></div></div>
       <div class="card wide"><h2>売れ数ランキング <span class="r">括弧は前の同じ期間との差</span></h2>
@@ -324,6 +346,12 @@
       <div class="card wide"><h2 id="pnlDaysT">日別の粗利（今月）</h2>
         <div class="scroll"><table class="daygrid" id="pnlDays"></table></div>
         <div class="sub">粗利 = 売上 − 原価(概算) − 人件費。人件費「-」は勤怠が未確定の日</div></div>
+      <div class="card wide"><h2><span id="ppTitle">今月の人件費</span> <em class="tag g">概算</em></h2>
+        <div class="pnlGrid" id="ppTop"></div>
+        <div class="sub">勤怠の打刻×時給。退勤が未確定の日は入っていません</div></div>
+      <div class="card wide"><h2>日別の労働時間と生産性</h2>
+        <div class="scroll"><table class="daygrid" id="ppDays"></table></div>
+        <div class="sub">人時売上 = 売上 ÷ 労働時間（目安 3,500円/h）。人時食数 = 食数 ÷ 労働時間</div></div>
       <div class="card"><h2>固定費（月額）</h2><div id="pnlFixed"></div></div>
       <div class="card"><h2><span id="pnlExpT">今月の経費（変動）</span><em class="tag j">実績</em></h2><div id="pnlExp"></div></div>
       <div class="card wide"><h2>月ごとの比較</h2><div class="scroll"><table id="pnlMonths"></table></div></div>
@@ -348,19 +376,6 @@
       <button class="nav" id="mNextH" onclick="moveMonth(1)">▶</button>
     </div>
     <div class="cards">
-      <div class="card wide"><h2><span id="ppTitle">今月の人件費</span> <em class="tag g">概算</em></h2>
-        <div class="pnlGrid" id="ppTop"></div>
-        <div class="sub">勤怠の打刻×時給。退勤が未確定の日は入っていません</div></div>
-      <div class="card wide"><h2>日別の労働時間と生産性</h2>
-        <div class="scroll"><table class="daygrid" id="ppDays"></table></div>
-        <div class="sub">人時売上 = 売上 ÷ 労働時間（目安 3,500円/h）。人時食数 = 食数 ÷ 労働時間</div></div>
-      <div class="card wide"><h2>週ごとの人件費率</h2>
-        <div class="scroll"><table class="daygrid" id="ppWeeks"></table></div></div>
-      <div class="card wide"><h2>勤怠の確認</h2><div id="ppOps"></div></div>
-      <div class="card wide"><h2>契約・許認可の期限 <small id="osctN"></small></h2><div class="sub" style="margin-bottom:8px">契約台帳の終了日・更新期限が 90 日以内のもの</div><div id="osCt">読み込み中…</div></div>
-      <div class="card wide"><h2>メールからの候補 <small id="osmN"></small></h2><div class="sub" style="margin-bottom:8px">店の Gmail（PayPay・トーホー・取引先）から自動で拾ったもの。確認して「反映済」か「不要」に</div><div id="osM">読み込み中…</div></div>
-      <div class="card wide"><h2>スタッフからの質問 <small id="osqN"></small></h2><div class="sub" style="margin-bottom:8px">勤怠アプリ「聞く」で答えられなかった質問。回答すると Knowledge に入り、次からアプリが答えます</div><div id="osQ">読み込み中…</div></div>
-      <div class="card wide"><h2>承認待ちの決まり <small id="ospkN"></small></h2><div class="sub" style="margin-bottom:8px">「確認中」のままの決まり。内容を直して「承認」すると、勤怠アプリの「聞く」で答えに使われます</div><div id="osPK">読み込み中…</div></div>
     </div>
   </div>
 
@@ -379,14 +394,15 @@ const SEATS = 9;
 const $ = id => document.getElementById(id);
 const yen = n => (n||0).toLocaleString() + "円";
 const num = n => (n||0).toLocaleString();
-let DATA = null, viewDate = null, viewWeek = null, itemPeriod = "day", curTab = "day";
+let DATA = null, viewDate = null, viewWeek = null, itemPeriod = "week", curTab = "today";
 
+// タブは3つ：今日（やること＋今日の数字）／週（振り返りの中心）／月・お金。前の名前（shime・day・week・items・pnl・people）でも呼べる
+const TAB_OF = { shime:"today", day:"today", week:"wk", items:"wk", pnl:"money", people:"money", today:"today", wk:"wk", money:"money" };
+const TAB_VIEWS = { today:["shime","day"], wk:["week","items"], money:["pnl"] };
 function setTab(t){
-  curTab = t;
-  ["shime","day","week","items","pnl","people"].forEach(x=>{
-    $("view-"+x).classList.toggle("hide", x!==t);
-    $("tab-"+x).classList.toggle("on", x===t);
-  });
+  t = TAB_OF[t] || "today"; curTab = t;
+  ["shime","day","week","items","pnl","people"].forEach(x=>$("view-"+x).classList.toggle("hide", !TAB_VIEWS[t].includes(x)));
+  ["today","wk","money"].forEach(x=>$("tab-"+x).classList.toggle("on", x===t));
   try{ localStorage.setItem("dash-tab", t); }catch(e){}
 }
 function dayByDate(dt){ return DATA.daily.find(d=>d.date===dt) || null; }
@@ -570,10 +586,10 @@ function renderMisc(){
   const li = (t, n, btnLabel, fn) => M.push(`<div class="mi"><div><b>${t}</b><small>${n}</small></div>${btnLabel?`<button onclick="${fn}">${btnLabel}</button>`:""}</div>`);
   OPSA.forEach(x=>{ const bt = OPSA_BTN[x.key] || ["",""]; li(`${x.level==="high"?'<span class="neg">●</span> ':''}${esc(x.title)}`, esc(x.detail||"").replace(/\n/g,"<br>"), bt[0], bt[1]); });
   SHORT.forEach(x=>li(`<span class="neg">人が足りない</span> ${x.date.slice(5)}(${["日","月","火","水","木","金","土"][new Date(x.date.replace(/\//g,"-")+"T00:00:00+09:00").getDay()]})`, `${x.names.length?x.names.join("・"):"シフトなし"}｜${x.why}${x.draft?"（下書きを含む）":""}`, "シフト", "goApp('staff','shift')"));
-  if(OSC.q) li(`スタッフからの質問 ${OSC.q}件（未回答）`, OSC.qs, "回答する", "setTab('people');setTimeout(()=>$('osQ').scrollIntoView({behavior:'smooth'}),100)");
-  if(OSC.m) li(`メールからの候補 ${OSC.m}件`, OSC.ms, "確認する", "setTab('people');setTimeout(()=>$('osM').scrollIntoView({behavior:'smooth'}),100)");
-  if(OSC.k) li(`承認待ちの決まり ${OSC.k}件`, OSC.ks, "確認する", "setTab('people');setTimeout(()=>$('osPK').scrollIntoView({behavior:'smooth'}),100)");
-  if(OSC.c) li(`契約・許認可の期限 ${OSC.c}件`, OSC.cs, "見る", "setTab('people');setTimeout(()=>$('osCt').scrollIntoView({behavior:'smooth'}),100)");
+  if(OSC.q) li(`スタッフからの質問 ${OSC.q}件（未回答）`, OSC.qs, "回答する", "setTab('today');$('osMore').open=true;setTimeout(()=>$('osQ').scrollIntoView({behavior:'smooth'}),100)");
+  if(OSC.m) li(`メールからの候補 ${OSC.m}件`, OSC.ms, "確認する", "setTab('today');$('osMore').open=true;setTimeout(()=>$('osM').scrollIntoView({behavior:'smooth'}),100)");
+  if(OSC.k) li(`承認待ちの決まり ${OSC.k}件`, OSC.ks, "確認する", "setTab('today');$('osMore').open=true;setTimeout(()=>$('osPK').scrollIntoView({behavior:'smooth'}),100)");
+  if(OSC.c) li(`契約・許認可の期限 ${OSC.c}件`, OSC.cs, "見る", "setTab('today');$('osMore').open=true;setTimeout(()=>$('osCt').scrollIntoView({behavior:'smooth'}),100)");
   if(!OPSA.some(x=>x.key==="shime") && !o.shime.find(s=>s.date===today) && H>=16 && (dayByDate(today)||{}).count>0) li("本日のレジ締めがまだです","閉店後にレジの「締め」から入力");
   o.unclosed.forEach(u=>li(`${u.name} ${u.date.slice(5)} 退勤の打刻がありません`,`出勤 ${hmOnly(u.in)}`,"勤怠","goApp('staff','att')"));
   bizDays().filter(d=>d.date<today && d.date>=openDate()).slice(-7).forEach(d=>{ const l = p.laborDaily[d.date]; if(!l) li(`${d.date.slice(5)}(${youbi(d.date)}) 勤怠がありません`,`売上 ${yen(d.sales)} に対して人件費0`,"勤怠","goApp('staff','att')"); else if(l.staff<2 && d.meals>=20) li(`${d.date.slice(5)}(${youbi(d.date)}) 勤怠が${l.staff}人分だけ`,`${(l.minutes/60).toFixed(1)}h・${d.meals}食。打刻漏れか修正申請が未承認`,"勤怠","goApp('staff','att')"); });
@@ -909,8 +925,83 @@ function sumDays(list){
   });
   return x;
 }
+
+// ───── 週のまとめ（振り返りの中心）：数字を前週・4週平均と並べ、気づきを文章で最大3つ ─────
+function rvStats(mon){
+  const p = pnlData(), list = weekDays(mon).filter(d=>d.count>0), x = sumDays(list);
+  let nasi = 0, ori = 0; list.forEach(d=>Object.entries(d.items||{}).forEach(([k,v])=>{ if(/ナシナシ/.test(k)) nasi += v; else if(/オリオン/.test(k)) ori += v; }));
+  const hrs = x.minutes/60;
+  return { mon, list, x, days:x.days, mpd: x.days ? x.meals/x.days : null, ticket: x.meals ? x.sales/x.meals : null,
+    labor: x.sales && x.laborDays ? x.labor/ list.filter(d=>p.laborDaily[d.date]).reduce((a,d)=>a+d.sales,0) : null,
+    cost: x.sales ? x.cost/x.sales : null, gp: x.sales - x.cost - x.labor, spmh: hrs ? x.sales/hrs : null,
+    nasi: (nasi+ori) ? nasi/(nasi+ori) : null, drink: x.meals ? x.drinks/x.meals : null, togo: x.meals ? x.mealsTogo/x.meals : null };
+}
+function rvAvg(arr, k){ const v = arr.map(a=>a[k]).filter(z=>z!==null && z!==undefined && isFinite(z)); return v.length ? v.reduce((a,b)=>a+b,0)/v.length : null; }
+function renderReview(){
+  const mon = viewWeek, thisMon = mondayOf(DATA.todayKey), cur = rvStats(mon);
+  const prev = rvStats(dateAdd(mon,-7)), hist = [1,2,3,4].map(k=>rvStats(dateAdd(mon,-7*k))).filter(h=>h.days);
+  const lab = mon===thisMon ? "今週（途中）のまとめ" : mon===dateAdd(thisMon,-7) ? "先週のまとめ" : `${+mon.slice(5,7)}/${+mon.slice(8)}の週のまとめ`;
+  $("rvTitle").innerHTML = `${lab}<span class="r">営業 ${cur.days}日${hist.length?`・比べるのは前週と過去${hist.length}週の平均`:""}</span>`;
+  if (!cur.days){ $("rvTop").innerHTML = ""; $("rvIns").innerHTML = `<div class="sub">この週はまだ営業日がありません。◀ で前の週を見られます</div>`; $("rvNext").innerHTML = ""; return; }
+  const A = k => rvAvg(hist, k);
+  const cmp = (v, pv, av, f) => [pv!==null&&pv!==undefined ? "前週 "+f(pv) : "", av!==null ? "平均 "+f(av) : ""].filter(Boolean).join("・");
+  const fPct = v => v===null ? "-" : (Math.round(v*1000)/10)+"%", fYen = v => v===null ? "-" : num(Math.round(v))+"円", fM = v => v===null ? "-" : v.toFixed(1)+"食";
+  $("rvTop").innerHTML = [
+    ["売上", yen(cur.x.sales), prev.days ? "前週 "+yen(prev.x.sales) : ""],
+    ["食数/日", fM(cur.mpd), cmp(prev.mpd, null, A("mpd"), fM)],
+    ["客単価", fYen(cur.ticket), cmp(prev.ticket, null, A("ticket"), fYen)],
+    ["人件費率", fPct(cur.labor), ["目安 30%", cmp(prev.labor, null, A("labor"), fPct)].filter(Boolean).join("・")],
+    ["原価率 <em class='tag g'>概算</em>", fPct(cur.cost), cmp(prev.cost, null, A("cost"), fPct)],
+    ["粗利 <em class='tag g'>概算</em>", signed(cur.gp), prev.days ? "前週 "+num(Math.round(prev.gp))+"円" : ""]
+  ].map(a=>cell(...a)).join("");
+  // 気づき：ずれの大きい順に最大3つ。数字と、次にやることを1行で
+  const p = pnlData(), ins = [];
+  if (cur.labor !== null){
+    const dl = cur.list.filter(d=>p.laborDaily[d.date] && p.laborDaily[d.date].minutes).map(d=>{ const l = p.laborDaily[d.date]; return { d, l, spmh: d.sales/(l.minutes/60) }; }).sort((a,b)=>a.spmh-b.spmh);
+    const w = dl[0];
+    if (cur.labor > 0.30){
+      ins.push({ s: (cur.labor-0.30)*400, c:"bad", t:`人件費率 ${fPct(cur.labor)}（目安30%を ${Math.round((cur.labor-0.30)*1000)/10}pt 超え）`,
+        p: w ? `いちばん効率が低かったのは <em>${w.d.date.slice(5)}(${youbi(w.d.date)})</em>：${w.d.meals}食を ${w.l.staff}人・${(w.l.minutes/60).toFixed(1)}h で回し、人時売上 ${num(Math.round(w.spmh))}円（目安3,500円）。この曜日の人数か時間を見直す余地があります` : "" });
+    } else if (cur.labor < 0.24 && cur.days >= 3){
+      ins.push({ s: 2, c:"good", t:`人件費率 ${fPct(cur.labor)}。目安より低く、少ない人数で回せています`, p: w ? `ただし ${w.d.date.slice(5)}(${youbi(w.d.date)}) は人時売上 ${num(Math.round(w.spmh))}円。忙しい日に無理が出ていないかも見てください` : "" });
+    }
+  }
+  const am = A("mpd");
+  if (am && cur.mpd !== null && cur.days >= 2){
+    const r = cur.mpd/am - 1;
+    // 曜日ごとに、自分の曜日の平均からいちばんずれた日
+    const byDay = cur.list.map(d=>{ const vs = [1,2,3,4].map(k=>dayByDate(dateAdd(d.date,-7*k))).filter(z=>z&&z.count>0).map(z=>z.meals); const av = vs.length ? vs.reduce((a,b)=>a+b,0)/vs.length : null; return { d, av, df: av===null ? 0 : d.meals-av }; }).filter(z=>z.av!==null).sort((a,b)=>Math.abs(b.df)-Math.abs(a.df));
+    const z = byDay[0];
+    if (Math.abs(r) >= 0.06) ins.push({ s: Math.abs(r)*60, c: r>0 ? "good" : "bad", t:`食数/日 ${fM(cur.mpd)}（平均より ${r>0?"+":""}${Math.round(r*100)}%）`,
+      p: z && Math.abs(z.df) >= 4 ? `いちばん動いたのは <em>${z.d.date.slice(5)}(${youbi(z.d.date)})</em> の ${z.d.meals}食（いつもの${youbi(z.d.date)}曜は約${Math.round(z.av)}食）。天気・近所の予定・イベントなど、理由に心当たりがあればメモしておくと来週の仕込みに効きます` : (r>0 ? "仕込み量と発注を、この水準に合わせて見直してください" : "") });
+    else if (z && Math.abs(z.df) >= 6) ins.push({ s: Math.abs(z.df)/2, c: z.df>0 ? "good" : "bad", t:`${z.d.date.slice(5)}(${youbi(z.d.date)}) が ${z.d.meals}食（いつもの${youbi(z.d.date)}曜は約${Math.round(z.av)}食）`, p:"週全体は平均並み。この日だけの理由（天気・イベント・休み明けなど）があればメモを" });
+  }
+  // ピークの集中：15分枠の上位
+  const ks = slotKeys(), sl = cur.list.filter(d=>d.slots);
+  if (sl.length >= 2){
+    const v = ks.map(k=>sl.reduce((a,d)=>a+Number((d.slots||{})[k]||0),0)/sl.length), tot = v.reduce((a,b)=>a+b,0);
+    if (tot){ const order = v.map((x,i)=>[x,i]).sort((a,b)=>b[0]-a[0]); const top = order.slice(0,2).map(o=>o[1]).sort((a,b)=>a-b); const share = (v[top[0]]+v[top[1]])/tot;
+      if (share >= 0.30) ins.push({ s: share*10, c:"", t:`ピークは ${ks[top[0]]}〜${ks[top[1]].replace(/:(\d\d)$/, (m0,mm)=>":"+String(+mm+15).padStart(2,"0"))} に集中（30分で ${Math.round(share*100)}%）`,
+        p:`1日平均 ${Math.round(v[top[0]]+v[top[1]])}食がこの30分に来ています。この時間だけは<em>提供と会計を分担</em>できる人数にしておくと、待ち時間と取りこぼしが減ります` }); }
+  }
+  // 客単価・商品の比率
+  const at = A("ticket");
+  if (at && cur.ticket !== null && Math.abs(cur.ticket/at-1) >= 0.03) ins.push({ s: Math.abs(cur.ticket/at-1)*50, c: cur.ticket>at ? "good" : "bad", t:`客単価 ${fYen(cur.ticket)}（平均より ${cur.ticket>at?"+":""}${Math.round((cur.ticket/at-1)*100)}%）`,
+    p:`ドリンク ${fPct(cur.drink)}（平均 ${fPct(A("drink"))}）・持ち帰り ${fPct(cur.togo)}（平均 ${fPct(A("togo"))}）。${cur.ticket<at ? "ドリンクや副菜のひと声が減っていないか確認を" : "続けたい動き。何が効いたかを残しておくと再現できます"}` });
+  const an = A("nasi");
+  if (an !== null && cur.nasi !== null && Math.abs(cur.nasi-an) >= 0.05) ins.push({ s: Math.abs(cur.nasi-an)*40, c:"", t:`ナシナシの比率 ${fPct(cur.nasi)}（平均 ${fPct(an)}）`, p:`オリオンとナシナシの割合が変わっています。<em>仕込みの配分</em>と、ナシナシ用の材料の発注量を合わせてください` });
+  const ac = A("cost");
+  if (cur.cost !== null && cur.cost > 0.35) ins.push({ s: (cur.cost-0.35)*300, c:"bad", t:`原価率 ${fPct(cur.cost)}（概算）`, p:`${ac!==null?`平均 ${fPct(ac)}。`:""}ハーフ・持ち帰りの比率や、仕入れ値の変化（発注の価格）を確認してください` });
+  ins.sort((a,b)=>b.s-a.s);
+  $("rvIns").innerHTML = ins.length ? ins.slice(0,3).map((x,i)=>`<div class="ins ${x.c}"><span class="k">${i+1}</span><div><b>${x.t}</b>${x.p?`<p>${x.p}</p>`:""}</div></div>`).join("")
+    : `<div class="ins good"><span class="k">✓</span><div><b>大きな変化はありません</b><p>食数・客単価・人件費率とも、いつもの範囲です</p></div></div>`;
+  // 今週の注意（人手不足・年収の壁など、今朝の確認から）
+  const nx = (OPSA||[]).filter(a=>["short","cap","rec"].includes(a.key));
+  $("rvNext").innerHTML = nx.length ? `<div class="rvnext"><b>これからの注意</b><br>${nx.map(a=>esc(a.title)).join("<br>")}</div>` : "";
+}
 function weekDays(mon){ return DATA.daily.filter(d=>d.date>=mon && d.date<=dateAdd(mon,6)); }
 function renderWeek(){
+  try{ renderReview(); }catch(e){ console.error(e); }
   const mon = viewWeek; const end = dateAdd(mon,6);
   $("weekLabel").textContent = `${+mon.slice(5,7)}/${+mon.slice(8)}(月)〜${+end.slice(5,7)}/${+end.slice(8)}(${youbi(end)})`;
   $("weekJump").outerHTML = mon===mondayOf(DATA.todayKey) ? `<span id="weekJump" class="now">今週</span>` : `<button id="weekJump" class="jump" onclick="goThisWeek()">今週へ戻る</button>`;
@@ -1222,7 +1313,8 @@ async function renderOsM(){
 async function osMailSet(id, status){ const box = $("osm_"+id); box.querySelectorAll("button").forEach(b=>b.disabled=true); const r = await fxPost("os_mail_set", {id, status}); if (r.error){ alert(r.error); box.querySelectorAll("button").forEach(b=>b.disabled=false); return; } box.remove(); renderOsM(); }
 function renderAll(){
   if(!viewDate || !dayByDate(viewDate)) viewDate = DATA.todayKey;
-  if(!viewWeek) viewWeek = mondayOf(DATA.todayKey);
+  if(!window._pmInit){ window._pmInit = 1; if(+DATA.todayKey.slice(8) <= 5 && monthAdd(thisMonth(),-1) >= firstMonth()) PM = monthAdd(thisMonth(),-1); }   // 月初（1〜5日）は前月を先に見せる（今月はほぼ空のため）
+  if(!viewWeek) viewWeek = [1,2,3].includes(dow(DATA.todayKey)) ? dateAdd(mondayOf(DATA.todayKey), -7) : mondayOf(DATA.todayKey);   // 月〜水は先週を振り返る
   renderAlerts(); renderDay(); renderWeek(); renderItems(); renderPnl(); renderPeople();
 }
 
@@ -1247,7 +1339,7 @@ async function load(keep){
   }finally{ _loading = false; if(_again){ _again = false; setTimeout(()=>load(true), 300); } }
 }
 
-try{ if(/embed=1/.test(location.search)) setTab("shime"); else { const t = localStorage.getItem("dash-tab"); if(t && $("tab-"+t)) setTab(t); } }catch(e){}
+try{ const t = localStorage.getItem("dash-tab"); setTab(t && TAB_OF[t] ? t : "today"); }catch(e){ setTab("today"); }
 renderWho(); bootAuth().then(()=>{ try{ const fx = new URLSearchParams(location.search).get("fix"); if(fx && ME){ const go = ()=>{ if(!DATA){ setTimeout(go,500); return; } setTab("day"); viewDate = fx; renderDay(); openSales(fx); }; go(); } }catch(e){} });
 load();
 setInterval(()=>{ if(!document.hidden) load(true); }, 60000);
