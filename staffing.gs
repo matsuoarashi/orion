@@ -52,7 +52,7 @@ function stfShortDays_(n){
     var open = extra.indexOf(d) >= 0 || (closedDow.indexOf(dow) < 0 && hol.indexOf(d) < 0 && !stfJpHoliday_(Number(d.slice(0,4)), Number(d.slice(5,7)), Number(d.slice(8,10))));
     var nd = need[d]; if (nd){ var ov = nd["営業"]; if (ov === false || /^(false|休|×|0|closed)$/i.test(String(ov))) open = false; else if (ov === true || /^(true|営業|○|1|open)$/i.test(String(ov))) open = true; }
     if (!open) continue;
-    var sh = byDate[d] || []; var req = (nd && Number(nd["必要人数"])) || 2;
+    var sh = byDate[d] || []; var nn = stfNeedFor_(stfNeedCfg_(set), Object.keys(stfNeedCfg_(set).stores)[0], dow); var req = (nd && Number(nd["必要人数"])) || (nn.hall + nn.kitchen) || 2;   // 店・曜日の必要人数（設定 staffing_need）
     var hasK = !kitchen.length || sh.some(function(x){ return kitchen.indexOf(x.staff_id) >= 0; }), hasH = sh.some(function(x){ return kitchen.indexOf(x.staff_id) < 0; });
     var why = []; if (sh.length < req) why.push(sh.length + "人／必要" + req + "人"); if (sh.length && kitchen.length && !hasK) why.push("厨房がいない"); if (sh.length && !hasH) why.push("ホールがいない");
     if (why.length) out.push({ date:d, label: d.slice(5) + "(" + YO[dow] + ")", names: sh.map(function(x){ return names[x.staff_id] || "?"; }), why: why.join("・"), draft: sh.some(function(x){ return String(x["状態"]) !== "confirmed"; }) });

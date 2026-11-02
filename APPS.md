@@ -79,6 +79,7 @@
 - v76（11/2 朝）：LINE 通知（staffing.gs 末尾の LINE ブロック）。Messaging API（公式アカウント「洋食オリオン」）。doPost の先頭で LINE の webhook を受けてグループIDを LINE_CANDIDATES に保存。LINE_TOKEN を貼り、管理者グループに招待したあと linePickGroup() を 1 回実行すると LINE_TO が決まり、opsMail_ と同じ内容が LINE にも流れる（未設定なら何もしない）
 - v77〜v78（11/2 朝）：採用（recruit.gs）。分析シートに「求人票」「応募者」タブ。doGet mode=rec_list／doPost rec_app_save・rec_job_save（管理者トークン）。メール取り込み（osMailIngest_）で Indeed の応募通知を応募者に自動追加（メールIDで重複なし）。未連絡（新規）の応募は ops_alerts の key "rec" で今朝の確認・17時のまとめに出る。求人票に Indeed の下書き（ホール・平日ランチ 10:30〜15:00・時給1,500円）と 9/29 の店舗スタッフ（休止・応募24）を登録
 - v79（11/2 朝）：採用に rec_app_delete・rec_job_delete（誤登録の行を削除）。※ GAS の GET はブラウザにキャッシュされることがあるので、recruit.html は毎回 `_=時刻` を付けて読む
+- v80（11/2 朝）：人手の見通し（recruit.gs 後半）。必要人数は STAFF の設定 `staffing_need`（JSON：店ごと・曜日ごと・ホール／厨房、1人の週出勤日数、1人で回せる食数）。管理者アプリ「採用」→「人手」で変更。doGet mode=rec_outlook（先4週間の不足・希望で埋まるか・あと何人）、doPost rec_need_save。人手不足の通知（stfShortDays_）もこの人数で判定。日付ごとの上書きは従来どおり「必要人数」シート
 - 注意：ORION START スレッドも同じ GAS を更新している（v69〜v74・start.gs）。編集前にエディタを読み込み直し、デプロイ直前にも相手の関数（startGet_ など）が残っているか確認する
 
 ## 6. 原価（COSTS）の根拠

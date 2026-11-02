@@ -57,6 +57,22 @@ textarea{min-height:80px;line-height:1.55}
 .sheet .in{background:var(--cream);width:100%;max-width:560px;max-height:92vh;overflow-y:auto;border-radius:18px 18px 0 0;padding:14px 14px calc(18px + var(--sab))}
 .sheet h3{margin:0 0 4px;font-size:16px;color:var(--g)}
 .del{display:block;width:100%;margin-top:10px;border:0;background:none;color:var(--red);font-size:13px;padding:8px;text-decoration:underline}
+.ol-big{font-size:22px;font-weight:bold;color:var(--g);line-height:1.35}
+.ol-big.red{color:var(--red)}
+.dw{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.dw div{background:var(--cream);border-radius:10px;padding:6px 2px;font-size:11px;color:var(--mute)}
+.dw div b{display:block;font-size:15px;color:var(--ink)}
+.dw div.bad{background:var(--red-l);color:var(--red)}.dw div.bad b{color:var(--red)}
+.dw div.off{opacity:.45}
+.dl{display:flex;gap:8px;padding:8px 0;border-top:1px solid var(--cream-d);font-size:13px;align-items:flex-start}
+.dl:first-of-type{border-top:0}
+.dl .d{width:64px;flex:none;font-weight:bold}
+.dl .x{flex:1;min-width:0}
+.nd{display:grid;grid-template-columns:44px 1fr 1fr;gap:6px;align-items:center;margin-top:6px}
+.nd input{padding:7px 8px;font-size:15px;text-align:center}
+.nd .h{font-size:11px;color:var(--mute);text-align:center}
+.fn{display:flex;gap:6px;align-items:center;font-size:13px;flex-wrap:wrap}
+.fn span.b{background:var(--g-l);color:var(--g);border-radius:10px;padding:6px 10px;font-weight:bold}
 .toast{position:fixed;left:50%;bottom:calc(24px + var(--sab));transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 16px;border-radius:999px;font-size:13px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.on{opacity:.92}
 .msg{background:var(--red-l);color:var(--red);padding:10px 12px;border-radius:10px;font-size:14px;margin-bottom:10px}
@@ -71,9 +87,11 @@ textarea{min-height:80px;line-height:1.55}
 <header id="hdr"><div class="t">管理者</div><div class="n">採用</div></header>
 <div class="wrap">
   <div class="msg hide" id="err"></div>
-  <div class="seg"><button id="sg_app" class="on" onclick="tab('app')">応募者<span id="bdNew"></span></button><button id="sg_job" onclick="tab('job')">求人票</button></div>
+  <div class="seg"><button id="sg_out" class="on" onclick="tab('out')">人手</button><button id="sg_app" onclick="tab('app')">応募者<span id="bdNew"></span></button><button id="sg_job" onclick="tab('job')">求人票</button></div>
 
-  <div id="pApp">
+  <div id="pOut"><div class="empty">読み込み中…</div></div>
+
+  <div id="pApp" class="hide">
     <div class="stat" id="stat"></div>
     <div class="tip" id="tipNew"></div>
     <div class="card"><h2>応募者 <small id="appCnt"></small></h2>
@@ -103,7 +121,7 @@ function ls(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
 const TOKEN = ls("os-admin-token") || ls("os-token") || "";
 const EMBED = /embed=1/.test(location.search);
 if (EMBED) $("hdr").classList.add("hide");
-let D = { apps:[], jobs:[], statuses:["新規","連絡済","面接予定","採用","見送り","辞退"] }, FLT = "対応中", TAB = "app", OPEN = {};
+let D = { apps:[], jobs:[], statuses:["新規","連絡済","面接予定","採用","見送り","辞退"] }, FLT = "対応中", TAB = "out", OPEN = {}, OL = null, NEED = null;
 const JOB_ST = ["下書き","掲載中","休止","終了"];
 const JOB_TEXT = ["キャッチコピー","仕事内容","アピールポイント","求める人材","勤務時間","休日","給与","待遇","その他"];
 const ST_CLS = { "新規":"red", "連絡済":"amber", "面接予定":"blue", "採用":"", "見送り":"gray", "辞退":"gray", "下書き":"amber", "掲載中":"", "休止":"gray", "終了":"gray" };
@@ -118,9 +136,10 @@ async function load(){
   if (!TOKEN){ showErr("管理者アプリからログインして開いてください"); return; }
   try{ const r = await api(); if (!r.ok){ showErr(r.error==="auth" ? "ログインが切れました。管理者アプリでログインし直してください" : (r.error||"読み込めません")); return; }
     showErr(""); D = r; render(); }catch(e){ showErr("通信できません。電波を確認してください"); }
+  loadOut();
 }
-function tab(t){ TAB = t; $("sg_app").classList.toggle("on", t==="app"); $("sg_job").classList.toggle("on", t==="job"); $("pApp").classList.toggle("hide", t!=="app"); $("pJob").classList.toggle("hide", t!=="job"); scrollTo(0,0); }
-function render(){ renderApps(); renderJobs(); }
+function tab(t){ TAB = t; [["out","pOut"],["app","pApp"],["job","pJob"]].forEach(x=>{ $("sg_"+x[0]).classList.toggle("on", t===x[0]); $(x[1]).classList.toggle("hide", t!==x[0]); }); scrollTo(0,0); }
+function render(){ renderApps(); renderJobs(); renderOut(); }
 
 // ---- 応募者 ----
 function daysSince(s){ const m = String(s||"").match(/(\d{4})\/(\d{1,2})\/(\d{1,2})/); if (!m) return null; return Math.floor((Date.now() - new Date(+m[1], m[2]-1, +m[3]).getTime()) / 864e5); }
@@ -232,7 +251,70 @@ async function delRow(type, id){
   const r = await post(type, { id }); if (!r.ok){ alert(r.error||"削除できませんでした"); return; }
   closeSheet(); toast("削除しました"); load();
 }
-if (/[?&]tab=job/.test(location.search)) tab("job");
+
+// ---- 人手の見通し（採用の判断用）----
+const YO = ["日","月","火","水","木","金","土"];
+async function loadOut(){
+  try{ const r = await (await fetch(SHEET_URL+"?mode=rec_outlook&days=28&_="+Date.now()+"&token="+encodeURIComponent(TOKEN), {cache:"no-store"})).json();
+    if (!r.ok){ $("pOut").innerHTML = `<div class="empty">${esc(r.error||"見通しを読めません")}</div>`; return; }
+    OL = r; NEED = JSON.parse(JSON.stringify(r.cfg)); renderOut(); }catch(e){ $("pOut").innerHTML = `<div class="empty">通信できません</div>`; }
+}
+function storeKey(){ return OL ? (OL.store || Object.keys(OL.cfg.stores)[0]) : ""; }
+function renderOut(){
+  if (!OL) return;
+  const S = OL.summary, st = OL.cfg.stores[storeKey()] || {}, need = S.hallPeople + S.kitchenPeople;
+  const shortDays = OL.days.filter(d=>d.shortHall || d.shortKitchen);
+  const gapDays = OL.days.filter(d=>d.gapHall || d.gapKitchen);
+  const head = need ? `<div class="ol-big red">あと ${S.hallPeople ? "ホール "+S.hallPeople+"名" : ""}${S.hallPeople && S.kitchenPeople ? "・" : ""}${S.kitchenPeople ? "厨房 "+S.kitchenPeople+"名" : ""}</div><div class="mini">先4週間で、希望を出している人を入れても埋まらないコマが 週あたり ホール${S.hallSlotsPerWeek}・厨房${S.kitchenSlotsPerWeek}。1人 週${S.daysPerPerson}日として換算しています。</div>`
+    : `<div class="ol-big">今の人数で回ります</div><div class="mini">先4週間、必要人数に対して足りない日はありません${shortDays.length ? "（シフトに入れれば埋まる日はあります）" : ""}。</div>`;
+  // 曜日ごと（営業していない曜日は薄く）
+  const dows = [1,2,3,4,5,6,0].map(w=>{ const b = OL.byDow.find(x=>x.dow===w); if (!b) return `<div class="off">${YO[w]}<b>—</b>休み</div>`;
+    const g = b.gapHall + b.gapKitchen, nd = b.need; return `<div class="${g?"bad":""}">${YO[w]}<b>${nd.hall + nd.kitchen}人</b>${g ? "不足"+g : "OK"}</div>`; }).join("");
+  const list = shortDays.length ? shortDays.map(d=>{
+    const lack = [d.shortHall ? "ホール"+d.shortHall : "", d.shortKitchen ? "厨房"+d.shortKitchen : ""].filter(Boolean).join("・");
+    const fill = (d.gapHall + d.gapKitchen) === 0;
+    return `<div class="dl"><div class="d">${esc(d.label)}</div><div class="x"><div>${d.names.length ? esc(d.names.join("・")) : "シフトなし"} <span class="pill ${fill?"amber":"red"}">${lack}足りない</span></div>
+      <div class="mini">${fill ? "希望あり："+esc(d.canNames.join("・"))+" → シフトに入れれば埋まります" : (d.canNames.length ? "希望あり："+esc(d.canNames.join("・"))+"（それでも足りない）" : "出られる人がいません")}</div></div></div>`; }).join("") : `<div class="empty">足りない日はありません</div>`;
+  // 採用の流れ（応募→面接→採用）
+  const A = D.apps || [], cnt = f => A.filter(f).length;
+  const nAll = A.length, nIv = cnt(a=>["面接予定","採用"].includes(a["状態"]) || a["面接日時"]), nHire = cnt(a=>a["状態"]==="採用");
+  const pct = (a,b)=> b ? Math.round(a/b*100)+"%" : "—";
+  const prevN = (D.jobs||[]).reduce((s,j)=>s + (Number(j["応募数"])||0), 0);
+  $("pOut").innerHTML = `
+  <div class="card"><h2>人手の見通し <small>${esc(st.name||"")}・先4週間</small></h2>${head}
+    ${S.capStaff && S.capStaff.length ? `<div class="tip" style="margin:10px 0 0">${esc(S.capStaff.join("・"))}さんは年収の上限があるので、日数を増やして埋めるのは難しい前提で見てください。</div>` : ""}</div>
+  <div class="card"><h2>曜日ごと <small>上：必要人数／下：足りないコマ（4週合計）</small></h2><div class="dw">${dows}</div></div>
+  <div class="card"><h2>足りない日 <small>${shortDays.length}日（うち採用が必要 ${gapDays.length}日）</small></h2>${list}
+    <button class="btn sm sec" style="margin-top:8px" onclick="goStaff()">シフトを開く</button></div>
+  <div class="card"><h2>採用の流れ <small>この画面に入っている応募者</small></h2>
+    <div class="fn"><span class="b">応募 ${nAll}</span>→<span class="b">面接 ${nIv}</span>→<span class="b">採用 ${nHire}</span></div>
+    <div class="mini" style="margin-top:6px">面接に進んだ割合 ${pct(nIv,nAll)}・採用まで ${pct(nHire,nAll)}。${prevN ? "求人票に記録した過去の応募は合計"+prevN+"件（9/29 の募集は応募24件のうち約20件が掲載から3日以内）。" : ""}</div></div>
+  <div class="card"><h2>必要人数の設定 <small>${esc(st.name||"")}</small></h2>
+    <div class="mini">店・曜日ごとに、ホールと厨房の人数を決めます。曜日の欄が空なら基本の人数です。イベントや貸切など特定の日だけ変えるときは、スタッフ管理の「必要人数」で日付ごとに上書きできます。</div>
+    <div class="nd"><div></div><div class="h">ホール</div><div class="h">厨房</div>
+      <div><b>基本</b></div><input id="nb_h" type="number" inputmode="numeric" min="0" value="${esc(st.hall)}"><input id="nb_k" type="number" inputmode="numeric" min="0" value="${esc(st.kitchen)}">
+      ${[1,2,3,4,5,6,0].map(w=>{ const o = (st.dow||{})[w] || {}; return `<div>${YO[w]}</div><input id="nw_h${w}" type="number" inputmode="numeric" min="0" placeholder="${esc(st.hall)}" value="${o.hall!=null?esc(o.hall):""}"><input id="nw_k${w}" type="number" inputmode="numeric" min="0" placeholder="${esc(st.kitchen)}" value="${o.kitchen!=null?esc(o.kitchen):""}">`; }).join("")}
+    </div>
+    <div class="row2"><div><label>1人が出る日数（週）</label><input id="n_dpp" type="number" step="0.5" inputmode="decimal" value="${esc(OL.cfg.days_per_person)}"></div><div><label>1人で回せる食数（目安）</label><input id="n_mps" type="number" inputmode="numeric" value="${esc(OL.cfg.meals_per_staff)}"></div></div>
+    <button class="btn" style="margin-top:12px" id="nSv" onclick="saveNeed()">保存して見通しを計算し直す</button></div>
+  <div class="card"><h2>食数から人数の目安 <small>新しい店・忙しい日の見積もり</small></h2>
+    <div class="row2"><div><label>1日の想定食数</label><input id="m_in" type="number" inputmode="numeric" placeholder="例 80" oninput="calcMeals()"></div><div><label>目安</label><div id="m_out" class="ol-big" style="font-size:18px;padding-top:8px">—</div></div></div>
+    <div class="mini" style="margin-top:6px">「1人で回せる食数」で割って出した目安です（厨房は最低1名）。席数・テイクアウトの比率・ピークの集中で変わるので、最初の数週間の実績で「1人で回せる食数」を直してください。</div></div>`;
+}
+function calcMeals(){ const m = Number($("m_in").value)||0, mps = Number(OL.cfg.meals_per_staff)||18; if (!m){ $("m_out").textContent = "—"; return; }
+  const tot = Math.max(2, Math.ceil(m / mps)), k = Math.max(1, Math.round(tot / 3)); $("m_out").textContent = `${tot}人（ホール${tot-k}・厨房${k}）`; }
+async function saveNeed(){
+  const key = storeKey(), cfg = JSON.parse(JSON.stringify(OL.cfg)), s = cfg.stores[key];
+  s.hall = Number($("nb_h").value)||0; s.kitchen = Number($("nb_k").value)||0; s.dow = {};
+  [0,1,2,3,4,5,6].forEach(w=>{ const h = $("nw_h"+w).value, k = $("nw_k"+w).value, o = {}; if (h !== "") o.hall = Number(h); if (k !== "") o.kitchen = Number(k); if (Object.keys(o).length) s.dow[w] = o; });
+  cfg.days_per_person = Number($("n_dpp").value)||2.5; cfg.meals_per_staff = Number($("n_mps").value)||18;
+  if (s.hall + s.kitchen === 0){ alert("基本の人数を入れてください"); return; }
+  $("nSv").disabled = true; const r = await post("rec_need_save", { cfg }); $("nSv").disabled = false;
+  if (!r.ok){ alert(r.error||"保存できませんでした"); return; }
+  toast("保存しました。人手不足の通知もこの人数で判定します"); loadOut();
+}
+function goStaff(){ try{ if (window.parent !== window && typeof window.parent.show === "function"){ window.parent.show("staff"); return; } }catch(e){} location.href = "kanri.html#staff"; }
+if (/[?&]tab=job/.test(location.search)) tab("job"); else if (/[?&]tab=app/.test(location.search)) tab("app");
 load();
 </script>
 </body>
