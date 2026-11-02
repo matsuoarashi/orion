@@ -89,6 +89,16 @@
   .wd .h .tg{font-size:11px;border-radius:999px;padding:1px 8px;font-weight:bold;white-space:nowrap}
   .wd .h .tg.p{background:#e4eee7;color:var(--midori)}.wd .h .tg.n{background:#f6e3df;color:var(--enji)}
   .wd .h .ar{color:var(--mute);font-size:12px}
+  .wd .h .dt{width:auto;min-width:74px;white-space:nowrap}
+  .wd .h .m{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wd .b .pnlGrid .c b{font-size:18px}
+  .kv{margin-top:8px;font-size:13px;line-height:1.55}
+  .kv>div{display:flex;gap:8px;padding:3px 0;border-top:1px dotted var(--line)}
+  .kv>div:first-child{border-top:0}
+  .kv>div>span:first-child{flex:none;width:56px;color:var(--mute);font-size:12px;padding-top:1px}
+  .kv>div>span:last-child{flex:1;min-width:0}
+  .kv .hc{display:flex;flex-wrap:wrap;gap:4px}
+  .kv .hc i{font-style:normal;background:var(--cream-d);border-radius:6px;padding:1px 6px;font-size:12px;white-space:nowrap}
   .wd .b{padding:0 0 12px}
   .wd .b .pnlGrid{margin-top:0}
   .wd .b .ln{font-size:13px;line-height:1.7;margin-top:6px}
@@ -1147,7 +1157,7 @@ function weekDaysHtml(mon){
         ["人件費", e.l ? num(e.lab)+"円" : "-", e.l ? `${e.l.staff}人・${(e.l.minutes/60).toFixed(1)}h・${pct(e.lab/d.sales)}` : "勤怠なし"],
         ["原価率 <em class='tag g'>概算</em>", pct(e.cr), `粗利 ${signed(e.gp)}`]
       ].map(a=>cell(...a)).join("")}</div>
-      <div class="ln">${w ? `天気：${wt[0]}${wt[1]}・最高${Math.round(w.tmax)}℃・昼の雨 ${Math.round(w.rain*10)/10}mm<br>` : ""}${hs ? `時間帯：${hs.filter(r=>r.meals||r.h>=11&&r.h<=13).map(r=>`${r.h}時 ${r.meals}食/${Math.round((r.ppl+r.sup)*10)/10}人`).join("・")}<br>` : ""}${fl ? `会計：${fl[0]}〜${fl[1]}<br>` : ""}${top ? `よく出た：${esc(top)}` : ""}</div>
+      <div class="kv">${w ? `<div><span>天気</span><span>${wt[0]} ${wt[1]}・最高${Math.round(w.tmax)}℃・昼の雨 ${Math.round(w.rain*10)/10}mm</span></div>` : ""}${hs ? `<div><span>時間帯</span><span class="hc">${hs.filter(r=>r.meals||r.h>=11&&r.h<=13).map(r=>`<i>${r.h}時 <b>${r.meals}食</b>・${Math.round((r.ppl+r.sup)*10)/10}人</i>`).join("")}</span></div>` : ""}${fl ? `<div><span>会計</span><span>${fl[0]}〜${fl[1]}</span></div>` : ""}${top ? `<div><span>よく出た</span><span>${esc(top)}</span></div>` : ""}</div>
       <button style="margin-top:8px;border:2px solid var(--wood-d);background:var(--cream-d);border-radius:10px;padding:8px 12px;font-size:13px;font-weight:bold;color:var(--ink)" onclick="viewDate='${dt}';setTab('today');renderDay();scrollTo(0,0)">この日を「今日」タブで見る</button></div>` : ""}</div>`); }
   return out.join("") || `<div class="sub">この週の記録はまだありません</div>`;
 }
@@ -1225,7 +1235,6 @@ function weekList(){ const first = mondayOf((DATA.daily[0]||{date:DATA.todayKey}
 function toggleWeek(m){ WK_OPEN[m] = !WK_OPEN[m]; if (WK_OPEN[m]) viewWeek = m; renderWeek(); }
 function renderWeekList(){
   const ws = weekList(), thisMon = mondayOf(DATA.todayKey);
-  if (!Object.keys(WK_OPEN).length) WK_OPEN[viewWeek] = true;
   $("wkList").innerHTML = ws.map(m=>{ const st = rvStats(m), pv = rvStats(dateAdd(m,-7)), open = WK_OPEN[m], end = dateAdd(m,4);
     const name = m===thisMon ? "今週" : m===dateAdd(thisMon,-7) ? "先週" : "";
     const dM = st.mpd!==null && pv.mpd!==null ? st.mpd - pv.mpd : null;
