@@ -308,6 +308,7 @@
   <div id="view-shime" class="hide">
     <div class="cards">
       <div class="card wide" style="padding:8px 14px"><div class="sub" id="shimeHelp">昨日の締めを上から順に確認します。レジ記録と実際（数えた現金・PayPay画面・伝票）の差を見て、違っていれば会計一覧の行をタップして直し、最後に「確認済み」。</div></div>
+      <div class="card wide" id="tdCard"><h2>やること <span class="r"><button class="bt p" onclick="tdEdit()">＋ やること</button></span></h2><div class="sub" style="margin:-2px 0 6px">期限と担当で追いかけます。担当のスタッフには勤怠アプリのホームに出ます</div><div id="tdList"><div class="sub">読み込み中…</div></div></div>
       <div class="card wide"><h2>今朝の確認</h2><div class="sub" style="margin-bottom:6px">質問・メール・契約・勤怠・在庫・経費。ボタンでその画面に移ります</div><div id="miscList"></div></div>
       <details class="wide osmore" id="osMore"><summary>そのほかの確認（勤怠・契約の期限・メールの候補・質問・決まり）</summary><div class="cards" style="margin-top:8px">
       <div class="card wide"><h2>勤怠の確認</h2><div id="ppOps"></div></div>
@@ -331,6 +332,7 @@
     <div class="cards">
       <div class="card wide" id="fcCard"><h2 id="fcTitle">今日の見立て <span class="r" id="fcSub"></span></h2>
         <div class="fc" id="fcGrid"></div><div class="fcsh" id="fcShift"></div><div class="fcmsg" id="fcMsg"></div></div>
+      <div class="card wide" id="evCard"><h2>この日の出来事 <span class="r"><button class="bt" onclick="evEdit()">＋ 書く</button></span></h2><div id="evList"><div class="sub">読み込み中…</div></div></div>
       <div class="card"><h2>食数</h2><div class="big" id="dMeals">-</div>
         <div class="sub" id="dGoal"></div>
         <div class="goal"><i id="goalBar" style="width:0%"></i></div></div>
@@ -676,7 +678,7 @@ async function loadShort(){ const tk = (()=>{ try{ return localStorage.getItem("
     if (r && r.ok){ OPSA = r.alerts || []; SHORT = []; renderMisc(); return; } }catch(e){}
   try{ const r = await shortDays(call); if(r){ SHORT = r; renderMisc(); } }catch(e){} }
 let OPSA = [];
-const OPSA_BTN = { short:["シフト","goApp('staff','shift')"], cap:["シフト","goApp('staff','shift')"], hyg:["勤怠","goApp('staff','att')"], order:["発注","goApp('hacchu')"], shime:["確認","setTab('shime');scrollTo(0,0)"], rec:["採用","goApp('recruit')"], loan:["収支","setTab('pnl');scrollTo(0,0)"] };
+const OPSA_BTN = { short:["シフト","goApp('staff','shift')"], cap:["シフト","goApp('staff','shift')"], hyg:["勤怠","goApp('staff','att')"], order:["発注","goApp('hacchu')"], shime:["確認","setTab('shime');scrollTo(0,0)"], rec:["採用","goApp('recruit')"], loan:["収支","setTab('pnl');scrollTo(0,0)"], todo:["見る","setTab('check');setTimeout(()=>$('tdCard').scrollIntoView({behavior:'smooth'}),100)"], rev:["口コミ","goApp('google')"] };
 function renderMisc(){
   if(!DATA) return;
   const o = ops(), p = pnlData(), today = DATA.todayKey, H = new Date().getHours(); const M = [];
@@ -735,7 +737,7 @@ async function loanConfirm(id, pay){
 async function fxPost(type, body){ try{ const r = await fetch(SHEET_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(Object.assign({type, token:TOKEN}, body||{}))}); return await r.json(); }catch(e){ return {error:"通信エラー"}; } }
 async function bootAuth(){
   const cands = []; try{ [localStorage.getItem("os-admin-token"), localStorage.getItem("os-token")].forEach(t=>{ if(t) cands.push(t); }); }catch(e){}
-  for (const tk of cands){ TOKEN = tk; const r = await fxGet("fx_me"); if(!r.error){ ME = r.me; renderWho(); if(DATA) renderAlerts(); renderOsQ(); renderOsM(); loadShort(); loadLoan(); return; } }
+  for (const tk of cands){ TOKEN = tk; const r = await fxGet("fx_me"); if(!r.error){ ME = r.me; renderWho(); if(DATA) renderAlerts(); renderOsQ(); renderOsM(); loadShort(); loadLoan(); tdLoad(); evLoad(); return; } }
   TOKEN = ""; ME = null; renderWho();
 }
 function renderWho(){ $("who").style.display = (ME && /embed=1/.test(location.search)) ? "none" : ""; // 管理者アプリの中ではログイン中の名前・ログアウトは上の帯にあるので出さない
@@ -749,7 +751,7 @@ async function doLogin(){
   $("loginBtn").disabled = true;
   try{ const r = await (await fetch(STAFF_API,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({action:"login",staff_id:id,passcode:pass})})).json();
     if(!r.ok){ $("loginMsg").textContent = r.error||"ログインできません"; return; }
-    TOKEN = r.token; try{ localStorage.setItem("os-token", TOKEN); }catch(e){} const m = await fxGet("fx_me"); if(m.error){ $("loginMsg").textContent = m.error; return; } ME = m.me; closeOv(); renderWho(); renderAlerts(); toast(`${ME.name} でログイン`);
+    TOKEN = r.token; try{ localStorage.setItem("os-token", TOKEN); }catch(e){} const m = await fxGet("fx_me"); if(m.error){ $("loginMsg").textContent = m.error; return; } ME = m.me; closeOv(); renderWho(); renderAlerts(); tdLoad(); evLoad(); toast(`${ME.name} でログイン`);
   }catch(e){ $("loginMsg").textContent="通信できません"; } finally{ $("loginBtn").disabled=false; }
 }
 function logout(){ TOKEN=""; ME=null; try{ localStorage.removeItem("os-token"); }catch(e){} renderWho(); renderAlerts(); }
@@ -1371,7 +1373,7 @@ function renderWeekList(){
     let top = ""; if (st.days){ try{ const R0 = reviewHtml(m), mm = R0.ins.match(/<b>([\s\S]*?)<\/b>/); if (mm) top = mm[1].replace(/<[^>]+>/g,""); }catch(e){} }
     const head = `<div class="wkh" onclick="toggleWeek('${m}')"><span class="wn">${+m.slice(5,7)}/${+m.slice(8)}〜${+end.slice(5,7)}/${+end.slice(8)}${name?`<small>${name}${m===thisMon?"（途中）":""}</small>`:""}</span>
       <span class="ws">${st.days ? `営業${st.days}日` : "まだ営業日がありません"}</span><span class="ar">${open?"▴":"▾"}</span></div>
-      ${st.days ? `<div class="wkg" onclick="toggleWeek('${m}')">${cells}</div>${beLine}${top && !open ? `<div class="wki" onclick="toggleWeek('${m}')">💡 ${esc(top)}</div>` : ""}` : ""}`;
+      ${st.days ? `<div class="wkg" onclick="toggleWeek('${m}')">${cells}</div>${beLine}${top && !open ? `<div class="wki" onclick="toggleWeek('${m}')">💡 ${esc(top)}</div>` : ""}` : ""}${typeof evWeekLine==="function"?evWeekLine(m):""}`;
     if (!open) return `<div class="card wide wk">${head}</div>`;
     const R = reviewHtml(m);
     return `<div class="card wide wk open">${head}<div class="wkb"><div class="sub" style="margin:2px 0 6px">${R.title.replace(/^[^<]*<span class="r">/,"").replace(/<\/span>$/,"")}</div>${R.top?`<div class="pnlGrid">${R.top}</div>`:""}<div style="margin-top:10px">${R.ins}</div>${R.next}
@@ -1737,6 +1739,76 @@ renderWho(); bootAuth().then(()=>{ try{ const fx = new URLSearchParams(location.
 load();
 setInterval(()=>{ if(!document.hidden) load(true); }, 60000);
 document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) load(true); });
+</script>
+<script>
+// ───── やること（GAS todo.gs：os_todo_）と今日の出来事（os_ev_）11/4 ─────
+let TD = null, TD_STAFF = null, EV = null, TD_SHOW_DONE = false;
+const EV_KINDS = ["近くでイベント","団体・まとまった来店","品切れ","機械・設備","お客様の声（良い）","お客様の声（悪い）","人の手配","天気","その他"];
+const YO = ["日","月","火","水","木","金","土"];
+function tdToday(){ return (DATA && DATA.todayKey) || new Date().toLocaleDateString("ja-JP",{year:"numeric",month:"2-digit",day:"2-digit"}).replace(/-/g,"/"); }
+function tdRep(r){ if (!r) return ""; const [k,n] = r.split(":"); return k==="毎週" ? `毎週${YO[+n]}曜` : `毎月${n}日`; }
+async function tdLoad(){ if (!ME || ME.role !== "admin"){ $("tdCard").classList.add("hide"); return; }
+  const r = await fxGet("os_todo_list"); if (r && r.ok){ TD = r; tdRender(); } else $("tdList").innerHTML = `<div class="sub">読み込めませんでした${r&&r.error?"（"+esc(r.error)+"）":""}</div>`; }
+function tdRender(){
+  if (!TD) return; const today = TD.today, open = TD.list.filter(t=>t.status==="未"), done = TD.list.filter(t=>t.status!=="未");
+  const row = t => { const late = t.status==="未" && t.due && t.due < today, now = t.status==="未" && t.due === today;
+    return `<div class="mi" style="${t.status!=="未"?"opacity:.6":""}"><div style="flex:1;min-width:0"><b>${t.status==="済"?"✓ ":t.status==="見送り"?"– ":""}${esc(t.text)}</b>
+      <small>${t.due?`<span class="${late?"neg":""}">${late?"期限切れ ":now?"今日まで ":""}${t.due.slice(5)}(${youbi(t.due)})</span>・`:"期限なし・"}${esc(t.who||"担当なし")}${t.repeat?"・"+tdRep(t.repeat):""}${t.src&&t.src!=="手で作成"?"・元："+esc(t.src):""}${t.status==="済"?`・済 ${esc(t.doneBy)} ${esc(t.doneAt.slice(5,16))}`:""}${t.photo?` <a href="https://drive.google.com/file/d/${encodeURIComponent(t.photo)}/view" target="_blank">写真</a>`:""}${t.memo?"<br>"+esc(t.memo).replace(/\n/g,"<br>"):""}</small></div>
+      ${t.status==="未"?`<button onclick="tdDone('${t.id}')">済</button><button onclick="tdEdit('${t.id}')">直す</button>`:`<button onclick="tdUndo('${t.id}','${t.status}')">戻す</button>`}</div>`; };
+  $("tdList").innerHTML = (open.length ? open.map(row).join("") : `<div class="sub">今あるやることはありません</div>`)
+    + (done.length ? `<div style="margin-top:6px"><button class="bt" onclick="TD_SHOW_DONE=!TD_SHOW_DONE;tdRender()">${TD_SHOW_DONE?"済んだものを隠す":"済んだもの（30日）"} ${done.length}件</button></div>${TD_SHOW_DONE?done.map(row).join(""):""}` : "");
+}
+async function tdStaff(){ if (TD_STAFF) return TD_STAFF; try{ const r = await (await fetch(STAFF_API+"?action=staff_list")).json(); TD_STAFF = (r.staff||[]).filter(x=>x.staff_id); }catch(e){ TD_STAFF = []; } return TD_STAFF; }
+async function tdEdit(id, pre){
+  const t = id && TD ? TD.list.find(x=>x.id===id) : null, p = pre || {}, st = await tdStaff();
+  const due = (t && t.due) || p.due || "", rep = (t && t.repeat) || "", [rk, rn] = rep ? rep.split(":") : ["",""];
+  sheet(`<h3>${t?"やることを直す":"やることを足す"}</h3>
+    <label>内容</label><textarea id="tdText" rows="2" maxlength="200">${esc((t&&t.text)||p.text||"")}</textarea>
+    <label>担当（複数可）</label><div id="tdWho" style="display:flex;flex-wrap:wrap;gap:6px">${st.map(x=>`<label style="display:flex;align-items:center;gap:4px;margin:0;font-size:14px;color:var(--ink);background:#fff;border:1px solid #c9b891;border-radius:8px;padding:6px 10px"><input type="checkbox" value="${esc(x.staff_id)}" data-n="${esc(x.name)}" style="width:auto" ${t&&t.whoIds.includes(String(x.staff_id))?"checked":""}>${esc(x.name)}</label>`).join("")}</div>
+    <label>期限</label><input type="date" id="tdDue" value="${due.replace(/\//g,"-")}">
+    <label>繰り返し</label><div style="display:flex;gap:6px"><select id="tdRk" onchange="$('tdRn').innerHTML=tdRnOpts(this.value,'')"><option value="">なし</option><option value="毎週" ${rk==="毎週"?"selected":""}>毎週</option><option value="毎月" ${rk==="毎月"?"selected":""}>毎月</option></select><select id="tdRn">${tdRnOpts(rk, rn)}</select></div>
+    <label>メモ（任意）</label><input id="tdMemo" maxlength="200" value="${esc((t&&t.memo)||p.memo||"")}">
+    <div class="msg" id="tdMsg"></div><button class="btn" id="tdGo" onclick="tdSave('${id||""}','${esc(p.src||"")}','${esc(p.srcId||"")}')">${t?"保存する":"足す"}</button>
+    ${t?`<button class="btn" style="background:var(--cream-d);color:var(--ink);border:1px solid var(--wood-d)" onclick="tdSkip('${id}')">見送る（やらない）</button>`:""}`);
+}
+function tdRnOpts(k, v){ if (k==="毎週") return YO.map((y,i)=>`<option value="${i}" ${String(v)===String(i)?"selected":""}>${y}曜</option>`).join(""); if (k==="毎月") return Array.from({length:31},(_,i)=>`<option value="${i+1}" ${String(v)===String(i+1)?"selected":""}>${i+1}日</option>`).join(""); return `<option value="">-</option>`; }
+async function tdSave(id, src, srcId){
+  const text = $("tdText").value.trim(); if (!text){ $("tdMsg").textContent = "内容を入れてください"; return; }
+  const ck = [...document.querySelectorAll("#tdWho input:checked")], rk = $("tdRk").value;
+  const body = { id, text, whoIds: ck.map(c=>c.value), whoNames: ck.map(c=>c.dataset.n), due: $("tdDue").value.replace(/-/g,"/"), repeat: rk ? rk+":"+$("tdRn").value : "", memo: $("tdMemo").value.trim(), src, srcId };
+  if (body.repeat && !body.due){ $("tdMsg").textContent = "繰り返すときは最初の期限も入れてください"; return; }
+  $("tdGo").disabled = true; const r = await fxPost("os_todo_save", body); $("tdGo").disabled = false;
+  if (r.error){ $("tdMsg").textContent = r.error; return; } closeOv(); toast(id?"直しました":"足しました"); tdLoad(); loadShort();
+}
+async function tdDone(id){ const r = await fxPost("os_todo_done", {id}); if (r.error){ alert(r.error); return; } toast(r.next?"済にしました（次の回を作りました）":"済にしました"); tdLoad(); loadShort(); }
+async function tdUndo(id, st){ const r = st==="済" ? await fxPost("os_todo_done", {id, undo:true}) : await fxPost("os_todo_status", {id, status:"未"}); if (r.error){ alert(r.error); return; } tdLoad(); loadShort(); }
+async function tdSkip(id){ if (!confirm("このやることを見送りにしますか？")) return; const r = await fxPost("os_todo_status", {id, status:"見送り"}); if (r.error){ alert(r.error); return; } closeOv(); tdLoad(); loadShort(); }
+
+async function evLoad(){ if (!ME){ $("evCard").classList.add("hide"); return; } $("evCard").classList.remove("hide");
+  const to = tdToday(), from = dateAdd(to, -62); const r = await fxGet("os_ev_list", {from, to}); if (r && r.ok){ EV = r.list; evRenderDay(); try{ renderWeekList(); }catch(e){} } else $("evList").innerHTML = `<div class="sub">読み込めませんでした</div>`; }
+function evOf(d){ return (EV||[]).filter(e=>e.date===d); }
+function evRenderDay(){
+  if (!$("evList")) return; if (!EV){ return; } const d = viewDate || tdToday(), xs = evOf(d);
+  $("evList").innerHTML = xs.length ? xs.map(e=>`<div class="mi"><div style="flex:1;min-width:0"><b>${e.kinds.map(k=>`<em class="tag ${/悪い|機械|品切れ/.test(k)?"k":/良い/.test(k)?"j":"g"}" style="margin:0 4px 0 0">${esc(k)}</em>`).join("")}${esc(e.text)}</b><small>${esc(e.by)} ${esc(e.time)}</small></div>
+      ${ME&&ME.role==="admin"?`<button onclick="tdEdit('',{text:${esc(JSON.stringify((e.kinds.join("・")+" "+e.text).trim()))},src:'出来事',srcId:'${e.id}',due:''})">やることにする</button>`:""}<button onclick="evEdit('${e.id}')">直す</button></div>`).join("")
+    : `<div class="sub">書かれた出来事はありません。数字の「なぜ」になりそうなことを残してください</div>`;
+}
+function evWeekLine(m){ if (!EV) return ""; const xs = EV.filter(e=>e.date>=m && e.date<=dateAdd(m,6)); if (!xs.length) return "";
+  return `<div class="wki" onclick="toggleWeek('${m}')">📝 出来事 ${xs.length}件：${xs.slice(0,4).map(e=>`${+e.date.slice(5,7)}/${+e.date.slice(8)} ${esc((e.kinds[0]||"")+(e.text?" "+e.text.slice(0,12):""))}`).join("／")}${xs.length>4?" ほか":""}</div>`; }
+function evEdit(id){
+  const e = id ? (EV||[]).find(x=>x.id===id) : null, d = (e && e.date) || viewDate || tdToday();
+  sheet(`<h3>${e?"出来事を直す":"この日の出来事"}</h3><div class="sub">${d}（${youbi(d)}）。人の悪口・お客様の個人情報は書かないでください</div>
+    <label>種類（いくつでも）</label><div id="evK" style="display:flex;flex-wrap:wrap;gap:6px">${EV_KINDS.map(k=>`<label style="display:flex;align-items:center;gap:4px;margin:0;font-size:13px;color:var(--ink);background:#fff;border:1px solid #c9b891;border-radius:8px;padding:6px 8px"><input type="checkbox" value="${k}" style="width:auto" ${e&&e.kinds.includes(k)?"checked":""}>${k}</label>`).join("")}</div>
+    <label>ひとこと（100字まで）</label><textarea id="evT" rows="2" maxlength="100">${esc(e?e.text:"")}</textarea>
+    <div class="msg" id="evMsg"></div><button class="btn" id="evGo" onclick="evSave('${id||""}','${d}')">${e?"直す":"残す"}</button>
+    ${e?`<button class="btn" style="background:var(--cream-d);color:var(--enji);border:1px solid var(--enji)" onclick="evDel('${id}')">消す</button>`:""}`);
+}
+async function evSave(id, d){ const kinds = [...document.querySelectorAll("#evK input:checked")].map(c=>c.value), text = $("evT").value.trim();
+  if (!kinds.length && !text){ $("evMsg").textContent = "種類かひとことを入れてください"; return; }
+  $("evGo").disabled = true; const r = await fxPost("os_ev_save", {id, date:d, kinds, text}); $("evGo").disabled = false; if (r.error){ $("evMsg").textContent = r.error; return; } closeOv(); toast("残しました"); evLoad(); }
+async function evDel(id){ if (!confirm("この出来事を消しますか？（記録には残ります）")) return; const r = await fxPost("os_ev_del", {id}); if (r.error){ alert(r.error); return; } closeOv(); evLoad(); }
+// 日タブを描くたびに、その日の出来事も描く
+const _renderDayOrig = renderDay; renderDay = function(){ const r = _renderDayOrig.apply(this, arguments); try{ evRenderDay(); }catch(e){} return r; };
 </script>
 </body>
 </html>
