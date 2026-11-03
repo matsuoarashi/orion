@@ -128,6 +128,16 @@ function rcSave_(d, me){
 // 送信履歴（2026/11/3）：ファイルを付けて送った登録を、送った順（新しい順）に返す。削除したものも状態「削除」で出す
 // サムネイルは画面が作った小さなJPEG（data URL）を「サムネイル」列に保存。列が空の古い登録は、ドライブのサムネイルを取って入れる（1回に6件まで）
 function rcThumbOk_(t){ t = String(t || ""); return (/^data:image\/(jpeg|png);base64,/.test(t) && t.length < 45000) ? t : ""; }
+// ドライブのサムネイルを data URL で返す（getThumbnail が空なら thumbnailLink を取りに行く）。取れなければ ""
+function rcDriveThumb_(fid){
+  // getThumbnail は原寸に近い大きさ（数百KB）で返るので使わず、thumbnailLink を長辺160pxで取る
+  try {
+    var meta = Drive.Files.get(fid, { fields: "thumbnailLink" }); var link = meta && meta.thumbnailLink; if (!link) return "";
+    var res = UrlFetchApp.fetch(String(link).replace(/=s\d+$/, "=s160"), { headers: { Authorization: "Bearer " + ScriptApp.getOAuthToken() }, muteHttpExceptions: true });
+    if (res.getResponseCode() !== 200) return "";
+    var bl = res.getBlob(); return "data:" + (bl.getContentType() || "image/jpeg") + ";base64," + Utilities.base64Encode(bl.getBytes());
+  } catch(e2){ return ""; }
+}
 function rcHistory_(p, me){
   var sh = rcSheet_(); var rows = invRows_(sh).filter(function(r){ return r["画像URL"] || r.file_id; });
   if (me.role !== "admin") rows = rows.filter(function(r){ return r["登録者"] === me.name; });
@@ -140,10 +150,8 @@ function rcHistory_(p, me){
       th = cache.get("rc_th:" + fid) || "";
       if (!th && fill < 6){
         fill++;
-        try { var b = DriveApp.getFileById(fid).getThumbnail();
-          if (b){ th = "data:" + (b.getContentType() || "image/png") + ";base64," + Utilities.base64Encode(b.getBytes());
-            if (th.length < 45000) invSet_(sh, r._row, "サムネイル", th); else if (th.length < 95000) cache.put("rc_th:" + fid, th, 21600); else th = ""; }
-        } catch(e){ th = ""; }
+        th = rcDriveThumb_(fid);
+        if (th.length < 45000 && th) invSet_(sh, r._row, "サムネイル", th); else if (th && th.length < 95000) cache.put("rc_th:" + fid, th, 21600); else th = "";
       }
     }
     return { id: r.receipt_id, at: String(r["登録日時"]), by: r["登録者"], name: String(r["元ファイル名"] || ""), thumb: th, url: String(r["画像URL"] || ""),

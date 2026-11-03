@@ -409,7 +409,7 @@ async function loadHist(reset){
   const pill = st => st==="削除" ? `<span class="pill red">削除</span>` : st==="確認済" ? `<span class="pill">確認済</span>` : `<span class="pill amber">未確認</span>`;
   box.innerHTML = HIST.length ? HIST.map((x,i)=>`<div class="hist">
       <button class="th" onclick="openFile(${i})">${x.thumb?`<img src="${x.thumb}" loading="lazy">`:(/\.pdf$/i.test(x.name)?"PDF":"なし")}</button>
-      <div class="l"><b>${esc(x.name || "（名前なし・カメラで撮影）")}</b><small>${fmt(x.at)} 送信・${esc(x.by||"")}</small><small>${esc(x.vendor||"")} ${yen(x.amount)}${x.date?"（"+esc(x.date.slice(5))+"）":""}</small></div>
+      <div class="l"><b>${esc(x.name || "（ファイル名の記録なし）")}</b><small>${fmt(x.at)} 送信・${esc(x.by||"")}</small><small>${esc(x.vendor||"")} ${yen(x.amount)}${x.date?"（"+esc(x.date.slice(5))+"）":""}</small></div>
       <div>${pill(x.status)}</div></div>`).join("") + (HIST_MORE?`<div style="height:8px"></div><button class="btn sec" onclick="this.disabled=true;this.textContent='読み込み中…';loadHist(false)">もっと見る</button>`:"")
     : `<div class="mini">まだファイルを送っていません</div>`;
 }
