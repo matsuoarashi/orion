@@ -48,6 +48,7 @@ function handleRcGet(e){
       var undated = all.filter(function(x){ return !x.date && (me.role === "admin" || x.by === me.name); });
       res = { me: me, ym: ym, list: list, undated: undated, accounts: RC_ACCOUNTS, unchecked: me.role === "admin" ? all.filter(function(x){ return x.status === "未確認"; }).length : 0 };
     } else if (p.mode === "rc_history") res = rcHistory_(p, me);
+    else if (p.mode === "rc_view") res = rcView_(p, me);
     else res = { error: "mode" };
   } catch(err){ res = { error: String(err) }; }
   return rcOut_(res);
@@ -158,6 +159,15 @@ function rcHistory_(p, me){
       status: r["状態"] || "未確認", vendor: r["店名"], amount: Number(r["金額"]) || 0, date: dateKey_(r["日付"]) };
   });
   return { items: items, total: rows.length, offset: off, more: off + lim < rows.length };
+}
+
+// アプリの中で拡大表示するため、登録したファイルそのものを返す（11/3）。本人の登録か管理者だけ。12MBを超えるものはドライブで開いてもらう
+function rcView_(p, me){
+  var r = invRows_(rcSheet_()).filter(function(x){ return x.receipt_id === p.id; })[0]; if (!r) return { error: "見つかりません" };
+  if (me.role !== "admin" && r["登録者"] !== me.name) return { error: "自分の登録だけ見られます" };
+  var fid = String(r.file_id || ""), url = String(r["画像URL"] || ""); if (!fid) return { error: "ファイルがありません", url: url };
+  var f = DriveApp.getFileById(fid); if (f.getSize() > 12 * 1024 * 1024) return { error: "ファイルが大きいのでドライブで開いてください", url: url };
+  return { ok: true, mime: f.getMimeType(), name: String(r["元ファイル名"] || f.getName()), b64: Utilities.base64Encode(f.getBlob().getBytes()), url: url };
 }
 
 function rcDelete_(d, me){

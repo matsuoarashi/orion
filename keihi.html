@@ -95,6 +95,17 @@ nav .bd{position:absolute;top:4px;right:calc(50% - 20px);background:var(--red);c
 .hist .th{flex:0 0 48px;width:48px;height:62px;border-radius:8px;border:1px solid var(--line);background:#fff;object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;color:var(--red);padding:0;overflow:hidden}
 .hist .th img{width:100%;height:100%;object-fit:cover}
 .hist .l{flex:1;min-width:0}.hist .l b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hist .l small{display:block;font-size:11px;color:var(--mute)}
+/* 拡大表示（11/3）：アプリの中で開き、ボタン・ダブルタップ・2本指で拡大 */
+.vw{position:fixed;inset:0;z-index:50;background:#1d1d1b;display:flex;flex-direction:column}
+.vw .vh{display:flex;align-items:center;gap:6px;padding:calc(8px + var(--sat)) 10px 8px;color:#fff;background:#111}
+.vw .vh b{flex:1;min-width:0;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vw .vh button{border:0;border-radius:8px;background:rgba(255,255,255,.16);color:#fff;font-size:15px;font-weight:bold;min-width:40px;height:36px;padding:0 10px}
+.vw .vb{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}
+.vw .vc{margin:0 auto;padding:8px 0 calc(16px + var(--sab))}
+.vw .vc img,.vw .vc canvas{display:block;width:100%;height:auto;background:#fff;margin:0 auto 8px}
+.vw .vmsg{color:#ddd;text-align:center;padding:40px 16px;font-size:14px}
+.vw .vf{display:flex;justify-content:center;gap:8px;padding:6px 10px calc(8px + var(--sab));background:#111;color:#bbb;font-size:12px;align-items:center}
+.vw .vf a{color:#e8c26a}
 .pvbig{width:76px;height:96px;object-fit:contain;border-radius:10px;border:1px solid var(--line);background:#fff}
 </style>
 </head>
@@ -128,6 +139,7 @@ nav .bd{position:absolute;top:4px;right:calc(50% - 20px);background:var(--red);c
 <input type="file" id="fileIn" accept="image/*" capture="environment" class="hide" onchange="onPhoto(this)">
 <input type="file" id="fileIn2" accept="image/*,application/pdf" class="hide" onchange="onPhoto(this)">
 <div id="ov"></div>
+<div id="vw"></div>
 <div class="toast" id="toast"></div>
 <div id="upLock" class="uplock hide"><div class="box"><div class="sp"></div><b id="upText">送信しています</b><small id="upSub">終わるまでそのままお待ちください</small><div class="bar"><i id="upBar" style="width:0%"></i></div></div></div>
 <script src="busy.js?v=1101b"></script>
@@ -267,7 +279,7 @@ function renderAdd(){
 }
 function formHtml(f, edit){
   return `<div class="card"><h2>${edit?"登録内容を直す":"内容を確認して保存"}${f.thumb||f.url?"":""}</h2>
-    ${f.thumb ? `<div class="prev">${f.thumb==="pdf"?(f.view?`<img class="pvbig" src="${f.view}" onclick="bigView()">`:`<div style="width:76px;height:96px;border-radius:10px;border:1px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;color:var(--red)">PDF</div>`):`<img src="${f.thumb}" onclick="bigView()">`}<div class="mini">${f.fname?`<b style="display:block;color:var(--ink);word-break:break-all">${esc(f.fname)}</b>`:""}${f.reading?`<div class="reading"><span class="spin"></span>文字を読み取っています…</div>`:(f.ocrFail?`読み取りに失敗しました。<button class="btn sm sec" style="margin-top:4px" onclick="runOcr()">もう一度読み取る</button>`:(f.ocr?"読み取りました。違うところは直してください":"読み取れませんでした。手で入れてください"))}<br><button class="btn sm sec" style="margin-top:6px" onclick="$('${f.thumb==="pdf"?"fileIn2":"fileIn"}').click()">${f.thumb==="pdf"?"別のファイルを選ぶ":"撮り直す"}</button></div></div>` : (f.url?`<div class="mini"><a href="${esc(f.url)}" target="_blank">登録した写真・ファイルを見る</a></div>`:`<div class="mini">写真・ファイルはありません。<button class="btn sm sec" onclick="$('fileIn2').click()">追加する</button></div>`)}
+    ${f.thumb ? `<div class="prev">${f.thumb==="pdf"?(f.view?`<img class="pvbig" src="${f.view}" onclick="bigView()">`:`<div style="width:76px;height:96px;border-radius:10px;border:1px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;color:var(--red)">PDF</div>`):`<img src="${f.thumb}" onclick="bigView()">`}<div class="mini">${f.fname?`<b style="display:block;color:var(--ink);word-break:break-all">${esc(f.fname)}</b>`:""}${f.reading?`<div class="reading"><span class="spin"></span>文字を読み取っています…</div>`:(f.ocrFail?`読み取りに失敗しました。<button class="btn sm sec" style="margin-top:4px" onclick="runOcr()">もう一度読み取る</button>`:(f.ocr?"読み取りました。違うところは直してください":"読み取れませんでした。手で入れてください"))}<br><button class="btn sm sec" style="margin-top:6px" onclick="$('${f.thumb==="pdf"?"fileIn2":"fileIn"}').click()">${f.thumb==="pdf"?"別のファイルを選ぶ":"撮り直す"}</button></div></div>` : (f.url?`<div class="mini"><button class="btn sm sec" onclick="viewFile('${esc(f.id)}','${esc(f.url)}','')">登録した写真・ファイルを見る</button></div>`:`<div class="mini">写真・ファイルはありません。<button class="btn sm sec" onclick="$('fileIn2').click()">追加する</button></div>`)}
     <label>日付</label><input type="date" id="fDate" value="${esc(f.date)}" onchange="F.date=this.value">
     <label>お店</label><input id="fVendor" list="vendList" value="${esc(f.vendor)}" placeholder="例：業務スーパー" oninput="F.vendor=this.value" onchange="vendorPick(this.value)">
     <datalist id="vendList">${VENDORS.map(v=>`<option value="${v[1]}">`).join("")}</datalist>
@@ -313,8 +325,9 @@ async function runOcr(){
   refreshForm();
 }
 // 読み込んだ絵を大きく見る
-function bigView(){ const src = (F && (F.view || (F.thumb!=="pdf" ? F.thumb : ""))) || ""; if(!src) return;
-  const w = window.open(""); if(w){ w.document.write(`<title>${esc(F.fname||"ファイル")}</title><body style="margin:0;background:#333"><img src="${src}" style="width:100%">`); } }
+function bigView(){ if(!F) return;
+  if(F.image) return showViewer({mime:F.mime, b64:F.image, name:F.fname||"読み込んだファイル"});
+  if(F.id && F.url) return viewFile(F.id, F.url, ""); }
 function readB64(file){ return new Promise((ok, ng)=>{ const fr = new FileReader(); fr.onload = ()=>ok(String(fr.result).split(",")[1]); fr.onerror = ng; fr.readAsDataURL(file); }); }
 // 写真を長辺1600pxのJPEGに縮める（通信量を減らすため）
 function shrink(file){ return new Promise((ok, ng)=>{ const url = URL.createObjectURL(file); const img = new Image();
@@ -413,7 +426,68 @@ async function loadHist(reset){
       <div>${pill(x.status)}</div></div>`).join("") + (HIST_MORE?`<div style="height:8px"></div><button class="btn sec" onclick="this.disabled=true;this.textContent='読み込み中…';loadHist(false)">もっと見る</button>`:"")
     : `<div class="mini">まだファイルを送っていません</div>`;
 }
-function openFile(i){ const x = HIST[i]; if(x && x.url) window.open(x.url, "_blank"); else toast("ファイルが見つかりません"); }
+function openFile(i){ const x = HIST[i]; if(!x){ toast("ファイルが見つかりません"); return; } viewFile(x.id, x.url, x.name || (x.vendor ? x.vendor+" "+yen(x.amount) : "")); }
+
+// ───── アプリの中で拡大表示（11/3） ─────
+// 写真はそのまま、PDFは全ページを絵にして縦に並べる。拡大は「＋／－」・ダブルタップ・2本指
+let VZ = 1;
+async function viewFile(id, url, name){
+  showViewer(null, name, url);
+  const r = await get("rc_view", {id});
+  if(!$("vwBody")) return; // 待っている間に閉じた
+  if(r.error){ $("vwBody").innerHTML = `<div class="vmsg">${esc(r.error==="auth"?"ログインし直してください":r.error)}${(r.url||url)?`<br><br><a href="${esc(r.url||url)}" target="_blank" style="color:#e8c26a">ドライブで開く</a>`:""}</div>`; return; }
+  showViewer(r, name || r.name, r.url || url);
+}
+function showViewer(file, name, url){
+  VZ = 1;
+  $("vw").innerHTML = `<div class="vw"><div class="vh"><b>${esc(name || (file && file.name) || "ファイル")}</b><button onclick="vwZoom(-1)">－</button><button onclick="vwZoom(1)">＋</button><button onclick="closeViewer()">閉じる</button></div>
+    <div class="vb" id="vwBox"><div class="vc" id="vwBody"><div class="vmsg">読み込み中…</div></div></div>
+    <div class="vf"><span id="vwPct">100%</span>${url?`<a href="${esc(url)}" target="_blank">ドライブで開く</a>`:""}</div></div>`;
+  vwApply(); vwGestures();
+  if(!file) return;
+  const body = $("vwBody");
+  if(/pdf/i.test(file.mime || "")){
+    body.innerHTML = `<div class="vmsg">ページを描いています…</div>`;
+    renderPdfPages(file.b64, body).catch(()=>{ body.innerHTML = `<div class="vmsg">PDFを表示できませんでした${url?`<br><br><a href="${esc(url)}" target="_blank" style="color:#e8c26a">ドライブで開く</a>`:""}</div>`; });
+  } else body.innerHTML = `<img src="data:${esc(file.mime || "image/jpeg")};base64,${file.b64}" alt="">`;
+}
+async function renderPdfPages(b64, body){
+  const lib = await loadPdfJs(); const bin = atob(b64); const bytes = new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+  const doc = await lib.getDocument({data: bytes}).promise; const n = Math.min(doc.numPages, 20); body.innerHTML = "";
+  for(let k=1;k<=n;k++){
+    if(!$("vwBody")) return; // 閉じた
+    const pg = await doc.getPage(k); const v1 = pg.getViewport({scale:1}); const vp = pg.getViewport({scale: 1400 / v1.width});
+    const c = document.createElement("canvas"); c.width = Math.round(vp.width); c.height = Math.round(vp.height); body.appendChild(c);
+    const ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0,0,c.width,c.height); await pg.render({canvasContext: ctx, viewport: vp}).promise;
+  }
+  if(doc.numPages > n){ const m = document.createElement("div"); m.className = "vmsg"; m.textContent = `全${doc.numPages}ページのうち${n}ページまで表示しています`; body.appendChild(m); }
+  try{ doc.destroy(); }catch(e){}
+}
+function closeViewer(){ $("vw").innerHTML = ""; }
+function vwApply(){ const b = $("vwBody"); if(!b) return; b.style.width = (VZ*100)+"%"; const p = $("vwPct"); if(p) p.textContent = Math.round(VZ*100)+"%"; }
+function vwZoom(dir, center){
+  const box = $("vwBox"); if(!box) return; const old = VZ;
+  VZ = Math.max(1, Math.min(5, dir > 0 ? VZ*1.5 : VZ/1.5)); if (Math.abs(VZ-1) < .05) VZ = 1; vwKeep(box, old, center);
+}
+// 拡大しても見ていた場所がずれないように、スクロール位置を合わせる
+function vwKeep(box, old, center){
+  const cx = center ? center.x : box.clientWidth/2, cy = center ? center.y : box.clientHeight/2;
+  const fx = (box.scrollLeft + cx) / old, fy = (box.scrollTop + cy) / old; vwApply();
+  box.scrollLeft = fx*VZ - cx; box.scrollTop = fy*VZ - cy;
+}
+function vwGestures(){
+  const box = $("vwBox"); if(!box) return; let d0 = 0, z0 = 1, lastTap = 0;
+  const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  const mid = t => { const r = box.getBoundingClientRect(); return { x: (t[0].clientX + t[1].clientX)/2 - r.left, y: (t[0].clientY + t[1].clientY)/2 - r.top }; };
+  box.addEventListener("touchstart", e=>{
+    if(e.touches.length === 2){ d0 = dist(e.touches); z0 = VZ; e.preventDefault(); return; }
+    if(e.touches.length === 1){ const now = Date.now(); if(now - lastTap < 300){ const r = box.getBoundingClientRect(); const old = VZ; VZ = VZ > 1 ? 1 : 2.5; vwKeep(box, old, {x: e.touches[0].clientX - r.left, y: e.touches[0].clientY - r.top}); e.preventDefault(); lastTap = 0; } else lastTap = now; }
+  }, {passive:false});
+  box.addEventListener("touchmove", e=>{ if(e.touches.length === 2 && d0){ e.preventDefault(); const old = VZ; VZ = Math.max(1, Math.min(5, z0 * dist(e.touches) / d0)); vwKeep(box, old, mid(e.touches)); } }, {passive:false});
+  box.addEventListener("touchend", e=>{ if(e.touches.length < 2) d0 = 0; });
+  box.addEventListener("dblclick", e=>{ const r = box.getBoundingClientRect(); const old = VZ; VZ = VZ > 1 ? 1 : 2.5; vwKeep(box, old, {x: e.clientX - r.left, y: e.clientY - r.top}); });
+  box.addEventListener("wheel", e=>{ if(e.ctrlKey){ e.preventDefault(); const r = box.getBoundingClientRect(); const old = VZ; VZ = Math.max(1, Math.min(5, VZ * (e.deltaY < 0 ? 1.1 : 1/1.1))); vwKeep(box, old, {x: e.clientX - r.left, y: e.clientY - r.top}); } }, {passive:false});
+}
 
 boot();
 </script>
