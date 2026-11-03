@@ -283,10 +283,10 @@
   <div id="ov"></div><div class="toast" id="toast"></div>
 
   <div class="tabs">
-    <button id="tab-today" class="on" onclick="setTab('today')">今日</button>
+    <button id="tab-today" class="on" onclick="setTab('today')">日</button>
     <button id="tab-wk" onclick="setTab('wk')">週</button>
-    <button id="tab-money" onclick="setTab('money')">月・お金</button>
-    <button id="tab-check" onclick="setTab('check')">確認<span class="tbd hide" id="chkBadge"></span></button>
+    <button id="tab-money" onclick="setTab('money')">収支</button>
+    <button id="tab-check" onclick="setTab('check')">やること<span class="tbd hide" id="chkBadge"></span></button>
   </div>
 
   <!-- ===== 締め（毎朝の確認） ===== -->
@@ -478,7 +478,7 @@ const yen = n => (n||0).toLocaleString() + "円";
 const num = n => (n||0).toLocaleString();
 let DATA = null, viewDate = null, viewWeek = null, itemPeriod = "week", curTab = "today";
 
-// タブは3つ：今日（やること＋今日の数字）／週（振り返りの中心）／月・お金。前の名前（shime・day・week・items・pnl・people）でも呼べる
+// タブは4つ：日（その日の数字・日付を送れる）／週（振り返りの中心）／収支（月の損益）／やること（確認事項）。前の名前（shime・day・week・items・pnl・people）でも呼べる
 const TAB_OF = { shime:"check", day:"today", week:"wk", items:"wk", pnl:"money", people:"money", today:"today", wk:"wk", money:"money", check:"check" };
 const TAB_VIEWS = { today:["day"], wk:["week"], money:["pnl"], check:["shime"] };   // 週は週のカードだけ（細かい集計は出さない）
 function setTab(t){
@@ -546,7 +546,7 @@ function renderAlerts(){
   const open = days.filter(r=>r.issues.length && !r.acked && !r.reason);
   const box = $("alerts"); box.classList.toggle("ok", !open.length); box.classList.toggle("hide", !open.length); window._openShime = open.length;   // 全部確認済みなら出さない
   $("alertList").innerHTML = open.length
-    ? `<div class="bar1"><b>締めの確認 ${open.length}日</b><span>${open.slice(0,3).map(r=>`${r.date.slice(5)}（${r.issues.join("・")}）`).join("　")}${open.length>3?" …":""}</span><span class="st">タップで開く ▶</span></div>`
+    ? `<div class="bar1"><b>締めがまだ ${open.length}日分</b><span>${open.slice(0,3).map(r=>`${r.date.slice(5)}（${r.issues.join("・")}）`).join("　")}${open.length>3?" …":""}</span><span class="st">タップで開く ▶</span></div>`
     : `<div class="bar1"><b style="color:var(--midori)">締めはすべて確認済み</b><span class="st">${days.length?`直近 ${days[0].date.slice(5)} まで`:""}</span></div>`;
   renderShime(days); renderMisc();
 }
@@ -682,7 +682,7 @@ function renderMisc(){
   if(p.initial && p.initial.pending) li(`開業費の未入力 ${p.initial.pending}件`,"分析シート「開業費」で金額を入力");
   p.fixed.filter(f=>!f.amount && !/収入/.test(f.name)).forEach(f=>li(`固定費が0円のまま：${f.name}`,"実額が分かったら入力", ME?"入力":"", `fixedInput('${f.name}')`));
   $("miscList").innerHTML = M.join("") || "<div class='sub'>確認することはありません</div>";
-  const nb = M.length + (window._openShime||0); $("chkBadge").textContent = nb; $("chkBadge").classList.toggle("hide", !nb);   // 「確認」タブの件数
+  const nb = M.length + (window._openShime||0); $("chkBadge").textContent = nb; $("chkBadge").classList.toggle("hide", !nb);   // 「やること」タブの件数
 }
 
 // ===== ログインと訂正（要確認の解消） =====
@@ -1237,7 +1237,7 @@ function weekDaysHtml(mon){
         ["原価率 <em class='tag g'>概算</em>", pct(e.cr), `粗利 ${signed(e.gp)}`]
       ].map(a=>cell(...a)).join("")}</div>
       <div class="kv">${w ? `<div><span>天気</span><span>${wt[0]} ${wt[1]}・最高${Math.round(w.tmax)}℃・昼の雨 ${Math.round(w.rain*10)/10}mm</span></div>` : ""}${hs ? `<div><span>時間帯</span><span class="hc">${hs.filter(r=>r.meals||r.h>=11&&r.h<=13).map(r=>`<i>${r.h}時 <b>${r.meals}食</b>・${Math.round((r.ppl+r.sup)*10)/10}人</i>`).join("")}</span></div>` : ""}${fl ? `<div><span>会計</span><span>${fl[0]}〜${fl[1]}</span></div>` : ""}${top ? `<div><span>よく出た</span><span>${esc(top)}</span></div>` : ""}</div>
-      <button style="margin-top:8px;border:2px solid var(--wood-d);background:var(--cream-d);border-radius:10px;padding:8px 12px;font-size:13px;font-weight:bold;color:var(--ink)" onclick="viewDate='${dt}';setTab('today');renderDay();scrollTo(0,0)">この日を「今日」タブで見る</button></div>` : ""}</div>`); }
+      <button style="margin-top:8px;border:2px solid var(--wood-d);background:var(--cream-d);border-radius:10px;padding:8px 12px;font-size:13px;font-weight:bold;color:var(--ink)" onclick="viewDate='${dt}';setTab('today');renderDay();scrollTo(0,0)">この日を「日」タブで見る</button></div>` : ""}</div>`); }
   return out.join("") || `<div class="sub">この週の記録はまだありません</div>`;
 }
 function reviewHtml(mon){ const R = { title:"", top:"", ins:"", next:"", lab:"" };
