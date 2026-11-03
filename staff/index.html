@@ -48,6 +48,8 @@ nav button.on i::before{content:"";position:absolute;top:-4px;left:50%;width:3px
 .row b{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
 .row .l{min-width:0}
 .shseg{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;margin:0 0 10px} .shseg button{flex:1;border:0;background:#fff;padding:7px 0;font-size:13px;color:var(--mute)} .shseg button.on{background:var(--g);color:#fff;font-weight:700}
+.hnav{display:flex;align-items:center;gap:6px} .hnav button{border:1px solid var(--line);background:#fff;border-radius:8px;width:30px;height:26px;font-size:11px;color:var(--g);cursor:pointer;padding:0} .hnav button.hide{visibility:hidden;display:inline-block}
+.hteam{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)} .hteam .t{font-size:11px;letter-spacing:2px;color:var(--g);font-weight:700;margin-bottom:4px} .hteam .tday{padding:2px 0;border:0}
 .tday{padding:9px 0;border-bottom:1px solid var(--line)} .tday:last-child{border-bottom:0} .tday.past{opacity:.5} .tday.today{background:var(--g-l);margin:0 -6px;padding:9px 6px;border-radius:8px}
 .tday .d{font-weight:700;font-size:14px;margin-bottom:3px} .tday .p{display:flex;gap:8px;font-size:13px;line-height:1.7} .tday .p small{flex:0 0 3em;color:var(--mute)} .tday .p b{font-weight:700} .tday .p em{font-style:normal;color:var(--mute);font-size:12px;margin-left:3px}
 .pill{display:inline-block;border-radius:999px;padding:2px 10px;font-size:12px;background:var(--g-l);color:var(--g);white-space:nowrap}
@@ -250,9 +252,10 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
       <section id="pHome">
         <div class="credo-card"><span class="cs">オリオンの約束</span><div class="credo"><span>古いけれど、清潔。</span><span>下町だけれど、丁寧。</span><span>親しみやすいけれど、雑ではない。</span></div><span class="motto"><span class="nb">愛嬌よく、明るく。</span><span class="nb">お店もお客様も、朗らかに。</span></span></div>
         <div class="card">
-          <h2>本日 <small id="hToday"></small></h2>
+          <h2><span id="hDayLab">本日</span><span class="hnav"><button id="hPrev" class="hide" onclick="homeDay(-1)" aria-label="前の日">◀</button><small id="hToday"></small><button id="hNextD" onclick="homeDay(1)" aria-label="次の日">▶</button></span></h2>
           <div class="big" id="hShift">-</div>
           <div class="sub" id="hShiftSub"></div>
+          <div class="hteam" id="hTeam"><div class="t">今日の出勤</div><div class="sub">読み込み中…</div></div>
         </div>
         <div id="punchArea"></div>
         <div class="card hide" id="todoCard"><h2>今日やること <small id="todoN"></small></h2><div id="todoList"></div></div>
@@ -694,9 +697,8 @@ function renderHome(r, stale){
   setTimeout(()=>{ try{ renderTodo(); }catch(e){} }, 0);
   HOME = r; ME = r.staff; SET = r.settings; $("pHome").classList.toggle("stale", !!stale);
   $("hName").textContent = ME.name + (ME.role==="admin" ? "（管理者）" : ""); $("hAdmin").classList.toggle("hide", ME.role !== "admin");   // 管理者は管理者アプリへ戻れる
-  $("hToday").textContent = mdLabel(r.today);
-  if (r.todayShift){ $("hShift").textContent = r.todayShift.start+" 〜 "+r.todayShift.end; $("hShiftSub").textContent = "本日の勤務予定"; }
-  else { $("hShift").textContent = "予定なし"; $("hShiftSub").textContent = "予定外に働く場合もそのまま出勤を押せます"; }
+  if (HDAY && HDAY <= r.today) HDAY = null;
+  renderHomeDay(); homeTeamLoad();
   $("hNext").textContent = r.next ? `${mdLabel(r.next.date)} ${r.next.start}〜${r.next.end}` : "未定";
   const done = r.wishCount>0;
   $("hWish").innerHTML = `${monthLabel(r.wishMonth).slice(5)}分 ${done ? `<span class="pill">提出済み ${r.wishCount}日</span>` : `<span class="pill amber">未提出</span>`}`;
@@ -975,17 +977,54 @@ function renderShift(r){
 
 // みんなのシフト：日ごとに名前・時間。勤怠 GAS の shifts（自分の分＋others＝ほかの人の「名前 HH:MM-HH:MM」）で出し、
 // 分析 GAS の os_team_shifts が読めれば厨房／ホールに分けて出す（下書きは出ない）
-async function loadTeam(){
-  const m = SHM, key = "team:"+m; const c = cget(key); $("shiftMonth").textContent = monthLabel(m);
-  if (c) renderTeam(c); else $("shiftList").innerHTML = `<div class="sub">読み込み中…</div>`;
+async function fetchTeam(m){
   const [os, st] = await Promise.all([
     osFetch(OS_API+"?mode=os_team_shifts&month="+encodeURIComponent(m)+"&t="+Date.now()+"&token="+encodeURIComponent(TOKEN), {cache:"no-store"}, false),
     api("shifts", {month:m})]);
   let r = (os && os.ok) ? os : null;
   if (!r && st && st.ok) r = teamFromShifts(st);
-  if (!r){ if (!c && SHM===m && SHV==="team") $("shiftList").innerHTML = `<div class="sub">読み込めませんでした。少しして開き直してください</div>`; return; }
   if (st && st.ok) cset("shift:"+m, st);
-  cset(key, r); if (SHM===r.month && SHV==="team") renderTeam(r);
+  if (r){ cset("team:"+m, r); TEAM_AT[m] = Date.now(); }
+  return r;
+}
+async function loadTeam(){
+  const m = SHM, key = "team:"+m; const c = cget(key); $("shiftMonth").textContent = monthLabel(m);
+  if (c) renderTeam(c); else $("shiftList").innerHTML = `<div class="sub">読み込み中…</div>`;
+  const r = await fetchTeam(m);
+  if (!r){ if (!c && SHM===m && SHV==="team") $("shiftList").innerHTML = `<div class="sub">読み込めませんでした。少しして開き直してください</div>`; return; }
+  if (SHM===r.month && SHV==="team") renderTeam(r);
+}
+// ───── ホームの「本日」：自分の予定＋その日に出勤する人。◀▶で日を送れる（土日はシフトがなければ飛ばす） ─────
+let HDAY = null, TEAM_AT = {};
+function dAdd(ds, n){ const [y,m,d] = ds.split("/").map(Number), t = new Date(y, m-1, d+n); return t.getFullYear()+"/"+String(t.getMonth()+1).padStart(2,"0")+"/"+String(t.getDate()).padStart(2,"0"); }
+function teamDay(ds){ const r = cget("team:"+ds.slice(0,7)); return r ? ((r.days||[]).find(x=>x.date===ds) || {date:ds, list:[]}) : null; }
+function homeDay(n){
+  if (!HOME) return; let d = HDAY || HOME.today;
+  for (let i = 0; i < 7; i++){ d = dAdd(d, n); const wd = youbi(d), t = teamDay(d); if (!((wd==="土"||wd==="日") && !(t && t.list.length))) break; }
+  HDAY = d <= HOME.today ? null : d; renderHomeDay(); homeTeamLoad();
+}
+function homeTeamLoad(){
+  if (!HOME) return; const d = HDAY || HOME.today, ms = [d.slice(0,7)];
+  if (!HDAY && dAdd(d, 3).slice(0,7) !== ms[0]) ms.push(dAdd(d, 3).slice(0,7));   // 月末は翌月も読んでおく（▶で翌月に入るため）
+  ms.forEach(m=>{ if (TEAM_AT[m] && Date.now()-TEAM_AT[m] < 60000) return; TEAM_AT[m] = Date.now();
+    fetchTeam(m).then(r=>{ if (r) renderHomeDay(); else TEAM_AT[m] = 0; }); });
+}
+function renderHomeDay(){
+  if (!HOME) return; const r = HOME, d = HDAY || r.today, isToday = d === r.today, t = teamDay(d);
+  const lab = isToday ? "本日" : d === dAdd(r.today, 1) ? "明日" : "この日";
+  $("hDayLab").textContent = lab; $("hToday").textContent = mdLabel(d); $("hPrev").classList.toggle("hide", isToday);
+  const mine = isToday ? r.todayShift : (t && t.list.find(x=>x.me)) || null;
+  if (mine){ $("hShift").textContent = mine.start+" 〜 "+mine.end; $("hShiftSub").textContent = lab+"の勤務予定"; }
+  else { $("hShift").textContent = "予定なし"; $("hShiftSub").textContent = isToday ? "予定外に働く場合もそのまま出勤を押せます" : (t ? "この日の勤務予定はありません" : "読み込み中…"); }
+  const who = x=>`${x.me?"<b>":""}${esc(x.name)}${x.me?"</b>":""}${x.start?`<em>${x.start}〜${x.end}</em>`:""}`;
+  let body;
+  if (!t) body = `<div class="sub">読み込み中…</div>`;
+  else if (!t.list.length) body = `<div class="sub">確定したシフトはまだありません</div>`;
+  else { const g = t.list.some(x=>x.area) ? ["厨房","ホール"].map(a=>[a, t.list.filter(x=>x.area===a)]).filter(([a,xs])=>xs.length) : [["", t.list]];
+    const rest = t.list.some(x=>x.area) ? t.list.filter(x=>x.area!=="厨房" && x.area!=="ホール") : [];
+    if (rest.length) g.push(["ほか", rest]);
+    body = `<div class="tday">` + g.map(([a,xs])=>`<div class="p">${a?`<small>${a}</small>`:""}<span>${xs.map(who).join("、")}</span></div>`).join("") + `</div>`; }
+  $("hTeam").innerHTML = `<div class="t">${isToday ? "今日" : lab==="明日" ? "明日" : "この日"}の出勤</div>` + body;
 }
 function teamFromShifts(st){
   const me = (HOME && HOME.staff && HOME.staff.name) || "自分", days = {};
