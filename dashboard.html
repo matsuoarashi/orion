@@ -125,6 +125,21 @@
   .wkbars i.ok{background:var(--midori)}.wkbars i.ng{background:var(--enji)}
   .wkbars span{font-weight:bold;margin-top:2px}
   .wkbars small{color:var(--mute);font-size:10px}
+  .wkx{padding:0 14px 6px;font-size:12px;line-height:1.5;color:var(--mute);cursor:pointer}
+  .wkx b{color:var(--ink)}
+  .wkg small i{font-style:normal;font-size:9px;letter-spacing:0;color:var(--mute)}
+  .wtr{padding:12px 14px 10px;margin-bottom:10px}
+  .wtr h2{margin:0 0 2px}
+  .wtrc{position:relative;height:96px;margin:18px 0 0;display:flex;gap:6px;align-items:flex-end;border-bottom:1px solid #c9b891}
+  .wtrc .bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;position:relative;z-index:1}
+  .wtrc .bar i{display:block;width:72%;border-radius:3px 3px 0 0;background:var(--midori)}
+  .wtrc .bar i.cur{background:#c9b891}
+  .wtrc .bar span{position:absolute;font-size:11px;font-weight:bold;white-space:nowrap}
+  .wtrc .ln{position:absolute;left:0;right:0;border-top:1.5px dashed;z-index:2;pointer-events:none}
+  .wtrc .ln em{position:absolute;right:0;top:-15px;font-size:10px;font-style:normal;background:var(--cream);padding:0 3px;font-weight:bold}
+  .wtrc .ln.g{border-color:var(--midori)}.wtrc .ln.g em{color:var(--midori)}
+  .wtrc .ln.b{border-color:var(--enji)}.wtrc .ln.b em{color:var(--enji);right:auto;left:0}
+  .wtrx{display:flex;gap:6px;margin-top:3px}.wtrx small{flex:1;text-align:center;font-size:10px;color:var(--mute);white-space:nowrap}
   .wki{padding:0 14px 12px;font-size:13px;line-height:1.5;color:var(--ink);cursor:pointer}
   #wkList .wk{margin-bottom:10px;padding:0}
   .wkh{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer}
@@ -1308,33 +1323,55 @@ function reviewHtml(mon){ const R = { title:"", top:"", ins:"", next:"", lab:"" 
   return R;
 }
 
+// 週の損益（固定費は日割り・原価は概算）と、損益分岐に届いたか
+function wkEcon(list){
+  const p = pnlData(); let sales=0, meals=0, profit=0, labor=0, laborSales=0, minutes=0; const rows=[];
+  list.filter(d=>d.count>0).forEach(d=>{ const e = dayEcon(d.date, d); sales+=d.sales; meals+=d.meals; profit+=e.profit;
+    const l = p.laborDaily[d.date]; if (l){ labor+=l.cost; laborSales+=d.sales; minutes+=l.minutes; }
+    rows.push({ dt:d.date, meals:d.meals, be:e.beM, ok:d.meals>=e.beM }); });
+  const days = rows.length;
+  return { days, sales, meals, profit, rows, mpd: days ? meals/days : null, ticket: meals ? sales/meals : null,
+    labor: laborSales ? labor/laborSales : null, spmh: minutes ? laborSales/(minutes/60) : null,
+    be: days ? rows.reduce((a,r)=>a+r.be,0)/days : null };
+}
+// 週タブの一番上：8週の食数/日の推移。目標の線と損益分岐の線（直近4週の平均）
+function weekTrendHtml(ws){
+  const thisMon = mondayOf(DATA.todayKey), arr = ws.slice().reverse().map(m=>({ m, e: wkEcon(weekDays(m)) }));
+  if (arr.filter(a=>a.e.days).length < 2) return "";
+  const bl = arr.filter(a=>a.e.days && a.m!==thisMon).slice(-4), be = bl.length ? bl.reduce((s,a)=>s+a.e.be,0)/bl.length : null;
+  const top = Math.max(GOAL_MEALS*1.15, ...arr.map(a=>a.e.mpd||0)), H = 96, y = v => Math.round(H*v/top);
+  const bars = arr.map(a=>{ const v = a.e.mpd; return `<div class="bar">${v ? `<span style="bottom:${y(v)+2}px">${v.toFixed(0)}</span><i class="${a.m===thisMon?"cur":""}" style="height:${Math.max(3,y(v))}px"></i>` : ""}</div>`; }).join("");
+  const lab = arr.map(a=>`<small>${+a.m.slice(5,7)}/${+a.m.slice(8)}${a.m===thisMon?"途中":""}</small>`).join("");
+  return `<div class="card wide wtr"><h2>食数/日の推移</h2><div class="sub">週ごとの1日平均。緑の線が目標、赤の線が損益分岐（直近4週の平均）</div>
+    <div class="wtrc">${bars}<div class="ln g" style="bottom:${y(GOAL_MEALS)}px"><em>目標 ${GOAL_MEALS}食</em></div>${be ? `<div class="ln b" style="bottom:${y(be)}px"><em>損益分岐 約${Math.round(be)}食</em></div>` : ""}</div>
+    <div class="wtrx">${lab}</div></div>`;
+}
 // ───── 週を縦に並べる（新しい週が上）。見出しをタップで開く。開いた週が下の詳しいカードの対象 ─────
 let WK_OPEN = {};
 function weekList(){ const first = mondayOf((DATA.daily[0]||{date:DATA.todayKey}).date), ws = []; for (let m = mondayOf(DATA.todayKey); m >= first && ws.length < 8; m = dateAdd(m,-7)) ws.push(m); return ws; }
 function toggleWeek(m){ WK_OPEN[m] = !WK_OPEN[m]; if (WK_OPEN[m]) viewWeek = m; renderWeek(); }
 function renderWeekList(){
   const ws = weekList(), thisMon = mondayOf(DATA.todayKey);
-  $("wkList").innerHTML = ws.map(m=>{ const st = rvStats(m), pv = rvStats(dateAdd(m,-7)), open = WK_OPEN[m], end = dateAdd(m,4);
+  $("wkList").innerHTML = weekTrendHtml(ws) + ws.map(m=>{ const st = rvStats(m), pv = rvStats(dateAdd(m,-7)), open = WK_OPEN[m], end = dateAdd(m,4);
     const name = m===thisMon ? "今週" : m===dateAdd(thisMon,-7) ? "先週" : "";
-    const dM = st.mpd!==null && pv.mpd!==null ? st.mpd - pv.mpd : null;
-    // 閉じていても分かるように：4つの数字（前週との差つき）・毎日の食数の棒（損益分岐を超えたら緑）・いちばんの気づき
-    const pc = (a,b)=> (a!==null && b!==null && b) ? (a/b-1) : null;
-    const dl = (v, unit, good) => v===null ? "" : `<em class="${(good===undefined ? v>=0 : good) ? "pos" : "neg"}">${v>=0?"+":""}${unit==="%"?Math.round(v*1000)/10+"pt":unit==="r"?Math.round(v*100)+"%":v.toFixed(1)}</em>`;
-    const sp = st.days ? st.x.sales - st.x.cost - st.x.labor : null, pp = pv.days ? pv.x.sales - pv.x.cost - pv.x.labor : null;
+    // 途中の週は、前週の「同じ曜日まで」と比べる（月曜だけと先週5日平均を比べて下がって見えるのを防ぐ）
+    const di = (d, base) => Math.round((Date.parse(d.replace(/\//g,"-")) - Date.parse(base.replace(/\//g,"-")))/864e5);
+    const upto = m===thisMon && st.list.length ? Math.max(...st.list.map(d=>di(d.date, m))) : 6;
+    const W = wkEcon(st.list), P = wkEcon(pv.list.filter(d=>di(d.date, dateAdd(m,-7)) <= upto));
+    const dy = v => `<em class="${v>=0?"pos":"neg"}">${v>=0?"+":"−"}${num(Math.abs(Math.round(v/10)*10))}円</em>`;
+    const vs = m===thisMon ? "前週の同じ曜日まで" : "前週";
     const cells = st.days ? [
-      ["売上", num(Math.round(st.x.sales/1000))+"千円", dl(pc(st.x.sales/st.days, pv.days?pv.x.sales/pv.days:null), "r")],   // 前週との差は1日あたりで比べる（途中の週でも比べられるように）
-      ["食数/日", st.mpd.toFixed(1), dl(dM, "")],
-      ["粗利", sp===null ? "-" : num(Math.round(sp/1000))+"千円", pp!==null ? dl(pc(sp/st.days, pp/pv.days), "r") : ""],
-      ["人件費率", st.labor===null ? "-" : Math.round(st.labor*1000)/10+"%", st.labor===null ? "" : `<em class="${st.labor<=0.30?"pos":"neg"}">${st.labor<=0.30?"目安内":"目安30%超"}</em>`]
+      ["営業利益 <i>概算</i>", (W.profit>=0?"":"−")+num(Math.abs(Math.round(W.profit/1000)))+"千円", P.days ? dy(W.profit/W.days - P.profit/P.days).replace("円</em>","円/日</em>") : `<em class="${W.profit>=0?"pos":"neg"}">${W.profit>=0?"黒字":"赤字"}</em>`],
+      ["食数/日", W.mpd.toFixed(1), W.mpd >= GOAL_MEALS ? `<em class="pos">目標${GOAL_MEALS}達成</em>` : `<em class="neg">目標まで ${(GOAL_MEALS-W.mpd).toFixed(1)}</em>`],
+      ["客単価", W.ticket===null ? "-" : num(Math.round(W.ticket))+"円", P.ticket ? dy(W.ticket - P.ticket) : ""],
+      ["人件費率", W.labor===null ? "-" : Math.round(W.labor*1000)/10+"%", W.labor===null ? "" : `<em class="${W.labor<=0.30?"pos":"neg"}">${W.spmh ? "1時間 "+num(Math.round(W.spmh/100)*100)+"円" : (W.labor<=0.30?"目安内":"目安30%超")}</em>`]
     ].map(c=>`<div><small>${c[0]}</small><b>${c[1]}</b>${c[2]}</div>`).join("") : "";
-    const days5 = [0,1,2,3,4].map(i=>{ const dt = dateAdd(m,i), d = dayByDate(dt); if (!d || !d.count) return { dt, v:0, ok:null };
-      const e = dayEcon(dt, d); return { dt, v:d.meals, ok: d.meals >= e.beM }; });
-    const mx = Math.max(1, ...days5.map(x=>x.v));
-    const bars = st.days ? `<div class="wkbars">${days5.map(x=>`<div><i style="height:${x.v?Math.max(6,Math.round(34*x.v/mx)):2}px" class="${x.ok===null?"no":x.ok?"ok":"ng"}"></i><span>${x.v||"-"}</span><small>${youbi(x.dt)}</small></div>`).join("")}</div>` : "";
+    const red = W.rows.filter(r=>!r.ok);
+    const beLine = st.days ? `<div class="wkx" onclick="toggleWeek('${m}')">売上 <b>${num(Math.round(st.x.sales/1000))}千円</b>・損益分岐を超えた日 <b>${W.rows.length-red.length}/${W.rows.length}日</b>${red.length ? `（届かなかった日 ${red.slice(0,3).map(r=>`${+r.dt.slice(5,7)}/${+r.dt.slice(8)}(${youbi(r.dt)}) ${r.meals}食`).join("・")}）` : ""}<br>比べるのは${vs}</div>` : "";
     let top = ""; if (st.days){ try{ const R0 = reviewHtml(m), mm = R0.ins.match(/<b>([\s\S]*?)<\/b>/); if (mm) top = mm[1].replace(/<[^>]+>/g,""); }catch(e){} }
     const head = `<div class="wkh" onclick="toggleWeek('${m}')"><span class="wn">${+m.slice(5,7)}/${+m.slice(8)}〜${+end.slice(5,7)}/${+end.slice(8)}${name?`<small>${name}${m===thisMon?"（途中）":""}</small>`:""}</span>
       <span class="ws">${st.days ? `営業${st.days}日` : "まだ営業日がありません"}</span><span class="ar">${open?"▴":"▾"}</span></div>
-      ${st.days ? `<div class="wkg" onclick="toggleWeek('${m}')">${cells}</div>${bars}${top && !open ? `<div class="wki" onclick="toggleWeek('${m}')">💡 ${esc(top)}</div>` : ""}` : ""}`;
+      ${st.days ? `<div class="wkg" onclick="toggleWeek('${m}')">${cells}</div>${beLine}${top && !open ? `<div class="wki" onclick="toggleWeek('${m}')">💡 ${esc(top)}</div>` : ""}` : ""}`;
     if (!open) return `<div class="card wide wk">${head}</div>`;
     const R = reviewHtml(m);
     return `<div class="card wide wk open">${head}<div class="wkb"><div class="sub" style="margin:2px 0 6px">${R.title.replace(/^[^<]*<span class="r">/,"").replace(/<\/span>$/,"")}</div>${R.top?`<div class="pnlGrid">${R.top}</div>`:""}<div style="margin-top:10px">${R.ins}</div>${R.next}
