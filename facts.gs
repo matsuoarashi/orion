@@ -38,6 +38,7 @@ function handleOsGet(e){
   if (mode === "os_mail"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_({ list: osRows_(OS_MAILCAND, OS_MAILCAND_COLS).filter(function(r){ return String(r["状態"]) === "未確認"; }).slice(-100).reverse().map(function(r){ var o = {}; OS_MAILCAND_COLS.forEach(function(c){ o[c] = String(r[c]===undefined?"":r[c]); }); return o; }) }); }
   var lg = osLedgerGet_(mode, me); if (lg) return invOut_(lg);
   if (/^os_start_/.test(mode)) return invOut_(startGet_(mode, me, p)); // ORION START（start.gs）
+  if (/^os_loan_/.test(mode)) return invOut_(loanGet_(mode, me, p)); // 借入と返済（loan.gs）
   if (mode === "os_snapshot_run"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_(osSnapshot(String(p.ym||""), me)); }
   if (mode === "os_ai_diag"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_(osAiDiag_(me)); }
   if (mode === "os_seed_mail"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_({ result: osMailSeedRules(), rules: osMailRules_().length }); }
@@ -75,6 +76,7 @@ function handleOsPost(d){
       else if (d.type === "os_contract_save") res = osContractSave_(d, me);
       else if (d.type === "os_rpt_save") res = osRptSave_(d, me);
       else if (/^os_start_/.test(String(d.type))) res = startPost_(d, me); // ORION START（start.gs）
+      else if (/^os_loan_/.test(String(d.type))) res = loanPost_(d, me); // 借入と返済（loan.gs）
       else res = { error: "unknown type" };
     } finally { lock.releaseLock(); }
   } catch(e){ res = { error: String(e) }; }

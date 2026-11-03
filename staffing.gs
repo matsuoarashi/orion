@@ -205,7 +205,7 @@ function opsAlerts_(which){
   var today = opsDay_(new Date()), out = [], run = function(f){ try { out = out.concat(f()); } catch(e){ out.push({ key: "err", level: "mid", title: "確認の一部が動きませんでした", detail: String(e).slice(0,120), app: "" }); } };
   if (which === "order" || which === "all") run(opsOrderAlerts_);
   if (which === "evening" || which === "all"){
-    run(opsShortAlerts_); run(opsCapAlerts_); run(opsRecAlerts_);
+    run(opsShortAlerts_); run(opsCapAlerts_); run(opsRecAlerts_); run(opsLoanAlerts_);
     var h = Number(Utilities.formatDate(new Date(), OPS_TZ, "H"));
     // 衛生記録・締めは閉店後（16時以降）に今日の分を見る。それより前は前営業日の分
     var day = h >= 16 ? today : opsAdd_(today, -1);

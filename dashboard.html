@@ -433,6 +433,8 @@
         <div class="scroll"><table class="daygrid" id="ppDays"></table></div>
         <div class="sub">人時売上 = 売上 ÷ 労働時間（目安 3,500円/h）。人時食数 = 食数 ÷ 労働時間</div></div>
       <div class="card"><h2>固定費（月額）</h2><div id="pnlFixed"></div></div>
+      <div class="card hide" id="loanCard"><h2>借入の返済</h2><div id="loanList"></div>
+        <div class="sub">予定は公庫の返済予定表（F065）から。口座の引落しを見て「確認」を押すと確認済みになります。金額が違えば「不一致」。土日祝の返済日は翌営業日の引落しです。</div></div>
       <div class="card"><h2><span id="pnlExpT">今月の経費（変動）</span><em class="tag j">実績</em></h2><div id="pnlExp"></div></div>
       <div class="card wide"><h2>月ごとの比較</h2><div class="scroll"><table id="pnlMonths"></table></div></div>
     </div></div>
@@ -442,7 +444,7 @@
         <div class="sub" id="initNote"></div></div>
       <div class="card"><h2>投資の内訳</h2><div id="initCat"></div></div>
       <div class="card"><h2>資金調達</h2><div id="initFund"></div>
-        <div class="sub">公庫返済は営業利益から返す「財務」のお金。ランニングの損益には入れていません。</div></div>
+        <div class="sub">借入は資金の調達で、開業投資（投資総額）には足していません。返済のうち利息は支払利息（費用）、元金は借入金が減るだけで経費ではありません。ランニングの月の収支では、営業利益のあとに利息・元金の順で引いています。</div></div>
       <div class="card wide"><h2>開業費の明細</h2><div class="scroll"><table class="daygrid" id="initItems"></table></div>
         <div class="sub">分析シート「開業費」で編集。「見積」は実額が出たら差し替え、「未入力」は金額を入れてください。研修費と開業日前の仕入は自動加算。</div></div>
     </div>
@@ -659,7 +661,7 @@ async function loadShort(){ const tk = (()=>{ try{ return localStorage.getItem("
     if (r && r.ok){ OPSA = r.alerts || []; SHORT = []; renderMisc(); return; } }catch(e){}
   try{ const r = await shortDays(call); if(r){ SHORT = r; renderMisc(); } }catch(e){} }
 let OPSA = [];
-const OPSA_BTN = { short:["シフト","goApp('staff','shift')"], cap:["シフト","goApp('staff','shift')"], hyg:["勤怠","goApp('staff','att')"], order:["発注","goApp('hacchu')"], shime:["確認","setTab('shime');scrollTo(0,0)"], rec:["採用","goApp('recruit')"] };
+const OPSA_BTN = { short:["シフト","goApp('staff','shift')"], cap:["シフト","goApp('staff','shift')"], hyg:["勤怠","goApp('staff','att')"], order:["発注","goApp('hacchu')"], shime:["確認","setTab('shime');scrollTo(0,0)"], rec:["採用","goApp('recruit')"], loan:["収支","setTab('pnl');scrollTo(0,0)"] };
 function renderMisc(){
   if(!DATA) return;
   const o = ops(), p = pnlData(), today = DATA.todayKey, H = new Date().getHours(); const M = [];
@@ -691,10 +693,34 @@ function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show");
 function closeOv(){ $("ov").innerHTML=""; }
 function sheet(html){ $("ov").innerHTML = `<div class="ovl" onclick="if(event.target===this)closeOv()"><div class="sheet"><div class="grab"></div>${html}</div></div>`; }
 async function fxGet(mode, params){ const q = Object.assign({mode, token:TOKEN, t:Date.now()}, params||{}); const u = SHEET_URL+"?"+Object.keys(q).map(k=>k+"="+encodeURIComponent(q[k])).join("&"); try{ const r = await fetch(u, {cache:"no-store"}); return await r.json(); }catch(e){ return {error:"通信エラー"}; } }
+// ───── 借入と返済（GAS loan.gs の os_loan_get・管理者のみ）。読めないときは従来どおり固定費の「公庫返済」行を使う ─────
+let LOAN = null;
+async function loadLoan(){ if (!ME || ME.role !== "admin") return; const r = await fxGet("os_loan_get"); if (r && !r.error && r.contracts && r.contracts.length){ LOAN = r; try{ if (DATA) renderPnl(); }catch(e){} } }
+const isLoanFixed = f => /公庫|返済/.test(f.name);
+// その月の返済。LOAN があれば元金と利息に分ける。なければ固定費の行（元金・利息の内訳なし）
+function loanMonth(key){
+  if (LOAN){ const m = LOAN.months[key] || {principal:0, interest:0, payment:0, unconfirmed:0}; return Object.assign({split:true}, m); }
+  const v = pnlData().fixed.filter(isLoanFixed).reduce((a,f)=>a+f.amount,0); return {split:false, principal:v, interest:0, payment:v, unconfirmed:0};
+}
+// 「借入の返済」カード：見ている月までに予定日が来た回のうち未確認・不一致の回と、見ている月の回
+function renderLoan(curKey){
+  const card = $("loanCard"); if (!card) return; card.classList.toggle("hide", !LOAN); if (!LOAN) return;
+  const names = {}; LOAN.contracts.forEach(c=>names[c.id]=c.name);
+  const end = curKey + "/31", rows = LOAN.rows.filter(r=>r.due.slice(0,7)===curKey || (r.due <= LOAN.today && r.due <= end && r.status !== "確認済み")).sort((a,b)=>a.due<b.due?-1:a.due>b.due?1:a.loan<b.loan?-1:1);
+  $("loanList").innerHTML = rows.length ? rows.map(r=>`<div class="pl"><span>${names[r.loan]||r.loan} 第${r.n}回 <span class="n">${r.due}・元金 ${num(r.principal)}円・利息 ${num(r.interest)}円${r.paidOn?`・引落 ${r.paidOn}${r.paidAmt!==null&&r.paidAmt!==r.payment?` ${num(r.paidAmt)}円`:""}`:""}</span></span>`
+      + `<b>${num(r.payment)}円 ${r.status==="確認済み"?`<em class="tag j">確認済み</em>`:r.status==="不一致"?`<em class="tag k">不一致</em>`:r.due<=LOAN.today?`<button onclick="loanConfirm('${r.id}',${r.payment})">確認</button>`:`<em class="tag g">予定</em>`}</b></div>`).join("")
+    : "<div class='sub'>この月の返済はありません</div>";
+}
+async function loanConfirm(id, pay){
+  const d = prompt("引落日（例 2026/11/02）", DATA.todayKey); if (!d) return;
+  const a = prompt("引き落とされた金額（円）", String(pay)); if (a === null) return;
+  const r = await fxPost("os_loan_confirm", {id, date:d, amount:String(a).replace(/[^\d]/g,"")});
+  if (r && r.error){ alert(r.error); return; } await loadLoan();
+}
 async function fxPost(type, body){ try{ const r = await fetch(SHEET_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(Object.assign({type, token:TOKEN}, body||{}))}); return await r.json(); }catch(e){ return {error:"通信エラー"}; } }
 async function bootAuth(){
   const cands = []; try{ [localStorage.getItem("os-admin-token"), localStorage.getItem("os-token")].forEach(t=>{ if(t) cands.push(t); }); }catch(e){}
-  for (const tk of cands){ TOKEN = tk; const r = await fxGet("fx_me"); if(!r.error){ ME = r.me; renderWho(); if(DATA) renderAlerts(); renderOsQ(); renderOsM(); loadShort(); return; } }
+  for (const tk of cands){ TOKEN = tk; const r = await fxGet("fx_me"); if(!r.error){ ME = r.me; renderWho(); if(DATA) renderAlerts(); renderOsQ(); renderOsM(); loadShort(); loadLoan(); return; } }
   TOKEN = ""; ME = null; renderWho();
 }
 function renderWho(){ $("who").style.display = (ME && /embed=1/.test(location.search)) ? "none" : ""; // 管理者アプリの中ではログイン中の名前・ログアウトは上の帯にあるので出さない
@@ -896,7 +922,7 @@ function renderFcShift(dt){
 function renderBE(d){
   if (!$("beGrid")) return;
   const p = pnlData(), dt = viewDate, mk = dt.slice(0,7);
-  const fx = p.fixed.filter(f=>!/収入/.test(f.name)), loan = fx.filter(f=>/公庫|返済/.test(f.name)).reduce((a,f)=>a+f.amount,0), fixM = fx.reduce((a,f)=>a+f.amount,0) - loan;
+  const fx = p.fixed.filter(f=>!/収入/.test(f.name)), fixM = fx.filter(f=>!isLoanFixed(f)).reduce((a,f)=>a+f.amount,0), loan = loanMonth(mk).payment;
   let open = 0; for (let x = mk+"/01"; x.slice(0,7)===mk; x = dateAdd(x,1)) if (isOpenDay(x)) open++;
   const fixD = open ? fixM/open : 0;
   const recent = DATA.daily.filter(x=>x.count>0 && x.date<dt).slice(-10);
@@ -915,7 +941,7 @@ function renderBE(d){
       d.sales ? `${done?"":"今の"}利益 ${signed(d.sales*(1-cr) - fixD - lab.v)}` : "まだ会計がありません"]
   ].map(c=>`<div class="w"><small>${c[0]}</small><b>${c[1]}</b><i>${c[2]}</i></div>`).join("");
   $("beNote").innerHTML = `固定費 ${num(Math.round(fixD))}円/日（月 ${num(fixM)}円 ÷ 営業 ${open}日）＋ 人件費 ${num(Math.round(lab.v))}円${lab.est?"（退勤前なので直近の平均で仮置き）":`（勤怠から${p.laborDaily[dt]?`・${p.laborDaily[dt].staff}人`:""}）`}、原価率 ${pct(cr)}。`
-    + (loan ? `公庫の返済（月 ${num(loan)}円）まで含めると 約${Math.ceil(beL/tk)}食。` : "") + (fx.some(f=>!f.amount) ? " ※固定費に0円の項目があるので、実際の分岐はもう少し上です。" : "");
+    + (loan ? `公庫の返済（${+mk.slice(5)}月 ${num(loan)}円・元金と利息）まで含めると 約${Math.ceil(beL/tk)}食。` : "") + (fx.some(f=>!f.amount && !isLoanFixed(f)) ?" ※固定費に0円の項目があるので、実際の分岐はもう少し上です。" : "");
 }
 
 // ───── 時間帯ごとの人と食数：1時間ごとに「何人いて何食出たか」。シフトの組み方に使う ─────
@@ -1445,7 +1471,8 @@ function renderPnl(){
   $("pnlDaysT").textContent = `日別の粗利（${isCur?"今月":ml}）`; $("pnlExpT").textContent = `${isCur?"今月":ml}の経費（変動）`;
   const hist = p.months.filter(m=>!/着地予測/.test(m.key)).sort((a,b)=>a.key<b.key?1:-1);
   const openD = openDate();
-  const loan = p.fixed.find(x=>/公庫|返済/.test(x.name)); const loanAmt = loan?loan.amount:0;
+  const lm = loanMonth(curKey); const loanAmt = lm.payment;
+  const lmTag = lm.split ? (lm.unconfirmed ? "k" : "j") : "j", lmNote = lm.split ? (lm.unconfirmed ? "返済予定表の額・引落しは未確認" : "引落し確認済み") : "固定費の「公庫返済」行（元金・利息の内訳なし）";
   const inc = incomeFor(curKey); const incNext = ops().income.filter(i=>i.from && i.from>curKey);
   $("pnlTitle").innerHTML = (isCur ? "今月の収支（暫定）" : ml+"の収支") + "<span class='r' style='white-space:nowrap'><em class='tag j'>実績</em> <em class='tag g'>概算</em> <em class='tag k'>仮</em></span>";
   const buy = p.expenses.filter(e=>e.date.slice(0,7)===curKey && e.acct==="仕入高" && e.date>=openD).reduce((a,e)=>a+e.amount,0);
@@ -1454,12 +1481,18 @@ function renderPnl(){
     const net = cur.profit + inc - loanAmt;
     $("pnlTop").innerHTML = [
       ["営業利益", signed(cur.profit), "利益率 "+pct(cur.margin)],
-      ["最終の手残り", signed(net), `営業利益${inc?" + 収入":""}${loanAmt?" − 公庫返済":""}${!loanAmt?"（公庫返済は未入力）":""}`],
+      ["最終の手残り", signed(net), `営業利益${inc?" + 収入":""}${loanAmt?(lm.split?" − 利息 − 元金":" − 公庫返済"):""}${!loanAmt?"（公庫返済は未入力）":""}`],
       ["FL率(原価+人件費)", pct(cur.fl), "目安 60%以下"],
       ["損益分岐", cur.bep?cur.bep+"食/日":"-", "固定費と人件費を賄う食数"]
     ].map(a=>cell(...a)).join("");
     const line = (k,tag,v,n,cls) => `<div class="pl ${cls||""}"><span>${k}${tag?` <em class="tag ${tag}">${{j:"実績",g:"概算",k:"仮"}[tag]}</em>`:""} <span class="n">${n||""}</span></span><b>${(v<0?"−":"")+Math.abs(Math.round(v)).toLocaleString()}円</b></div>`;
-    const fixedTagged = p.fixed.filter(f=>!/収入/.test(f.name)); const fixedZero = fixedTagged.filter(f=>!f.amount).length;
+    const fixedTagged = p.fixed.filter(f=>!/収入/.test(f.name) && !isLoanFixed(f)); const fixedZero = fixedTagged.filter(f=>!f.amount).length;
+    // 二重計上の見張り：固定費シートに公庫の行が金額つきで残っていると、サーバーの固定費（cur.fixed）に返済が入っている恐れがある
+    const loanInFixed = p.fixed.filter(f=>isLoanFixed(f) && f.amount).reduce((a,f)=>a+f.amount,0);
+    const loanLines = !loanAmt ? "" : lm.split
+      ? line("− 支払利息", lmTag, -lm.interest, "借入の利息（営業外の費用）") + `<div class="pl total"><span>経常利益</span>${signed(cur.profit + inc - lm.interest)}</div>`
+        + line("− 元金返済", lmTag, -lm.principal, `借入金が減るお金（経費ではない）・${lmNote}`)
+      : line("− 公庫返済", "j", -loanAmt, "財務のお金（営業利益から返す）");
     $("pnlLines").innerHTML =
       line("売上","j",cur.sales,`営業${cur.days}日・${cur.meals}食`) +
       line("− 原価","g",-cur.cost,`原価率 ${pct(cur.costRate)}${buy?`｜仕入れ実績 ${num(buy)}円（${pct(buy/cur.sales)}・在庫分含む）`:""}`) +
@@ -1468,8 +1501,9 @@ function renderPnl(){
       line("− 固定費", fixedZero?"k":"j", -cur.fixed, `月額満額${fixedZero?`・${fixedZero}項目が0円のまま`:""}`) +
       `<div class="pl total"><span>営業利益</span>${signed(cur.profit)}</div>` +
       (inc ? line("＋ その他収入","j",inc, ops().income.map(i=>i.name).join("・")) : (incNext.length?`<div class="pl"><span class="n">${incNext.map(i=>`${i.name} ${num(i.amount)}円は ${i.from.replace("/","年")}月から算入`).join("、")}</span></div>`:"")) +
-      (loanAmt ? line("− 公庫返済","j",-loanAmt,"財務のお金（営業利益から返す）") : "") +
-      ((inc||loanAmt) ? `<div class="pl total"><span>最終の手残り</span>${signed(net)}</div>` : "");
+      loanLines +
+      ((inc||loanAmt) ? `<div class="pl total"><span>最終の手残り</span>${signed(net)}</div>` : "") +
+      (lm.split && loanInFixed ? `<div class="pl neg"><span>固定費シートに「公庫返済」の行（月 ${num(loanInFixed)}円）が残っています。返済は返済予定表から引くので、固定費シートのこの行は0円にしてください（二重計上になります）</span></div>` : "");
     $("pnlNote").textContent = cur.status + "。原価は商品原価マスター×個数の概算（月末の棚卸しで実際の原価率を出す）。仕入れ実績は経費・カード明細の仕入高で在庫分を含む。開業前の費用はイニシャル側。";
   }
   if(fc){
@@ -1492,7 +1526,7 @@ function renderPnl(){
     return `<tr onclick="viewDate='${d.date}';renderDay();setTab('day')"><td>${d.date.slice(5)}(${youbi(d.date)})</td><td>${d.meals}</td><td>${num(d.sales)}</td><td>${num(c)}</td><td>${l?num(l):"-"}</td><td>${l&&d.sales?pct(l/d.sales):"-"}</td><td>${signed(g)}</td></tr>`;
   }).join("") + (days.length?`<tr><th>合計</th><th>${days.reduce((a,d)=>a+d.meals,0)}</th><th>${num(tS)}</th><th>${num(tC)}</th><th>${num(tL)}</th><th>${tS?pct(tL/tS):"-"}</th><th>${signed(tS-tC-tL)}</th></tr>`:"<tr><td colspan='7'>記録なし</td></tr>");
   // 固定費
-  const fx = p.fixed.filter(f=>!/収入/.test(f.name)); const ft = fx.reduce((a,x)=>a+x.amount,0);
+  const fx = p.fixed.filter(f=>!/収入/.test(f.name) && !(LOAN && isLoanFixed(f))); const ft = fx.reduce((a,x)=>a+x.amount,0);
   $("pnlFixed").innerHTML = fx.map(x=>`<div class="pl"><span>${x.name}${x.amount?"":" <em class='tag k'>仮</em>"}</span><b>${x.amount?num(x.amount)+"円":"未入力"}</b></div>`).join("") + `<div class="pl total"><span>合計</span><b>${num(ft)}円</b></div>` + ops().income.map(i=>`<div class="pl" style="color:var(--mute)"><span>${i.name}${i.from?` <span class="n">${i.from.replace("/","年")}月〜</span>`:""}</span><b>+${num(i.amount)}円</b></div>`).join("");
   // 経費
   const exAll = p.expenses.filter(e=>e.date.slice(0,7)===curKey && !e.fixed && e.acct!=="仕入高");
@@ -1503,7 +1537,8 @@ function renderPnl(){
     + (buy?`<div class="pl" style="color:var(--mute)"><span>参考：仕入高（原価側）</span><b>${num(buy)}円</b></div>`:"") + (preM?`<div class="pl" style="color:var(--mute)"><span>参考：開業前の仕入・消耗品（初期費用側）</span><b>${num(preM)}円</b></div>`:"")
     + (ops().receipts.unpaid?`<div class="pl neg"><span>うち未払い</span><b>${num(ops().receipts.unpaid)}円</b></div>`:"");
   // 月比較
-  $("pnlMonths").innerHTML = "<tr><th>月</th><th>食数/日</th><th>売上</th><th>原価率</th><th>人件費率</th><th>固定費</th><th>営業利益</th><th>手残り</th></tr>" + (hist.map(m=>{ const i = incomeFor(m.key); return `<tr onclick="PM='${m.key}'===thisMonth()?null:'${m.key}';renderPnl();renderPeople();scrollTo(0,0)"><td>${m.key}</td><td>${m.days?(m.meals/m.days).toFixed(1):"-"}</td><td>${num(m.sales)}</td><td>${pct(m.costRate)}</td><td>${m.sales?pct(m.labor/m.sales):"-"}</td><td>${num(m.fixed)}</td><td>${signed(m.profit)}</td><td>${signed(m.profit+i-loanAmt)}</td></tr>`; }).join("") || "<tr><td colspan='8'>記録なし</td></tr>");
+  $("pnlMonths").innerHTML = "<tr><th>月</th><th>食数/日</th><th>売上</th><th>原価率</th><th>人件費率</th><th>固定費</th><th>営業利益</th><th>手残り</th></tr>" + (hist.map(m=>{ const i = incomeFor(m.key); return `<tr onclick="PM='${m.key}'===thisMonth()?null:'${m.key}';renderPnl();renderPeople();scrollTo(0,0)"><td>${m.key}</td><td>${m.days?(m.meals/m.days).toFixed(1):"-"}</td><td>${num(m.sales)}</td><td>${pct(m.costRate)}</td><td>${m.sales?pct(m.labor/m.sales):"-"}</td><td>${num(m.fixed)}</td><td>${signed(m.profit)}</td><td>${signed(m.profit+i-loanMonth(m.key).payment)}</td></tr>`; }).join("") || "<tr><td colspan='8'>記録なし</td></tr>");
+  renderLoan(curKey);
   renderInit(p, hist, fc, inc, loanAmt);
 }
 
@@ -1530,12 +1565,18 @@ function renderInit(p, hist, fc, inc, loanAmt){
   $("initNote").textContent = "回収率 = 営業開始以降の累計（営業利益＋その他収入） ÷ 投資総額。ペースは着地予測の月間営業利益に夜間貸出などの収入を足したもの。減価償却・税金・公庫返済は考慮していません。";
   const cats = Object.entries(it.byCat).sort((a,b)=>b[1]-a[1]);
   $("initCat").innerHTML = cats.map(([k,v])=>`<div class="pl"><span>${k} <span class="n">${it.total?pct(v/it.total):""}</span></span><b>${num(Math.round(v))}円</b></div>`).join("") + `<div class="pl total"><span>合計</span><b>${num(it.total)}円</b></div>`;
-  const fsum = FUNDING.reduce((a,x)=>a+x[1],0);
-  $("initFund").innerHTML = FUNDING.map(([k,v])=>`<div class="pl"><span>${k}</span><b>${num(v)}円</b></div>`).join("")
+  // 借入は返済予定表（LOAN）があれば契約ごとに出す。開業支出（投資総額）には足さない別枠
+  const fund = LOAN ? LOAN.contracts.map(c=>[`${c.name}（${c.lender||"借入"}・年${c.rate}%）`, c.amount, c]).concat(FUNDING.filter(x=>!/公庫|借入/.test(x[0]))) : FUNDING;
+  const fsum = fund.reduce((a,x)=>a+x[1],0);
+  const lnow = LOAN ? loanMonth(thisMonth()) : null;
+  $("initFund").innerHTML = fund.map(([k,v,c])=>`<div class="pl"><span>${k}${c?` <span class="n">${c.start.replace(/^20(\d\d)\//,"$1/")}融資・${c.count}回・${c.first.slice(0,7)}〜${c.last.slice(0,7)}</span>`:""}</span><b>${num(v)}円</b></div>`
+      + (c ? `<div class="pl" style="color:var(--mute)"><span>　今日の残高（予定どおりなら）${c.unconfirmed?` <em class="tag k">未確認 ${c.unconfirmed}回</em>`:""}</span><b>${num(c.balanceScheduled)}円</b></div>` : "")).join("")
     + `<div class="pl total"><span>合計</span><b>${num(fsum)}円</b></div>`
     + `<div class="pl"><span>うち投資に使った額（保証金含む）</span><b>${num(it.total+it.deposit)}円</b></div>`
     + `<div class="pl"><span>運転資金として残る額（計算上）</span><b>${num(fsum-it.total-it.deposit)}円</b></div>`
-    + `<div class="pl"><span>公庫返済（月額）</span><b>${loanAmt?num(loanAmt)+"円":"未入力"}</b></div>`;
+    + (lnow ? `<div class="pl"><span>今月の返済 <span class="n">元金 ${num(lnow.principal)}円・利息 ${num(lnow.interest)}円</span></span><b>${num(lnow.payment)}円</b></div>`
+        + (LOAN.contracts[0] && LOAN.contracts[0].next ? `<div class="pl" style="color:var(--mute)"><span>次の返済日</span><b>${LOAN.contracts[0].next.due}</b></div>` : "")
+      : `<div class="pl"><span>公庫返済（月額）</span><b>${loanAmt?num(loanAmt)+"円":"未入力"}</b></div>`);
   const rows = it.items.slice().sort((a,b)=>b.amount-a.amount);
   $("initItems").innerHTML = "<tr><th>項目</th><th>区分</th><th>金額</th><th>状態</th></tr>" + rows.map(r=>`<tr><td>${r.name}${r.refundable?" <small>(返還)</small>":""}</td><td>${r.cat}</td><td>${num(r.amount)}</td><td>${r.status==="未入力"?"<b style='color:#b03a2e'>未入力</b>":r.status}</td></tr>`).join("")
     + (it.training?`<tr><td>研修費（開業前の人件費・自動）</td><td>研修費</td><td>${num(it.training)}</td><td>自動</td></tr>`:"")

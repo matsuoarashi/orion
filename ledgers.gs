@@ -65,7 +65,7 @@ function osSnapshot(ym, me){
   try { var sv = ss.getSheetByName("売上"); var v = sv.getRange(2,1,Math.max(1,sv.getLastRow()-1),26).getValues();
     v.forEach(function(r){ var d = dateKey_(r[0]); if (!d || d.slice(0,7) !== ym) return; if (String(r[3]) === "取消") return; var a = Number(r[4])||0; s.sales += a; s.days[d] = 1; var pay = String(r[25]||""); if (/PayPay/i.test(pay)) s.paypay += a;
       var items = String(r[7]||""); var m = items.match(/(オリオン|ナシナシ)[^,、]*?[×x](\d+)/g); if (m) m.forEach(function(x){ s.meals += Number((x.match(/(\d+)$/)||[0,0])[1]); }); }); } catch(e){ s.err = String(e); }
-  var fixed = 0; try { var fs = fixedSheet_(); fs.getRange(2,1,Math.max(1,fs.getLastRow()-1),3).getValues().forEach(function(r){ if (!r[0] || String(r[0]).indexOf("収入") >= 0) return; fixed += Number(r[1])||0; }); } catch(e){}
+  var fixed = 0; try { var fs = fixedSheet_(); fs.getRange(2,1,Math.max(1,fs.getLastRow()-1),3).getValues().forEach(function(r){ if (!r[0] || String(r[0]).indexOf("収入") >= 0 || /公庫|返済/.test(String(r[0]))) return; fixed += Number(r[1])||0; }); } catch(e){}
   var rptAmt = 0, rptN = 0; try { osRows_(OS_RPT, OS_RPT_COLS).forEach(function(r){ if (String(r["精算状態"]) === "未精算"){ rptN++; rptAmt += Number(r["金額(税込)"])||0; } }); } catch(e){}
   var decN = 0, decHold = 0; try { osRows_(OS_DEC, OS_DEC_COLS).forEach(function(r){ if (dateKey_(r["日付"]).slice(0,7) !== ym) return; decN++; if (String(r["判断"]) === "保留" || String(r["状態"]) === "提案中") decHold++; }); } catch(e){}
   var factN = 0; try { osRows_(OS_FACTS, OS_FACTS_COLS).forEach(function(r){ if (String(r["登録日時"]).slice(0,7) === ym) factN++; }); } catch(e){}
