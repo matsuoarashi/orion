@@ -68,7 +68,7 @@ select,input{width:100%;padding:12px;border:1px solid var(--line);border-radius:
 // 管理者アプリ：1 つの入口。中身は既存の画面を順に移していく（段階統合の第1段）
 const STAFF_API = "https://script.google.com/macros/s/AKfycbwgGW6rXzAW2rHVicdoCMdHOT_E3egrXPsaEJerX-_brZr0mYF6Qo_tRorX8PgLc7c/exec";
 // 中の画面を更新したら V を変える（スマホに残った古い画面を読み直させるため）
-const V = "1103g";
+const V = "1103h";
 const SECTIONS = [
   { id:"shime", label:"分析", ic:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20v-5M10 20v-9M15 20v-6M20 20V7"/></svg>', src:"dashboard.html?embed=1&v="+V },
   { id:"hacchu", label:"発注", ic:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8l8-4 8 4v8.5L12 21l-8-4.5z"/><path d="M4 8l8 4.3L20 8M12 12.3V21"/></svg>', src:"hacchu.html?embed=1&v="+V },
@@ -128,6 +128,7 @@ function enter(tok, me){
 }
 // 画面は開いたときに初めて読み込み、以後は切り替えても保持（行き来しても入力が消えない）
 function show(id){
+  if (LOCKED && CUR) return;
   const sec = SECTIONS.find(s=>s.id===id) || SECTIONS[0]; CUR = sec.id; ls("kanri-tab", CUR); history.replaceState(null, "", "#"+CUR);
   SECTIONS.forEach(s=>{ $("nb_"+s.id).classList.toggle("on", s.id===CUR); const f = $("fr_"+s.id); if (f) f.classList.toggle("hide", s.id!==CUR); });
   if (!$("fr_"+CUR)){ const f = document.createElement("iframe"); f.id = "fr_"+CUR; f.src = sec.src; f.title = sec.label; f.onload = ()=>tidy(f); $("frames").appendChild(f); }
@@ -152,13 +153,26 @@ function tidy(f){
 }
 // 新しい版が出ていたらアプリごと読み直す（ホーム画面のアプリは古い画面を持ち続けるため）。開いたとき・戻ってきたとき・「更新」で確認
 async function checkUpdate(){
+  if (LOCKED) return false;
   try{ const t = await (await fetch("kanri.html?check="+Date.now(), {cache:"no-store", busy:false})).text(); const m = t.match(/const V = "([^"]+)"/);
     if (m && m[1] !== V){ location.replace("kanri.html?v="+encodeURIComponent(m[1])+location.hash); return true; } }catch(e){}
   return false;
 }
-document.addEventListener("visibilitychange", ()=>{ if (document.visibilityState === "visible") checkUpdate(); });
-async function reloadCur(){ if (await checkUpdate()) return; const f = $("fr_"+CUR); if (f) f.contentWindow.location.reload(); }
-function logout(){ if(!confirm("ログアウトしますか？")) return; ls("os-admin-token", null); ls("os-token", null); ls("kanri-me", null); $("frames").innerHTML = ""; showLogin(); }
+// 中の画面が送信中（経費のアップロードなど）は、上下のボタン・タブ・自動の読み直しを止める（11/3）
+// 中の画面から {orionLock:true/false} が届く。届かなくなっても 3 分で外す
+let LOCKED = false, LOCK_TO = null;
+function setLock(on){
+  LOCKED = !!on; clearTimeout(LOCK_TO); if (LOCKED) LOCK_TO = setTimeout(()=>setLock(false), 180000);
+  let lk = $("pLock"); if (!lk){ lk = document.createElement("div"); lk.id = "pLock"; lk.style.cssText = "position:fixed;inset:0;z-index:99990;background:transparent;display:none;touch-action:none"; document.body.appendChild(lk);
+    ["click","touchstart","pointerdown"].forEach(ev=>lk.addEventListener(ev, e=>{ e.preventDefault(); e.stopPropagation(); }, true)); }
+  lk.style.display = LOCKED ? "block" : "none";
+  document.querySelectorAll("header, #nav").forEach(el=>{ el.style.opacity = LOCKED ? ".45" : ""; });
+}
+window.addEventListener("message", e=>{ if (e.origin !== location.origin) return; const d = e.data || {}; if ("orionLock" in d) setLock(d.orionLock); });
+window.addEventListener("beforeunload", e=>{ if (LOCKED){ e.preventDefault(); e.returnValue = "送信中です"; return "送信中です"; } });
+document.addEventListener("visibilitychange", ()=>{ if (document.visibilityState === "visible" && !LOCKED) checkUpdate(); });
+async function reloadCur(){ if (LOCKED) return; if (await checkUpdate()) return; const f = $("fr_"+CUR); if (f) f.contentWindow.location.reload(); }
+function logout(){ if (LOCKED) return; if(!confirm("ログアウトしますか？")) return; ls("os-admin-token", null); ls("os-token", null); ls("kanri-me", null); $("frames").innerHTML = ""; showLogin(); }
 boot(); checkUpdate();
 </script>
 </body>

@@ -6,7 +6,7 @@
 // 保存先: 「レシート」シート（全履歴）＋「経費」シート（運用費用）／「開業費」シート（初期費用）にIDで連動
 // 画像: マイドライブ「オリオン_レシート/YYYY-MM」に保存
 var RC_SHEET = "レシート";
-var RC_COLS = ["receipt_id","登録日時","登録者","日付","店名","金額","科目","支払元","区分","摘要","画像URL","file_id","OCR","状態","確認者","確認日時","更新日時"];
+var RC_COLS = ["receipt_id","登録日時","登録者","日付","店名","金額","科目","支払元","区分","摘要","画像URL","file_id","OCR","状態","確認者","確認日時","更新日時","元ファイル名","サムネイル"];
 var RC_ACCOUNTS = ["仕入高","消耗品費","修繕費","広告宣伝費","支払手数料","通信費","水道光熱費","交通費","雑費"];
 
 function rcOut_(o){ return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
@@ -47,7 +47,8 @@ function handleRcGet(e){
       // 日付が空の登録はどの月にも出ないので、別に返して一覧の上に出す
       var undated = all.filter(function(x){ return !x.date && (me.role === "admin" || x.by === me.name); });
       res = { me: me, ym: ym, list: list, undated: undated, accounts: RC_ACCOUNTS, unchecked: me.role === "admin" ? all.filter(function(x){ return x.status === "未確認"; }).length : 0 };
-    } else res = { error: "mode" };
+    } else if (p.mode === "rc_history") res = rcHistory_(p, me);
+    else res = { error: "mode" };
   } catch(err){ res = { error: String(err) }; }
   return rcOut_(res);
 }
@@ -104,6 +105,8 @@ function rcSave_(d, me){
   if (!id) id = "RCPT-" + date.replace(/\//g, "") + "-" + Utilities.getUuid().replace(/-/g, "").slice(0, 6);
   var obj = { receipt_id: id, "登録日時": cur ? cur["登録日時"] : invNow_(), "登録者": cur ? cur["登録者"] : me.name, "日付": "'" + date, "店名": vendor, "金額": amount, "科目": account, "支払元": pay,
     "区分": kind, "摘要": memo, "画像URL": url, file_id: fid, "OCR": cur ? cur["OCR"] : String(d.ocr || "").slice(0, 3000),
+    "元ファイル名": d.image ? String(d.fname || "").slice(0, 200) : (cur ? cur["元ファイル名"] : ""),
+    "サムネイル": d.image ? rcThumbOk_(d.thumb) : (cur ? cur["サムネイル"] : ""),
     "状態": me.role === "admin" ? "確認済" : "未確認", "確認者": me.role === "admin" ? me.name : "", "確認日時": me.role === "admin" ? invNow_() : "", "更新日時": invNow_() };
   if (cur){ var lc = sh.getLastColumn(); var hdr = sh.getRange(1, 1, 1, lc).getValues()[0].map(String); sh.getRange(cur._row, 1, 1, lc).setValues([hdr.map(function(h){ return obj[h] !== undefined ? obj[h] : ""; })]); }
   else invAppend_(sh, obj);
@@ -120,6 +123,33 @@ function rcSave_(d, me){
     if (ini.row > 0) ini.sh.getRange(ini.row, 1, 1, 8).setValues([irow]); else { var at = rcIniInsertRow_(ini.sh); ini.sh.getRange(at, 1, 1, 8).setValues([irow]); }
   }
   return { ok: true, id: id };
+}
+
+// 送信履歴（2026/11/3）：ファイルを付けて送った登録を、送った順（新しい順）に返す。削除したものも状態「削除」で出す
+// サムネイルは画面が作った小さなJPEG（data URL）を「サムネイル」列に保存。列が空の古い登録は、ドライブのサムネイルを取って入れる（1回に6件まで）
+function rcThumbOk_(t){ t = String(t || ""); return (/^data:image\/(jpeg|png);base64,/.test(t) && t.length < 45000) ? t : ""; }
+function rcHistory_(p, me){
+  var sh = rcSheet_(); var rows = invRows_(sh).filter(function(r){ return r["画像URL"] || r.file_id; });
+  if (me.role !== "admin") rows = rows.filter(function(r){ return r["登録者"] === me.name; });
+  rows.sort(function(a, b){ var x = String(a["登録日時"]), y = String(b["登録日時"]); return x < y ? 1 : x > y ? -1 : 0; });
+  var off = Math.max(0, Number(p.offset) || 0), lim = Math.min(50, Math.max(1, Number(p.limit) || 20));
+  var page = rows.slice(off, off + lim), fill = 0, cache = CacheService.getScriptCache();
+  var items = page.map(function(r){
+    var th = String(r["サムネイル"] || ""), fid = String(r.file_id || "");
+    if (!th && fid){
+      th = cache.get("rc_th:" + fid) || "";
+      if (!th && fill < 6){
+        fill++;
+        try { var b = DriveApp.getFileById(fid).getThumbnail();
+          if (b){ th = "data:" + (b.getContentType() || "image/png") + ";base64," + Utilities.base64Encode(b.getBytes());
+            if (th.length < 45000) invSet_(sh, r._row, "サムネイル", th); else if (th.length < 95000) cache.put("rc_th:" + fid, th, 21600); else th = ""; }
+        } catch(e){ th = ""; }
+      }
+    }
+    return { id: r.receipt_id, at: String(r["登録日時"]), by: r["登録者"], name: String(r["元ファイル名"] || ""), thumb: th, url: String(r["画像URL"] || ""),
+      status: r["状態"] || "未確認", vendor: r["店名"], amount: Number(r["金額"]) || 0, date: dateKey_(r["日付"]) };
+  });
+  return { items: items, total: rows.length, offset: off, more: off + lim < rows.length };
 }
 
 function rcDelete_(d, me){

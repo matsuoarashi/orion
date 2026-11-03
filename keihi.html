@@ -83,6 +83,19 @@ nav .bd{position:absolute;top:4px;right:calc(50% - 20px);background:var(--red);c
 .reading{display:flex;align-items:center;gap:8px;color:var(--g);font-size:13px;font-weight:bold}
 .spin{width:16px;height:16px;border:3px solid var(--g-l);border-top-color:var(--g);border-radius:50%;animation:sp 1s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
 .loading{text-align:center;color:var(--mute);padding:30px 0}
+/* 送信中のロック（11/3）：送信が終わるまで画面のどこも押せない */
+.uplock{position:fixed;inset:0;z-index:100000;background:rgba(250,246,238,.72);display:flex;align-items:center;justify-content:center;touch-action:none}
+.uplock .box{background:var(--g-d);color:#fff;border-radius:16px;padding:18px 20px;width:min(300px,86vw);text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.uplock .box b{display:block;font-size:16px;margin:10px 0 4px}.uplock .box small{display:block;font-size:12px;opacity:.8;line-height:1.5}
+.uplock .bar{height:6px;border-radius:3px;background:rgba(255,255,255,.2);margin-top:12px;overflow:hidden}.uplock .bar i{display:block;height:100%;background:#e8c26a;transition:width .3s}
+.uplock .sp{width:26px;height:26px;margin:0 auto;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .8s linear infinite}
+/* 送信履歴 */
+.hist{display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px dashed var(--line)}
+.hist:last-child{border-bottom:0}
+.hist .th{flex:0 0 48px;width:48px;height:62px;border-radius:8px;border:1px solid var(--line);background:#fff;object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;color:var(--red);padding:0;overflow:hidden}
+.hist .th img{width:100%;height:100%;object-fit:cover}
+.hist .l{flex:1;min-width:0}.hist .l b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hist .l small{display:block;font-size:11px;color:var(--mute)}
+.pvbig{width:76px;height:96px;object-fit:contain;border-radius:10px;border:1px solid var(--line);background:#fff}
 </style>
 </head>
 <body>
@@ -116,6 +129,7 @@ nav .bd{position:absolute;top:4px;right:calc(50% - 20px);background:var(--red);c
 <input type="file" id="fileIn2" accept="image/*,application/pdf" class="hide" onchange="onPhoto(this)">
 <div id="ov"></div>
 <div class="toast" id="toast"></div>
+<div id="upLock" class="uplock hide"><div class="box"><div class="sp"></div><b id="upText">送信しています</b><small id="upSub">終わるまでそのままお待ちください</small><div class="bar"><i id="upBar" style="width:0%"></i></div></div></div>
 <script src="busy.js?v=1101b"></script>
 <script>
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbzFNl4UM3fkoANru-agWmuOox-h3cS1yJmx4UZxpGFemEBnAUv45Gdp1VOvtCqOVUg/exec";
@@ -150,7 +164,53 @@ const VENDORS = [
 
 function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2400); }
 function showMsg(m){ $("msg").textContent = m||""; }
-function closeOv(){ $("ov").innerHTML=""; }
+function closeOv(){ if(LOCK) return; $("ov").innerHTML=""; }
+
+// ───── 送信中のロック（11/3） ─────
+// ファイルの読み込み・文字の読み取り・保存の間は、画面全体と管理者アプリの上下（タブ・更新・ログアウト）を押せなくする
+// 決まった時間で失敗扱いにしてロックを外す（止まったままにしない）
+let LOCK = false, LOCK_T = null, LOCK_START = 0;
+function lockOn(text, sub, pct){
+  LOCK = true; LOCK_START = LOCK_START || Date.now(); $("upLock").classList.remove("hide");
+  $("upText").textContent = text; $("upSub").textContent = sub || "終わるまでそのままお待ちください"; $("upBar").style.width = (pct||0)+"%";
+  try{ if (window.parent !== window) window.parent.postMessage({orionLock:true, from:"keihi"}, "*"); }catch(e){}
+}
+function lockOff(){
+  LOCK = false; LOCK_START = 0; $("upLock").classList.add("hide"); $("upBar").style.width = "0%";
+  try{ if (window.parent !== window) window.parent.postMessage({orionLock:false, from:"keihi"}, "*"); }catch(e){}
+}
+["click","touchstart","pointerdown","keydown"].forEach(ev=>document.addEventListener(ev, e=>{ if (LOCK && !e.target.closest("#upLock")){ e.preventDefault(); e.stopPropagation(); } }, true));
+window.addEventListener("beforeunload", e=>{ if (LOCK){ e.preventDefault(); e.returnValue = "送信中です"; return "送信中です"; } });
+// 時間切れつきの送信。ロックの通信は busy.js のふたを使わない（こちらの表示に一本化）
+async function postT(type, body, ms){
+  const c = new AbortController(); const t = setTimeout(()=>c.abort(), ms);
+  try{ const r = await fetch(SHEET_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(Object.assign({type, token:TOKEN}, body||{})), signal:c.signal, busy:false}); return await r.json(); }
+  catch(e){ return {error: e && e.name==="AbortError" ? "timeout" : "通信エラー"}; } finally{ clearTimeout(t); }
+}
+
+// ───── PDF の1ページ目を絵にする（pdf.js・使うときだけ読み込む） ─────
+let PDFJS = null;
+function loadPdfJs(){
+  if (PDFJS) return PDFJS;
+  PDFJS = new Promise((ok, ng)=>{ const sc = document.createElement("script"); sc.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+    sc.onload = ()=>{ try{ window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"; ok(window.pdfjsLib); }catch(e){ ng(e); } };
+    sc.onerror = ()=>{ PDFJS = null; ng(new Error("pdf.js")); }; document.head.appendChild(sc); });
+  return PDFJS;
+}
+// 戻り値：{ view: 確認画面用（幅320px）, thumb: 履歴用（長辺160px） }。読めなければ null
+async function pdfPage1(file){
+  try{
+    const lib = await loadPdfJs(); const buf = await file.arrayBuffer();
+    const doc = await lib.getDocument({data: buf}).promise; const pg = await doc.getPage(1);
+    const v1 = pg.getViewport({scale:1}); const vp = pg.getViewport({scale: 320 / v1.width});
+    const c = document.createElement("canvas"); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+    const ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0,0,c.width,c.height);
+    await pg.render({canvasContext: ctx, viewport: vp}).promise;
+    const t = document.createElement("canvas"); const ts = 160/Math.max(c.width,c.height); t.width = Math.round(c.width*ts); t.height = Math.round(c.height*ts); t.getContext("2d").drawImage(c, 0, 0, t.width, t.height);
+    try{ doc.destroy(); }catch(e){}
+    return { view: c.toDataURL("image/jpeg", 0.8), thumb: t.toDataURL("image/jpeg", 0.7) };
+  }catch(e){ return null; }
+}
 function sheet(html){ $("ov").innerHTML = `<div class="ovl" onclick="if(event.target===this)closeOv()"><div class="sheet"><div class="grab"></div>${html}</div></div>`; }
 async function get(mode, params){ const q = Object.assign({mode, token:TOKEN, t:Date.now()}, params||{}); const u = SHEET_URL+"?"+Object.keys(q).map(k=>k+"="+encodeURIComponent(q[k])).join("&");
   try{ const r = await fetch(u, {cache:"no-store"}); return await r.json(); }catch(e){ return {error:"通信エラー"}; } }
@@ -184,7 +244,7 @@ function go(p){ PAGE = p; $("pAdd").classList.toggle("hide", p!=="add"); $("pLis
   if(p==="add") renderAdd(); else renderList(); $("main").scrollTo(0,0); }
 
 // ───── 登録 ─────
-function blank(){ return { id:"", date:today(), vendor:"", amount:"", account:"消耗品費", pay:"アメックス", kind:"運用", memo:"", image:"", mime:"", thumb:"", ocr:"", reading:false }; }
+function blank(){ return { id:"", date:today(), vendor:"", amount:"", account:"消耗品費", pay:"アメックス", kind:"運用", memo:"", image:"", mime:"", thumb:"", view:"", tdata:"", fname:"", ocr:"", reading:false, ocrFail:false }; }
 function renderAdd(){
   if(!F){
     $("pAdd").innerHTML = `
@@ -198,14 +258,16 @@ function renderAdd(){
       <div class="card"><h2>使い方</h2><div class="mini">
         ・お店の買い出しのレシート、トーホー・カクヤスの納品書、修理代の領収書、メールで届いた請求書のPDFなどを登録します。<br>
         ・読み取った内容は必ず目で確かめてから保存してください。<br>
-        ・登録した写真はドライブに保存されるので、紙のレシートは月ごとにまとめて保管でOKです。</div></div>`;
+        ・登録した写真はドライブに保存されるので、紙のレシートは月ごとにまとめて保管でOKです。</div></div>
+      <div class="card" id="histCard"><h2>送った履歴 <small id="histCnt"></small></h2><div id="histList"><div class="loading" style="padding:12px 0">読み込み中…</div></div></div>`;
+    loadHist(true);
     return;
   }
   $("pAdd").innerHTML = formHtml(F, false);
 }
 function formHtml(f, edit){
   return `<div class="card"><h2>${edit?"登録内容を直す":"内容を確認して保存"}${f.thumb||f.url?"":""}</h2>
-    ${f.thumb ? `<div class="prev">${f.thumb==="pdf"?`<div style="width:76px;height:96px;border-radius:10px;border:1px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;color:var(--red)">PDF</div>`:`<img src="${f.thumb}">`}<div class="mini">${f.reading?`<div class="reading"><span class="spin"></span>文字を読み取っています…</div>`:(f.ocr?"読み取りました。違うところは直してください":"読み取れませんでした。手で入れてください")}<br><button class="btn sm sec" style="margin-top:6px" onclick="$('${f.thumb==="pdf"?"fileIn2":"fileIn"}').click()">${f.thumb==="pdf"?"別のファイルを選ぶ":"撮り直す"}</button></div></div>` : (f.url?`<div class="mini"><a href="${esc(f.url)}" target="_blank">登録した写真・ファイルを見る</a></div>`:`<div class="mini">写真・ファイルはありません。<button class="btn sm sec" onclick="$('fileIn2').click()">追加する</button></div>`)}
+    ${f.thumb ? `<div class="prev">${f.thumb==="pdf"?(f.view?`<img class="pvbig" src="${f.view}" onclick="bigView()">`:`<div style="width:76px;height:96px;border-radius:10px;border:1px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;color:var(--red)">PDF</div>`):`<img src="${f.thumb}" onclick="bigView()">`}<div class="mini">${f.fname?`<b style="display:block;color:var(--ink);word-break:break-all">${esc(f.fname)}</b>`:""}${f.reading?`<div class="reading"><span class="spin"></span>文字を読み取っています…</div>`:(f.ocrFail?`読み取りに失敗しました。<button class="btn sm sec" style="margin-top:4px" onclick="runOcr()">もう一度読み取る</button>`:(f.ocr?"読み取りました。違うところは直してください":"読み取れませんでした。手で入れてください"))}<br><button class="btn sm sec" style="margin-top:6px" onclick="$('${f.thumb==="pdf"?"fileIn2":"fileIn"}').click()">${f.thumb==="pdf"?"別のファイルを選ぶ":"撮り直す"}</button></div></div>` : (f.url?`<div class="mini"><a href="${esc(f.url)}" target="_blank">登録した写真・ファイルを見る</a></div>`:`<div class="mini">写真・ファイルはありません。<button class="btn sm sec" onclick="$('fileIn2').click()">追加する</button></div>`)}
     <label>日付</label><input type="date" id="fDate" value="${esc(f.date)}" onchange="F.date=this.value">
     <label>お店</label><input id="fVendor" list="vendList" value="${esc(f.vendor)}" placeholder="例：業務スーパー" oninput="F.vendor=this.value" onchange="vendorPick(this.value)">
     <datalist id="vendList">${VENDORS.map(v=>`<option value="${v[1]}">`).join("")}</datalist>
@@ -226,18 +288,33 @@ let EDIT = false;
 function vendorPick(v){ F.vendor = v; const hit = VENDORS.find(x=>x[1]===v); if(hit){ F.account = hit[2]; F.pay = hit[3]; refreshForm(); } }
 
 async function onPhoto(inp){
-  const file = inp.files && inp.files[0]; inp.value = ""; if(!file) return;
+  const file = inp.files && inp.files[0]; inp.value = ""; if(!file || LOCK) return;
   if(!F || EDIT){ if(!EDIT) F = blank(); }
   const isPdf = /pdf$/i.test(file.type) || /\.pdf$/i.test(file.name);
-  if(isPdf){ if(file.size > 8*1024*1024){ toast("PDFは8MBまでにしてください"); return; } try{ F.image = await readB64(file); F.mime = "application/pdf"; F.thumb = "pdf"; }catch(e){ toast("ファイルを読み込めませんでした"); return; } }
-  else { try{ const {b64, thumb} = await shrink(file); F.image = b64; F.mime = "image/jpeg"; F.thumb = thumb; }catch(e){ toast("写真を読み込めませんでした"); return; } }
-  F.reading = true; refreshForm();
-  const r = await post("rc_ocr", {image: F.image, mime: F.mime}); F.reading = false;
-  if(r.error){ F.ocr = ""; refreshForm(); showMsg(r.error==="auth"?"ログインし直してください":"読み取りに失敗しました："+r.error); return; }
+  if(isPdf && file.size > 8*1024*1024){ toast("PDFは8MBまでにしてください"); return; }
+  lockOn("ファイルを読み込んでいます", file.name || "", 15);
+  try{
+    if(isPdf){ F.image = await readB64(file); F.mime = "application/pdf"; F.thumb = "pdf";
+      const pv = await pdfPage1(file); F.view = pv ? pv.view : ""; F.tdata = pv ? pv.thumb : ""; }
+    else { const {b64, thumb} = await shrink(file); F.image = b64; F.mime = "image/jpeg"; F.thumb = thumb; F.view = ""; F.tdata = thumb; }
+    F.fname = file.name || "";
+  }catch(e){ lockOff(); toast(isPdf?"ファイルを読み込めませんでした":"写真を読み込めませんでした"); return; }
+  refreshForm(); await runOcr();
+}
+// 文字の読み取り（失敗・時間切れでもロックは外し、入力はそのまま続けられる）
+async function runOcr(){
+  if(!F || !F.image) return;
+  F.reading = true; F.ocrFail = false; refreshForm();
+  lockOn("文字を読み取っています", F.mime==="application/pdf" ? "PDFは30秒ほどかかることがあります" : "10秒ほどで終わります", 55);
+  const r = await postT("rc_ocr", {image: F.image, mime: F.mime}, 90000); F.reading = false; lockOff();
+  if(r.error){ F.ocr = ""; F.ocrFail = r.error!=="auth"; refreshForm(); showMsg(r.error==="auth"?"ログインし直してください":(r.error==="timeout"?"読み取りに時間がかかりすぎたので止めました。手で入れるか、もう一度読み取ってください":"読み取りに失敗しました："+r.error)); return; }
   F.ocr = r.text||""; const p = parseReceipt(F.ocr);
   if(p.date) F.date = p.date; if(p.amount) F.amount = p.amount; if(p.vendor) F.vendor = p.vendor; if(p.account) F.account = p.account; if(p.pay) F.pay = p.pay;
   refreshForm();
 }
+// 読み込んだ絵を大きく見る
+function bigView(){ const src = (F && (F.view || (F.thumb!=="pdf" ? F.thumb : ""))) || ""; if(!src) return;
+  const w = window.open(""); if(w){ w.document.write(`<title>${esc(F.fname||"ファイル")}</title><body style="margin:0;background:#333"><img src="${src}" style="width:100%">`); } }
 function readB64(file){ return new Promise((ok, ng)=>{ const fr = new FileReader(); fr.onload = ()=>ok(String(fr.result).split(",")[1]); fr.onerror = ng; fr.readAsDataURL(file); }); }
 // 写真を長辺1600pxのJPEGに縮める（通信量を減らすため）
 function shrink(file){ return new Promise((ok, ng)=>{ const url = URL.createObjectURL(file); const img = new Image();
@@ -280,11 +357,14 @@ function parseReceipt(text){
 
 async function save(force){
   const f = F; if(!f) return;
-  const body = { id:f.id||"", date:f.date, vendor:(f.vendor||"").trim(), amount:Number(f.amount)||0, account:f.account, pay:f.pay, kind:f.kind, memo:(f.memo||"").trim(), image:f.image||"", mime:f.mime||"", ocr:f.ocr||"", force:!!force };
+  if(LOCK) return;
+  const body = { id:f.id||"", date:f.date, vendor:(f.vendor||"").trim(), amount:Number(f.amount)||0, account:f.account, pay:f.pay, kind:f.kind, memo:(f.memo||"").trim(), image:f.image||"", mime:f.mime||"", ocr:f.ocr||"", fname:f.image?(f.fname||""):"", thumb:f.image?(f.tdata||""):"", force:!!force };
   if(!body.date){ toast("日付を入れてください"); return; } if(!body.vendor){ toast("お店を入れてください"); return; } if(!body.amount){ toast("金額を入れてください"); return; }
   const b = document.getElementById("saveBtn"); if(b){ b.disabled = true; b.textContent = "保存しています…"; }
-  const r = await post("rc_save", body);
+  lockOn("保存しています", f.image ? "ファイルをドライブに送っています" : "", 80);
+  const r = await postT("rc_save", body, f.image ? 90000 : 45000); lockOff();
   if(b){ b.disabled = false; b.textContent = EDIT?"直して保存":"保存する"; }
+  if(r.error==="timeout"){ showMsg("時間がかかりすぎたので止めました。保存されたか下の「送った履歴」で確かめてから、もう一度「保存する」を押してください（二重になりそうなときは確認が出ます）"); return; }
   if(r.dupes){ sheet(`<h3>同じ日・同じ金額の経費があります</h3><div class="mini" style="margin-bottom:8px">カード明細から取り込んだものと同じ買い物かもしれません。二重に入れないよう確認してください。</div>
       ${r.dupes.map(d=>`<div class="row"><div class="l"><b>${esc(d.vendor)}</b><small>${esc(d.pay)}</small></div></div>`).join("")}
       <div style="height:12px"></div><button class="btn" onclick="closeOv();save(true)">別の買い物なので保存する</button><div style="height:8px"></div><button class="btn sec" onclick="closeOv()">やめる</button>`); return; }
@@ -315,6 +395,25 @@ function openItem(i){ const x = i < 0 ? UNDATED[-i-1] : LIST[i]; EDIT = true; F 
   sheet(formHtml(F, true)); }
 async function del(id){ if(!confirm("この登録を削除しますか？（経費シートからも消えます）")) return; const r = await post("rc_delete", {id}); if(r.error){ toast(r.error); return; } toast("削除しました"); EDIT=false; F=null; closeOv(); reload(); }
 async function check(id){ const r = await post("rc_check", {id}); if(r.error){ toast(r.error); return; } toast("確認済にしました"); EDIT=false; F=null; closeOv(); reload(); }
+
+// ───── 送った履歴（11/3）：サムネイル・元のファイル名・送った日時・状態 ─────
+let HIST = [], HIST_MORE = false;
+async function loadHist(reset){
+  if(reset){ HIST = []; HIST_MORE = false; }
+  const r = await get("rc_history", {offset: HIST.length, limit: 20});
+  const box = $("histList"); if(!box) return;
+  if(r.error){ box.innerHTML = `<div class="mini">履歴を読めませんでした（${esc(r.error)}）</div>`; return; }
+  HIST = HIST.concat(r.items||[]); HIST_MORE = !!r.more;
+  if($("histCnt")) $("histCnt").textContent = r.total ? r.total+"件" : "";
+  const fmt = s => { const m = String(s||"").match(/\d{4}\/(\d{2})\/(\d{2})\s+(\d{1,2}):(\d{2})/); return m ? `${+m[1]}/${+m[2]} ${m[3]}:${m[4]}` : String(s||""); };
+  const pill = st => st==="削除" ? `<span class="pill red">削除</span>` : st==="確認済" ? `<span class="pill">確認済</span>` : `<span class="pill amber">未確認</span>`;
+  box.innerHTML = HIST.length ? HIST.map((x,i)=>`<div class="hist">
+      <button class="th" onclick="openFile(${i})">${x.thumb?`<img src="${x.thumb}" loading="lazy">`:(/\.pdf$/i.test(x.name)?"PDF":"なし")}</button>
+      <div class="l"><b>${esc(x.name || "（名前なし・カメラで撮影）")}</b><small>${fmt(x.at)} 送信・${esc(x.by||"")}</small><small>${esc(x.vendor||"")} ${yen(x.amount)}${x.date?"（"+esc(x.date.slice(5))+"）":""}</small></div>
+      <div>${pill(x.status)}</div></div>`).join("") + (HIST_MORE?`<div style="height:8px"></div><button class="btn sec" onclick="this.disabled=true;this.textContent='読み込み中…';loadHist(false)">もっと見る</button>`:"")
+    : `<div class="mini">まだファイルを送っていません</div>`;
+}
+function openFile(i){ const x = HIST[i]; if(x && x.url) window.open(x.url, "_blank"); else toast("ファイルが見つかりません"); }
 
 boot();
 </script>
