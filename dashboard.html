@@ -73,6 +73,17 @@
   .fc .w small{display:block;font-size:10px;letter-spacing:2px;color:var(--midori)}
   .fc .w b{display:block;font-size:20px;line-height:1.25}
   .fc .w i{display:block;font-style:normal;font-size:12px;color:var(--mute)}
+  .fcsh{background:var(--cream-d);border-radius:10px;padding:8px 10px;margin-top:8px}
+  .fcsh small{display:block;font-size:10px;letter-spacing:2px;color:var(--midori)}
+  .fcsh .p{display:flex;align-items:baseline;gap:10px;padding:4px 0;font-size:16px;line-height:1.5}
+  .fcsh .p+.p{border-top:1px dotted var(--line)}
+  .fcsh .p>small{flex:none;width:3.5em;white-space:nowrap;font-size:11px;letter-spacing:1px;color:var(--mute)}
+  .fcsh .p em{font-style:normal;font-size:12px;color:var(--mute);margin-left:2px}
+  .fcsh .p .u{border:1px dashed var(--mute);border-radius:6px;padding:0 4px}
+  .fcsh .n{font-size:12px;color:var(--mute);margin-top:2px}
+  .fcsh:empty{display:none}
+  .fcsh .bk{margin-top:6px;padding-top:4px;border-top:1px solid var(--line)}
+  .fcsh .bk>small{color:var(--mute)}
   .fcmsg{margin-top:8px;font-size:13px;line-height:1.65}
   .fcmsg li{margin:2px 0}
   .chip{display:inline-block;font-size:11px;border-radius:999px;padding:1px 8px;background:var(--cream-d);color:var(--ink);margin:0 4px 4px 0}
@@ -304,7 +315,7 @@
     <div style="height:10px"></div>
     <div class="cards">
       <div class="card wide" id="fcCard"><h2 id="fcTitle">今日の見立て <span class="r" id="fcSub"></span></h2>
-        <div class="fc" id="fcGrid"></div><div class="fcmsg" id="fcMsg"></div></div>
+        <div class="fc" id="fcGrid"></div><div class="fcsh" id="fcShift"></div><div class="fcmsg" id="fcMsg"></div></div>
       <div class="card"><h2>食数</h2><div class="big" id="dMeals">-</div>
         <div class="sub" id="dGoal"></div>
         <div class="goal"><i id="goalBar" style="width:0%"></i></div></div>
@@ -784,19 +795,21 @@ async function fxRestore(date, row){
 // ===== 今日 =====
 
 // ───── 今日の見立て：天気（Open-Meteo）と曜日の実績から見込み食数。雨の影響は実績から計算（データが少ないうちは足さない）─────
-const WX_URL = "https://api.open-meteo.com/v1/forecast?latitude=35.6955&longitude=139.7675&hourly=precipitation,temperature_2m&daily=weather_code,temperature_2m_max,precipitation_probability_max&timezone=Asia%2FTokyo&past_days=92&forecast_days=7";
+const WX_URL = "https://api.open-meteo.com/v1/forecast?latitude=35.6955&longitude=139.7675&hourly=precipitation,precipitation_probability,temperature_2m&daily=weather_code,temperature_2m_max,precipitation_probability_max&timezone=Asia%2FTokyo&past_days=92&forecast_days=7";
 let WX = null;
 async function loadWx(){
-  try{ const c = JSON.parse(localStorage.getItem("wx-cache2")||"null"); if (c && Date.now()-c.at < 2*3600000){ WX = c.map; return; } }catch(e){}
+  try{ const c = JSON.parse(localStorage.getItem("wx-cache3")||"null"); if (c && Date.now()-c.at < 2*3600000){ WX = c.map; return; } }catch(e){}
   try{ const j = await (await fetch(WX_URL, {busy:false})).json(); const map = {};
-    (j.daily.time||[]).forEach((t,i)=>{ map[t.replace(/-/g,"/")] = { code:j.daily.weather_code[i], tmax:j.daily.temperature_2m_max[i], pp:j.daily.precipitation_probability_max[i], rain:0 }; });
-    (j.hourly.time||[]).forEach((t,i)=>{ const k = t.slice(0,10).replace(/-/g,"/"), h = +t.slice(11,13); if (map[k] && h>=12 && h<=14) map[k].rain += j.hourly.precipitation[i]||0; /* 各時刻の値は直前1時間分 → 12〜14時の値＝11:00〜14:00（営業中）の雨 */ });
-    WX = map; try{ localStorage.setItem("wx-cache2", JSON.stringify({at:Date.now(), map})); }catch(e){}
+    (j.daily.time||[]).forEach((t,i)=>{ map[t.replace(/-/g,"/")] = { code:j.daily.weather_code[i], tmax:j.daily.temperature_2m_max[i], pp:j.daily.precipitation_probability_max[i], ppL:null, rain:0 }; });
+    (j.hourly.time||[]).forEach((t,i)=>{ const k = t.slice(0,10).replace(/-/g,"/"), h = +t.slice(11,13); if (map[k] && h>=12 && h<=14){ map[k].rain += j.hourly.precipitation[i]||0; const q = (j.hourly.precipitation_probability||[])[i]; if (q!=null) map[k].ppL = Math.max(map[k].ppL==null?0:map[k].ppL, q); } /* 各時刻の値は直前1時間分 → 12〜14時の値＝11:00〜14:00（営業中）の雨 */ });
+    WX = map; try{ localStorage.setItem("wx-cache3", JSON.stringify({at:Date.now(), map})); }catch(e){}
     if (DATA) renderForecast();
   }catch(e){}
 }
 function wxText(c){ if(c==null) return ["",""]; if(c===0) return ["☀️","快晴"]; if(c<=2) return ["🌤","晴れ"]; if(c===3) return ["☁️","くもり"]; if(c<=48) return ["🌫","霧"]; if(c<=57) return ["🌦","霧雨"]; if(c<=67) return ["🌧","雨"]; if(c<=77) return ["🌨","雪"]; if(c<=82) return ["🌦","にわか雨"]; return ["⛈","雷雨"]; }
-function isRainy(w, future){ if(!w) return false; return future ? (w.pp>=50 || w.rain>=0.5) : w.rain>=0.5; }
+// 雨の確率は営業中（11:00〜14:00）の最大。時間ごとの予報がない日は1日の最大で代用
+function lunchPP(w){ return !w ? null : (w.ppL!=null ? w.ppL : w.pp); }
+function isRainy(w, future){ if(!w) return false; return future ? (lunchPP(w)>=50 || w.rain>=0.5) : w.rain>=0.5; }
 function isOpenDay(dt){ const w = dow(dt); return w>=1 && w<=5 && !jpHol(dt); }
 function jpHol(dt){ const [y,m,d] = dt.split("/").map(Number); const x = new Date(y,m-1,d);
   const nm = (mo,n)=>{ const f = new Date(y,mo-1,1).getDay(); return 1+((8-f)%7)+(n-1)*7; };
@@ -815,7 +828,7 @@ function dayChips(dt){ const c = [], [y,m,d] = dt.split("/").map(Number); const 
   if (!isOpenDay(dateAdd(dt,1)) && !isOpenDay(dateAdd(dt,2)) && !isOpenDay(dateAdd(dt,3))) c.push("連休前");
   return c; }
 function wxCell(dt, fut){ const w = WX && WX[dt]; if(!w) return ["天気", "—", WX ? "予報の範囲外" : "読み込み中…"]; const t = wxText(w.code);
-  return ["天気", `${t[0]} ${t[1]}`, `最高 ${Math.round(w.tmax)}℃・${fut ? `雨の確率 ${w.pp==null?"-":w.pp+"%"}` : `昼の雨 ${Math.round(w.rain*10)/10}mm`}`]; }
+  return ["天気", `${t[0]} ${t[1]}`, `最高 ${Math.round(w.tmax)}℃・${fut ? `昼の雨 ${lunchPP(w)==null?"-":lunchPP(w)+"%"}` : `昼の雨 ${Math.round(w.rain*10)/10}mm`}`]; }
 function renderForecast(){
   if (!DATA || !viewDate || !$("fcGrid")) return;
   const dt = viewDate, today = DATA.todayKey, fut = dt >= today, d = dayByDate(dt) || {meals:0,count:0}, e = expectMeals(dt), re = rainEffect(), w = WX && WX[dt];
@@ -825,7 +838,8 @@ function renderForecast(){
   if (e) cells.push(fut && !(dt===today && new Date().getHours()>=15)
       ? ["見込み食数", `約${e.v}食`, `いつもの${youbi(dt)}曜 ${e.base}食${e.adj?`・雨 ${e.adj>0?"+":""}${e.adj}食`:""}`]
       : ["結果", `${d.meals}食`, `見込み ${e.v}食に対して ${d.meals-e.v>=0?"+":""}${d.meals-e.v}食`]);
-  $("fcGrid").innerHTML = cells.map(c=>`<div class="w"><small>${c[0]}</small><b>${c[1]}</b><i>${c[2]}</i></div>`).join("");
+  renderFcShift(dt);
+  $("fcGrid").innerHTML = cells.map(c=>`<div class="w"${cells.length===1?' style="grid-column:1/-1"':""}><small>${c[0]}</small><b>${c[1]}</b><i>${c[2]}</i></div>`).join("");
   const msg = [];
   if (re){ if (re.v !== null) msg.push(`雨の昼は、いつもの同じ曜日より平均 <b>${re.v>=0?"+":""}${Math.round(re.v)}食</b>（雨だった営業日 ${re.n}日から）。`); else msg.push(`雨の昼の営業日がまだ ${re.n}日なので、雨の影響はまだ見込みに入れていません（2日たまったら自動で入ります）。`); }
   const done = !fut || (dt===today && new Date().getHours()>=15);
@@ -834,10 +848,49 @@ function renderForecast(){
   let nx = dateAdd(dt>today?dt:today, 1); for (let i=0; i<10 && !isOpenDay(nx); i++) nx = dateAdd(nx, 1);
   const ne = expectMeals(nx), nw = WX && WX[nx];
   if (ne && dt <= today){ const t = nw ? wxText(nw.code) : ["",""];
-    msg.push(`<b>次の営業日 ${nx.slice(5)}(${youbi(nx)})</b>：${nw ? `${t[0]}${t[1]}・最高${Math.round(nw.tmax)}℃・雨${nw.pp}%` : "天気は予報待ち"} → 見込み <b>約${ne.v}食</b>。麺の小分けは<b>約${Math.ceil(ne.v*70/60)}個</b>が目安${dayChips(nx).length?`（${dayChips(nx).join("・")}）`:""}。`); }
+    msg.push(`<b>次の営業日 ${nx.slice(5)}(${youbi(nx)})</b>：${nw ? `${t[0]}${t[1]}・最高${Math.round(nw.tmax)}℃・昼の雨${lunchPP(nw)==null?"-":lunchPP(nw)+"%"}` : "天気は予報待ち"} → 見込み <b>約${ne.v}食</b>。麺の小分けは<b>約${Math.ceil(ne.v*70/60)}個</b>が目安${dayChips(nx).length?`（${dayChips(nx).join("・")}）`:""}。`); }
   $("fcMsg").innerHTML = msg.length ? `<ul style="margin:0;padding-left:1.2em">${msg.map(m=>`<li>${m}</li>`).join("")}</ul>` : "";
 }
 loadWx();
+
+// ───── 見立てのシフト：その日に誰が入るか（STAFF の admin.shifts_month）。月ごとに読み、10分は使い回す ─────
+const SHM = {}; let SHK = null;
+function shTok(){ try{ return localStorage.getItem("os-admin-token")||TOKEN; }catch(e){ return TOKEN; } }
+async function loadShiftMonth(m){
+  const tk = shTok(); if (!tk) return;
+  const c = SHM[m]; if (c && (c.loading || Date.now()-c.at < 600000)) return;
+  SHM[m] = Object.assign({}, c||{}, {loading:true});
+  const call = (action, b)=>fetch(STAFF_API,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify(Object.assign({action, token:tk}, b||{})), busy:false}).then(r=>r.json()).catch(()=>null);
+  const [r, st] = await Promise.all([call("admin.shifts_month",{month:m}), SHK ? null : call("admin.settings_get")]);
+  if (st && st.settings){ const set = {}; st.settings.forEach(x=>set[x.key]=String(x.value||"")); SHK = new Set((set.kitchen_ids||"").split(",").map(x=>x.trim()).filter(Boolean)); }
+  SHM[m] = (r && r.ok) ? {at:Date.now(), r} : {at:Date.now(), err:true};
+  if (viewDate && viewDate.slice(0,7)===m) renderFcShift(viewDate);
+}
+function renderFcShift(dt){
+  const el = $("fcShift"); if (!el) return;
+  const m = dt.slice(0,7), c = SHM[m];
+  if (!c || c.loading && !c.r){ el.innerHTML = shTok() ? `<small>シフト</small><div class="n">読み込み中…</div>` : ""; loadShiftMonth(m); return; }
+  if (Date.now()-c.at >= 600000) loadShiftMonth(m);
+  if (c.err && !c.r){ el.innerHTML = `<small>シフト</small><div class="n">読み込めませんでした</div>`; return; }
+  const r = c.r, od = (r.openDays||[]).find(d=>d.date===dt), nd = (r.need||{})[dt]||{};
+  const open = od ? ((nd.open===null||nd.open===undefined) ? od.open : nd.open) : isOpenDay(dt);
+  if (!open){ el.innerHTML = `<small>シフト</small><div class="n">休業日</div>`; return; }
+  const name = id => ((r.staff||[]).find(s=>s.staff_id===id)||{}).name || "?";
+  const kit = SHK || new Set(), sh = (r.shifts||[]).filter(x=>x.date===dt).sort((a,b)=>String(a.start).localeCompare(String(b.start)));
+  // 働き方が増えても崩れないように：時間が重ならないシフトは別の「帯」（昼・夜・仕込みだけ など）に分け、帯ごとに基本の時間を出す
+  const blocks = []; sh.forEach(x=>{ const B = blocks[blocks.length-1]; if (B && x.start < B.end){ B.xs.push(x); if (x.end > B.end) B.end = x.end; } else blocks.push({start:x.start, end:x.end, xs:[x]}); });
+  // 基本の時間＝その月のシフトで、この帯に入る「入り〜上がり」のうち一番多いもの。違う人だけ名前の横に時間を書く
+  const stdOf = B => { const cnt = {}; (r.shifts||[]).forEach(x=>{ if (x.start < B.end && x.end > B.start){ const k = x.start+"〜"+x.end; cnt[k] = (cnt[k]||0)+1; } }); return Object.keys(cnt).sort((p,q)=>cnt[q]-cnt[p])[0] || ""; };
+  const who = (x, std) => `<span${x.status!=="confirmed"?' class="u"':""}>${esc(name(x.staff_id))}${(x.start+"〜"+x.end)!==std?`<em>${x.start}〜${x.end}</em>`:""}${x.status!=="confirmed"?"<em>未確定</em>":""}</span>`;
+  // 持ち場は設定の厨房担当から。設定がなければ分けずに並べる
+  const rowsOf = (B, std) => (kit.size ? [["厨房", B.xs.filter(x=>kit.has(x.staff_id))], ["ホール", B.xs.filter(x=>!kit.has(x.staff_id))]] : [["", B.xs]])
+    .filter(([g, xs])=>xs.length || blocks.length===1).map(([g, xs])=>`<div class="p">${g?`<small>${g}</small>`:""}<div>${xs.length ? xs.map(x=>who(x, std)).join("・") : `<em>なし</em>`}</div></div>`).join("");
+  // その日の体制を事実として出すだけ。足りない日の手当ては「今朝の確認」の人手不足（3週間先まで）で行う
+  const need = Number(nd.need)||2, head = `シフト ${sh.length}人${sh.length && sh.length<need?`（いつもは${need}人の日）`:""}`;
+  if (!sh.length){ el.innerHTML = `<small>${head}</small><div class="n">シフトが入っていません</div>`; return; }
+  if (blocks.length === 1){ const std = stdOf(blocks[0]); el.innerHTML = `<small>${head}${std?`・基本 ${std}`:""}</small>${rowsOf(blocks[0], std)}`; return; }
+  el.innerHTML = `<small>${head}</small>` + blocks.map(B=>{ const std = stdOf(B); return `<div class="bk"><small>${std || B.start+"〜"+B.end}・${B.xs.length}人</small>${rowsOf(B, std)}</div>`; }).join("");
+}
 
 // ───── この日の損益分岐：固定費（月額÷その月の営業日）＋人件費（勤怠。まだなら直近の平均）を、原価を引いた残りでまかなうのに必要な売上 ─────
 function renderBE(d){
