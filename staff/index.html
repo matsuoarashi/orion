@@ -973,21 +973,36 @@ function renderShift(r){
     r.shifts.map(s=>`<div class="row" ${s.date===today?'style="background:var(--g-l);margin:0 -6px;padding:10px 6px;border-radius:8px"':""}><span class="l">${mdLabel(s.date)}<br><span class="mini">${(r.others[s.date]||[]).length?"一緒: "+(r.others[s.date]||[]).join("、"):"ひとり"}</span></span><b>${s.start}〜${s.end}</b></div>`).join("");
 }
 
-// みんなのシフト：確定したシフトを日ごとに、厨房／ホール・名前・時間で（分析 GAS の os_team_shifts。下書きは出ない）
+// みんなのシフト：日ごとに名前・時間。勤怠 GAS の shifts（自分の分＋others＝ほかの人の「名前 HH:MM-HH:MM」）で出し、
+// 分析 GAS の os_team_shifts が読めれば厨房／ホールに分けて出す（下書きは出ない）
 async function loadTeam(){
   const m = SHM, key = "team:"+m; const c = cget(key); $("shiftMonth").textContent = monthLabel(m);
   if (c) renderTeam(c); else $("shiftList").innerHTML = `<div class="sub">読み込み中…</div>`;
-  const r = await osFetch(OS_API+"?mode=os_team_shifts&month="+encodeURIComponent(m)+"&t="+Date.now()+"&token="+encodeURIComponent(TOKEN), {cache:"no-store"}, true);
-  if (!r || !r.ok){ if (!c && SHM===m && SHV==="team") $("shiftList").innerHTML = `<div class="sub">読み込めませんでした。少しして開き直してください</div>`; return; }
+  const [os, st] = await Promise.all([
+    osFetch(OS_API+"?mode=os_team_shifts&month="+encodeURIComponent(m)+"&t="+Date.now()+"&token="+encodeURIComponent(TOKEN), {cache:"no-store"}, false),
+    api("shifts", {month:m})]);
+  let r = (os && os.ok) ? os : null;
+  if (!r && st && st.ok) r = teamFromShifts(st);
+  if (!r){ if (!c && SHM===m && SHV==="team") $("shiftList").innerHTML = `<div class="sub">読み込めませんでした。少しして開き直してください</div>`; return; }
+  if (st && st.ok) cset("shift:"+m, st);
   cset(key, r); if (SHM===r.month && SHV==="team") renderTeam(r);
+}
+function teamFromShifts(st){
+  const me = (HOME && HOME.staff && HOME.staff.name) || "自分", days = {};
+  (st.shifts||[]).forEach(x=>{ (days[x.date] = days[x.date]||[]).push({name:me, start:x.start, end:x.end, me:true}); });
+  Object.keys(st.others||{}).forEach(d=>(st.others[d]||[]).forEach(t=>{ const mt = String(t).match(/^(.*?)\s+(\d{1,2}:\d{2})\s*[-〜~]\s*(\d{1,2}:\d{2})$/);
+    (days[d] = days[d]||[]).push(mt ? {name:mt[1], start:mt[2].padStart(5,"0"), end:mt[3].padStart(5,"0")} : {name:String(t), start:"", end:""}); }));
+  return {ok:true, month:st.month, days:Object.keys(days).sort().map(d=>({date:d, list:days[d].sort((a,b)=>a.start<b.start?-1:a.start>b.start?1:0)}))};
 }
 function renderTeam(r){
   if (!r.days.length){ $("shiftList").innerHTML = `<div class="sub">確定したシフトはまだありません</div>`; return; }
   const today = HOME ? HOME.today : "";
+  const who = x=>`${x.me?"<b>":""}${esc(x.name)}${x.me?"</b>":""}${x.start?`<em>${x.start}〜${x.end}</em>`:""}`;
   $("shiftList").innerHTML = r.days.map(d=>{
-    const g = ["厨房","ホール"].map(a=>[a, d.list.filter(x=>x.area===a)]).filter(([a,xs])=>xs.length);
+    // 持ち場がわかるときだけ厨房／ホールに分ける
+    const g = d.list.some(x=>x.area) ? ["厨房","ホール"].map(a=>[a, d.list.filter(x=>x.area===a)]).filter(([a,xs])=>xs.length) : [["", d.list]];
     return `<div class="tday${d.date===today?" today":d.date<today?" past":""}"><div class="d">${mdLabel(d.date)}${d.date===today?" 今日":""}</div>` +
-      g.map(([a,xs])=>`<div class="p"><small>${a}</small><span>${xs.map(x=>`${x.me?"<b>":""}${esc(x.name)}${x.me?"</b>":""}<em>${x.start}〜${x.end}</em>`).join("、")}</span></div>`).join("") + `</div>`;
+      g.map(([a,xs])=>`<div class="p">${a?`<small>${a}</small>`:""}<span>${xs.map(who).join("、")}</span></div>`).join("") + `</div>`;
   }).join("");
 }
 
