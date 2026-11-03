@@ -47,6 +47,9 @@ nav button.on i::before{content:"";position:absolute;top:-4px;left:50%;width:3px
 .row:last-child{border-bottom:0}
 .row b{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
 .row .l{min-width:0}
+.shseg{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;margin:0 0 10px} .shseg button{flex:1;border:0;background:#fff;padding:7px 0;font-size:13px;color:var(--mute)} .shseg button.on{background:var(--g);color:#fff;font-weight:700}
+.tday{padding:9px 0;border-bottom:1px solid var(--line)} .tday:last-child{border-bottom:0} .tday.past{opacity:.5} .tday.today{background:var(--g-l);margin:0 -6px;padding:9px 6px;border-radius:8px}
+.tday .d{font-weight:700;font-size:14px;margin-bottom:3px} .tday .p{display:flex;gap:8px;font-size:13px;line-height:1.7} .tday .p small{flex:0 0 3em;color:var(--mute)} .tday .p b{font-weight:700} .tday .p em{font-style:normal;color:var(--mute);font-size:12px;margin-left:3px}
 .pill{display:inline-block;border-radius:999px;padding:2px 10px;font-size:12px;background:var(--g-l);color:var(--g);white-space:nowrap}
 .pill.red{background:var(--red-l);color:var(--red)} .pill.amber{background:var(--amber-l);color:var(--amber)} .pill.blue{background:var(--blue-l);color:var(--blue)}
 .status{display:flex;align-items:center;gap:10px;font-size:15px;color:var(--mute)}
@@ -328,6 +331,7 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
       <section id="pShift" class="hide">
         <div class="card">
           <div class="monthnav"><button onclick="shiftMove(-1)">◀</button><b id="shiftMonth"></b><button onclick="shiftMove(1)">▶</button></div>
+          <div class="shseg"><button id="shMine" onclick="shiftView('mine')">自分</button><button id="shTeam" onclick="shiftView('team')">みんな</button></div>
           <div id="shiftList"></div>
         </div>
       </section>
@@ -950,11 +954,15 @@ async function saveWish(){
 
 // ───── 確定シフト ─────
 let SHM = thisMonth();
+let SHV = (()=>{ try{ return localStorage.getItem("os-shift-view")||"mine"; }catch(e){ return "mine"; } })();
 function shiftMove(n){ SHM = ymAdd(SHM, n); loadShift(); }
+function shiftView(v){ SHV = v; try{ localStorage.setItem("os-shift-view", v); }catch(e){} loadShift(); }
 async function loadShift(){
+  $("shMine").classList.toggle("on", SHV!=="team"); $("shTeam").classList.toggle("on", SHV==="team");
+  if (SHV==="team") return loadTeam();
   const key = "shift:"+SHM; const c = cget(key); if (c) renderShift(c); else { $("shiftMonth").textContent = monthLabel(SHM); $("shiftList").innerHTML = `<div class="sub">読み込み中…</div>`; }
   const r = await api("shifts", {month:SHM}); if(!r.ok){ loadFail(r, !!c); return; }
-  cset(key, r); if (r.month===SHM) renderShift(r);
+  cset(key, r); if (r.month===SHM && SHV!=="team") renderShift(r);
 }
 function renderShift(r){
   $("shiftMonth").textContent = monthLabel(r.month);
@@ -963,6 +971,24 @@ function renderShift(r){
   const today = HOME ? HOME.today : "";
   $("shiftList").innerHTML = `<div class="summary" style="grid-template-columns:1fr 1fr"><div><b>${r.shifts.length}日</b><span>勤務日数</span></div><div><b>${fmtMin(totalMin)}</b><span>予定時間</span></div></div>` +
     r.shifts.map(s=>`<div class="row" ${s.date===today?'style="background:var(--g-l);margin:0 -6px;padding:10px 6px;border-radius:8px"':""}><span class="l">${mdLabel(s.date)}<br><span class="mini">${(r.others[s.date]||[]).length?"一緒: "+(r.others[s.date]||[]).join("、"):"ひとり"}</span></span><b>${s.start}〜${s.end}</b></div>`).join("");
+}
+
+// みんなのシフト：確定したシフトを日ごとに、厨房／ホール・名前・時間で（分析 GAS の os_team_shifts。下書きは出ない）
+async function loadTeam(){
+  const m = SHM, key = "team:"+m; const c = cget(key); $("shiftMonth").textContent = monthLabel(m);
+  if (c) renderTeam(c); else $("shiftList").innerHTML = `<div class="sub">読み込み中…</div>`;
+  const r = await osFetch(OS_API+"?mode=os_team_shifts&month="+encodeURIComponent(m)+"&t="+Date.now()+"&token="+encodeURIComponent(TOKEN), {cache:"no-store"}, true);
+  if (!r || !r.ok){ if (!c && SHM===m && SHV==="team") $("shiftList").innerHTML = `<div class="sub">読み込めませんでした。少しして開き直してください</div>`; return; }
+  cset(key, r); if (SHM===r.month && SHV==="team") renderTeam(r);
+}
+function renderTeam(r){
+  if (!r.days.length){ $("shiftList").innerHTML = `<div class="sub">確定したシフトはまだありません</div>`; return; }
+  const today = HOME ? HOME.today : "";
+  $("shiftList").innerHTML = r.days.map(d=>{
+    const g = ["厨房","ホール"].map(a=>[a, d.list.filter(x=>x.area===a)]).filter(([a,xs])=>xs.length);
+    return `<div class="tday${d.date===today?" today":d.date<today?" past":""}"><div class="d">${mdLabel(d.date)}${d.date===today?" 今日":""}</div>` +
+      g.map(([a,xs])=>`<div class="p"><small>${a}</small><span>${xs.map(x=>`${x.me?"<b>":""}${esc(x.name)}${x.me?"</b>":""}<em>${x.start}〜${x.end}</em>`).join("、")}</span></div>`).join("") + `</div>`;
+  }).join("");
 }
 
 // ───── 履歴・修正・パス変更 ─────

@@ -62,6 +62,21 @@ function stfShortDays_(n){
   }
   return out;
 }
+// スタッフアプリ「みんなのシフト」：その月の確定シフトを、名前・時間・持ち場だけで返す（時給などは返さない）。下書きは出さない
+// doGet mode=os_team_shifts&month=YYYY/MM（スタッフ・管理者のトークン。店のスマホのキーでは読めない）
+function stfTeamShifts_(me, month){
+  if (!me || me.role === "store" || !me.staff_id) return { error: "auth" };
+  var ym = /^\d{4}\/\d{2}$/.test(month) ? month : Utilities.formatDate(new Date(), "Asia/Tokyo", "yyyy/MM");
+  var st = SpreadsheetApp.openById(INV_STAFF_SS); var kitchen = stfList_(stfSettings_(st).kitchen_ids);
+  var names = {}; invRows_(st.getSheetByName("スタッフ")).forEach(function(r){ names[r.staff_id] = String(r["名前"]); });
+  var hm = function(v){ var x = opsHM_(v); return x.length === 4 ? "0" + x : x; };
+  var days = {};
+  invRows_(st.getSheetByName("確定シフト")).forEach(function(r){
+    if (String(r["状態"]) !== "confirmed") return; var d = dateKey_(r["日付"]); if (!d || d.slice(0,7) !== ym) return;
+    (days[d] = days[d] || []).push({ name: names[r.staff_id] || "?", start: hm(r["開始"]), end: hm(r["終了"]), area: kitchen.indexOf(r.staff_id) >= 0 ? "厨房" : "ホール", me: r.staff_id === me.staff_id });
+  });
+  return { ok: true, month: ym, days: Object.keys(days).sort().map(function(d){ return { date: d, list: days[d].sort(function(a,b){ return a.start < b.start ? -1 : a.start > b.start ? 1 : (a.area === "厨房" ? -1 : 1); }) }; }) };
+}
 function stfSetupTrigger(){
   ScriptApp.getProjectTriggers().forEach(function(t){ if (t.getHandlerFunction() === "stfShortNotify") ScriptApp.deleteTrigger(t); });
   ScriptApp.newTrigger("stfShortNotify").timeBased().atHour(17).everyDays(1).inTimezone("Asia/Tokyo").create();

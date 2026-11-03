@@ -34,6 +34,7 @@ function handleOsGet(e){
     var mine = osRows_(OS_UNANS, OS_UNANS_COLS).filter(function(r){ return String(r["質問者"]) === me.name; }).slice(-20).reverse();
     return invOut_({ list: mine.map(function(r){ return { id:r.q_id, at:String(r["日時"]), q:String(r["質問"]), status:String(r["状態"]), a:String(r["回答"]||""), answeredAt:String(r["回答日時"]||"") }; }) });
   }
+  if (mode === "os_team_shifts") return invOut_(stfTeamShifts_(me, String(p.month||""))); // スタッフアプリ「みんなのシフト」（staffing.gs）
   if (mode === "os_mail"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_({ list: osRows_(OS_MAILCAND, OS_MAILCAND_COLS).filter(function(r){ return String(r["状態"]) === "未確認"; }).slice(-100).reverse().map(function(r){ var o = {}; OS_MAILCAND_COLS.forEach(function(c){ o[c] = String(r[c]===undefined?"":r[c]); }); return o; }) }); }
   var lg = osLedgerGet_(mode, me); if (lg) return invOut_(lg);
   if (/^os_start_/.test(mode)) return invOut_(startGet_(mode, me, p)); // ORION START（start.gs）
