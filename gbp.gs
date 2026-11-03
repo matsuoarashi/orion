@@ -50,13 +50,13 @@ function gbpSync(){
     var gid = String(v.reviewId || v.name), star = GBP_STAR[v.starRating] || 0, rep = v.reviewReply || {}, ex = byG[gid];
     var upd = gbpTime_(v.updateTime), created = gbpTime_(v.createTime);
     if (ex){
-      if (String(ex["更新日時"]) !== upd){ invSet_(sh, ex._row, "星", star); invSet_(sh, ex._row, "本文", String(v.comment||"")); invSet_(sh, ex._row, "更新日時", upd); }
-      if (rep.comment && String(ex["Google返信"]) !== String(rep.comment)){ invSet_(sh, ex._row, "Google返信", String(rep.comment)); invSet_(sh, ex._row, "Google返信日時", gbpTime_(rep.updateTime)); invSet_(sh, ex._row, "状態", "返信済"); }
+      if (String(ex["更新日時"]) !== upd){ invSet_(sh, ex._row, "星", star); invSet_(sh, ex._row, "本文", String(v.comment||"")); invSet_(sh, ex._row, "更新日時", "'" + upd); }
+      if (rep.comment && String(ex["Google返信"]) !== String(rep.comment)){ invSet_(sh, ex._row, "Google返信", String(rep.comment)); invSet_(sh, ex._row, "Google返信日時", "'" + gbpTime_(rep.updateTime)); invSet_(sh, ex._row, "状態", "返信済"); }
       return;
     }
     var id = invId_("rv_");
-    invAppend_(sh, { rev_id:id, "店舗":"kanda", "出所":"API", google_id:gid, "投稿者":String((v.reviewer||{}).displayName||""), "星":star, "本文":String(v.comment||""), "投稿日時":created, "更新日時":upd,
-      "Google返信":String(rep.comment||""), "Google返信日時": rep.comment ? gbpTime_(rep.updateTime) : "", "下書き":"", "下書き日時":"", "状態": rep.comment ? "返信済" : "新着", "指摘":"", "承認者":"", "送信日時":"", "送信結果":"", "メモ":"", "取込日時":now });
+    invAppend_(sh, { rev_id:id, "店舗":"kanda", "出所":"API", google_id:gid, "投稿者":String((v.reviewer||{}).displayName||""), "星":star, "本文":String(v.comment||""), "投稿日時":"'" + created, "更新日時":"'" + upd,
+      "Google返信":String(rep.comment||""), "Google返信日時": rep.comment ? "'" + gbpTime_(rep.updateTime) : "", "下書き":"", "下書き日時":"", "状態": rep.comment ? "返信済" : "新着", "指摘":"", "承認者":"", "送信日時":"", "送信結果":"", "メモ":"", "取込日時":now });
     if (!rep.comment) added.push(id);
   });
   // 新しく入った未返信の口コミは、下書きと指摘の分類を先に作っておく（最大5件／回）
@@ -162,7 +162,7 @@ function gbpPost_(d, me){
   if (t === "os_gbp_manual"){ // 承認前の手入力：Google の画面から投稿者・星・本文を写す
     var star = Number(d.star)||0, text = String(d.text||"").trim(); if (!(star >= 1 && star <= 5)) return { error: "星を選んでください" };
     var id = invId_("rv_");
-    invAppend_(sh, { rev_id:id, "店舗":"kanda", "出所":"手入力", google_id:"", "投稿者":String(d.name||"").slice(0, 40), "星":star, "本文":text.slice(0, 2000), "投稿日時":String(d.date||invToday_()), "更新日時":"",
+    invAppend_(sh, { rev_id:id, "店舗":"kanda", "出所":"手入力", google_id:"", "投稿者":String(d.name||"").slice(0, 40), "星":star, "本文":text.slice(0, 2000), "投稿日時":"'" + String(d.date||invToday_()), "更新日時":"",
       "Google返信":"", "Google返信日時":"", "下書き":"", "下書き日時":"", "状態":"新着", "指摘":"", "承認者":"", "送信日時":"", "送信結果":"", "メモ":"", "取込日時":now });
     var dr = {}; try { dr = gbpDraft_(id, ""); } catch(e){ dr = { error:String(e) }; }
     try { if (typeof ownerReviewNotify_ === "function") ownerReviewNotify_([id]); } catch(e){}

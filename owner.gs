@@ -68,7 +68,7 @@ function ownerDailyText_(day){
   var lw = osAddDays_(day, -7), s = ownSales_(lw, day), t = s[day] || { sales:0, count:0, meals:0, paypay:0 }, p = s[lw] || null;
   var L = ["【洋食オリオン】" + day.slice(5) + " のまとめ"];
   if (!t.count) L.push("売上の記録はまだありません。");
-  else L.push("食数 " + t.meals + "食" + (p ? ownDiff_(t.meals, p.meals, "食") : ""), "売上 " + ownYen_(t.sales) + (p ? ownDiff_(t.sales, p.sales, "円") : ""), "会計 " + t.count + "件・客単価 " + ownYen_(t.sales / t.count) + "・PayPay " + ownYen_(t.paypay));
+  else L.push("食数 " + t.meals + "食" + (p ? ownDiff_(t.meals, p.meals, "食") : ""), "売上 " + ownYen_(t.sales) + (p ? ownDiff_(t.sales, p.sales, "円") : ""), "会計 " + t.count + "件・1食あたり " + ownYen_(t.sales / Math.max(1, t.meals)) + "・PayPay " + ownYen_(t.paypay));
   try { var ev = invRows_(evSheet_()).filter(function(r){ return todoD_(r["日付"]) === day && String(r["状態"]||"有効") === "有効"; });
     if (ev.length){ L.push("", "今日の出来事"); ev.slice(0, 6).forEach(function(r){ L.push("・" + [String(r["種類"]||""), String(r["本文"]||"")].filter(String).join("：")); }); } } catch(e){}
   try { var rv = invRows_(osSheet_(GBP_REV, GBP_REV_COLS)).map(gbpRevOut_), nw = rv.filter(function(x){ return x.at.slice(0, 10) === day; }), wait = rv.filter(function(x){ return x.status === "新着" || x.status === "下書き済"; });
@@ -85,7 +85,7 @@ function ownerWeeklyText_(thisWeek){
     else { prev.sales += o.sales; prev.meals += o.meals; prev.days++; } });
   var L = ["【洋食オリオン】" + (thisWeek ? "今週" : "先週") + "（" + mon.slice(5) + "〜" + sun.slice(5) + "）のまとめ"];
   if (!cur.days) L.push("売上の記録はありません。");
-  else { L.push("食数 " + cur.meals + "食（1日平均 " + Math.round(cur.meals / cur.days) + "食）" + (prev.days ? "／前の週 " + prev.meals + "食" : ""), "売上 " + ownYen_(cur.sales) + (prev.days ? "／前の週 " + ownYen_(prev.sales) : ""), "営業 " + cur.days + "日・客単価 " + ownYen_(cur.sales / Math.max(1, cur.count)));
+  else { L.push("食数 " + cur.meals + "食（1日平均 " + Math.round(cur.meals / cur.days) + "食）" + (prev.days ? "／前の週 " + prev.meals + "食" : ""), "売上 " + ownYen_(cur.sales) + (prev.days ? "／前の週 " + ownYen_(prev.sales) : ""), "営業 " + cur.days + "日・1食あたり " + ownYen_(cur.sales / Math.max(1, cur.meals)));
     L.push("", "日ごと"); L = L.concat(lines); }
   try { var ev = invRows_(evSheet_()).filter(function(r){ var d = todoD_(r["日付"]); return d >= mon && d <= sun && String(r["状態"]||"有効") === "有効"; }), kc = {};
     ev.forEach(function(r){ String(r["種類"]||"").split("・").filter(String).forEach(function(k){ kc[k] = (kc[k]||0) + 1; }); });
