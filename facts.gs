@@ -39,6 +39,9 @@ function handleOsGet(e){
   var lg = osLedgerGet_(mode, me); if (lg) return invOut_(lg);
   if (/^os_start_/.test(mode)) return invOut_(startGet_(mode, me, p)); // ORION START（start.gs）
   if (/^os_loan_/.test(mode)) return invOut_(loanGet_(mode, me, p)); // 借入と返済（loan.gs）
+  if (/^os_(todo|ev)_/.test(mode)) return invOut_(todoGet_(mode, me, p)); // やること・出来事（todo.gs）
+  if (/^os_gbp_/.test(mode)){ try { return invOut_(gbpGet_(mode, me, p)); } catch(e){ return invOut_({ error:String(e) }); } } // Google 口コミ・プロフィール（gbp.gs）
+  if (/^os_owner_/.test(mode)) return invOut_(ownerGet_(mode, me, p)); // LINE オーナー配信（owner.gs）
   if (mode === "os_snapshot_run"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_(osSnapshot(String(p.ym||""), me)); }
   if (mode === "os_ai_diag"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_(osAiDiag_(me)); }
   if (mode === "os_seed_mail"){ if (me.role !== "admin") return invOut_({ error: "管理者のみ" }); return invOut_({ result: osMailSeedRules(), rules: osMailRules_().length }); }
@@ -77,6 +80,9 @@ function handleOsPost(d){
       else if (d.type === "os_rpt_save") res = osRptSave_(d, me);
       else if (/^os_start_/.test(String(d.type))) res = startPost_(d, me); // ORION START（start.gs）
       else if (/^os_loan_/.test(String(d.type))) res = loanPost_(d, me); // 借入と返済（loan.gs）
+      else if (/^os_(todo|ev)_/.test(String(d.type))) res = todoPost_(d, me); // やること・出来事（todo.gs）
+      else if (/^os_gbp_/.test(String(d.type))) res = gbpPost_(d, me); // Google 口コミ・プロフィール（gbp.gs）
+      else if (/^os_owner_/.test(String(d.type))) res = ownerPost_(d, me); // LINE オーナー配信（owner.gs）
       else res = { error: "unknown type" };
     } finally { lock.releaseLock(); }
   } catch(e){ res = { error: String(e) }; }

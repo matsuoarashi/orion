@@ -205,7 +205,7 @@ function opsAlerts_(which){
   var today = opsDay_(new Date()), out = [], run = function(f){ try { out = out.concat(f()); } catch(e){ out.push({ key: "err", level: "mid", title: "確認の一部が動きませんでした", detail: String(e).slice(0,120), app: "" }); } };
   if (which === "order" || which === "all") run(opsOrderAlerts_);
   if (which === "evening" || which === "all"){
-    run(opsShortAlerts_); run(opsCapAlerts_); run(opsRecAlerts_); run(opsLoanAlerts_);
+    run(opsShortAlerts_); run(opsCapAlerts_); run(opsRecAlerts_); run(opsLoanAlerts_); run(todoAlerts_); run(gbpAlerts_);
     var h = Number(Utilities.formatDate(new Date(), OPS_TZ, "H"));
     // 衛生記録・締めは閉店後（16時以降）に今日の分を見る。それより前は前営業日の分
     var day = h >= 16 ? today : opsAdd_(today, -1);
@@ -248,7 +248,8 @@ function linePush_(text){
 // webhook：グループ・トークルームの ID を候補として控えるだけ（ここでは送り先を変えない）
 function lineWebhook_(d){
   var props = PropertiesService.getScriptProperties(); var c = {}; try { c = JSON.parse(props.getProperty("LINE_CANDIDATES") || "{}"); } catch(e){}
-  (d.events || []).forEach(function(ev){ var s = ev.source || {}; var id = s.groupId || s.roomId; if (!id) return;
+  (d.events || []).forEach(function(ev){ var s = ev.source || {}; if (s.type === "user"){ try { ownerWebhook_(ev); } catch(e){} return; }   // 1対1のトーク＝オーナーの登録・問い合わせ（owner.gs）
+    var id = s.groupId || s.roomId; if (!id) return;
     c[id] = { type: s.type, event: ev.type, at: Utilities.formatDate(new Date(), "Asia/Tokyo", "yyyy/MM/dd HH:mm") }; });
   props.setProperty("LINE_CANDIDATES", JSON.stringify(c));
 }
