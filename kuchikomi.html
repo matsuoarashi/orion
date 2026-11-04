@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>口コミ・発信 | 洋食オリオン</title>
+<title>口コミ | 洋食オリオン</title>
 <style>
 :root{ --g:#2c4f39; --g-d:#1f3a2a; --g-l:#e4eee7; --cream:#faf6ee; --cream-d:#ece4d2; --ink:#2b2a26; --mute:#7a7265; --red:#a33c2e; --red-l:#f6e3df; --amber:#b7791f; --amber-l:#f7ebd3; --gold:#c9a24a; --line:#d9d1bd; --r:14px; --sat:env(safe-area-inset-top); --sab:env(safe-area-inset-bottom); }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -49,29 +49,27 @@ ol.steps{padding-left:20px;font-size:14px} ol.steps li{margin:6px 0}
 </style>
 </head>
 <body>
-<header><div style="flex:1"><div class="t">口コミ・発信</div><div class="n">Google と LINE</div></div></header>
+<header><div style="flex:1"><div class="t">口コミ</div><div class="n">Google ビジネスプロフィール</div></div></header>
 <div class="tabs" id="tabs">
   <button id="t_rv" class="on" onclick="tab('rv')">口コミ<span class="bd hide" id="bdRv"></span></button>
   <button id="t_pf" onclick="tab('pf')">プロフィール<span class="bd hide" id="bdPf"></span></button>
   <button id="t_pm" onclick="tab('pm')">数字</button>
-  <button id="t_ln" onclick="tab('ln')">LINE配信</button>
 </div>
 <main>
   <div id="msg"></div>
   <section id="p_rv"><div id="rvHead"></div><div class="chips" id="rvF"></div><div id="rvList"><div class="mini">読み込み中…</div></div></section>
   <section id="p_pf" class="hide"><div id="pfBody"><div class="mini">読み込み中…</div></div></section>
   <section id="p_pm" class="hide"><div id="pmBody"><div class="mini">読み込み中…</div></div></section>
-  <section id="p_ln" class="hide"><div id="lnBody"><div class="mini">読み込み中…</div></div></section>
 </main>
 <div id="ov"></div><div class="toast" id="toast"></div>
 <script src="busy.js?v=1101b"></script>
 <script>
-// 口コミ・発信（管理者）：Google の口コミ返信（AI 下書き→承認して送る）、プロフィール（祝日の休業・説明文）、数字、LINE のオーナー配信。GAS：gbp.gs・owner.gs
+// 口コミ（管理者）：Google の口コミ返信（AI 下書き→承認して送る）、プロフィール（祝日の休業・説明文）、数字。GAS：gbp.gs。LINE のオーナー配信は「設定」（settei.html）へ移した（11/4）
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbzFNl4UM3fkoANru-agWmuOox-h3cS1yJmx4UZxpGFemEBnAUv45Gdp1VOvtCqOVUg/exec";
 const $ = id => document.getElementById(id);
 const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const YO = ["日","月","火","水","木","金","土"];
-let TOKEN = "", RV = null, PF = null, PM = null, LN = null, RVF = "wait", CUR = "rv";
+let TOKEN = "", RV = null, PF = null, PM = null, RVF = "wait", CUR = "rv";
 try{ TOKEN = localStorage.getItem("os-admin-token") || localStorage.getItem("os-token") || ""; }catch(e){}
 function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2400); }
 function msg(t, c){ $("msg").innerHTML = t ? `<div class="msg ${c||"err"}">${t}</div>` : ""; }
@@ -80,8 +78,8 @@ function sheet(h){ $("ov").innerHTML = `<div class="ovl" onclick="if(event.targe
 async function get(mode, p){ const q = Object.assign({mode, token:TOKEN, t:Date.now()}, p||{}); try{ const r = await fetch(SHEET_URL+"?"+Object.keys(q).map(k=>k+"="+encodeURIComponent(q[k])).join("&"), {cache:"no-store"}); return await r.json(); }catch(e){ return {error:"通信エラー"}; } }
 async function post(type, b){ try{ const r = await fetch(SHEET_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(Object.assign({type, token:TOKEN}, b||{}))}); return await r.json(); }catch(e){ return {error:"通信エラー"}; } }
 function stars(n){ return `<span class="star ${n<=2?"low":""}">${"★".repeat(n)}${"☆".repeat(5-n)}</span>`; }
-function tab(t){ CUR = t; ["rv","pf","pm","ln"].forEach(x=>{ $("p_"+x).classList.toggle("hide", x!==t); $("t_"+x).classList.toggle("on", x===t); }); msg("");
-  if (t==="rv") loadRv(); if (t==="pf") loadPf(); if (t==="pm") loadPm(); if (t==="ln") loadLn(); try{ localStorage.setItem("kc-tab", t); }catch(e){} }
+function tab(t){ CUR = t; ["rv","pf","pm"].forEach(x=>{ $("p_"+x).classList.toggle("hide", x!==t); $("t_"+x).classList.toggle("on", x===t); }); msg("");
+  if (t==="rv") loadRv(); if (t==="pf") loadPf(); if (t==="pm") loadPm(); try{ localStorage.setItem("kc-tab", t); }catch(e){} }
 
 // ───── 口コミ ─────
 async function loadRv(){ const r = await get("os_gbp_reviews"); if (r.error){ msg(r.error==="auth"?"管理者アプリでログインしてください":esc(r.error)); return; } RV = r; renderRv(); }
@@ -174,31 +172,8 @@ function renderPm(){
 }
 async function savePm(){ const v = {}; PM.cols.forEach((c,i)=>v[c] = +($("pm"+i).value||0)); const r = await post("os_gbp_perf_save", {ym:$("pmYm").value.trim(), v}); if (r.error){ toast(r.error); return; } toast("保存しました"); loadPm(); }
 
-// ───── LINE 配信（オーナー向け）─────
-async function loadLn(){ const r = await get("os_owner_list"); if (r.error){ $("lnBody").innerHTML = `<div class="msg err">${esc(r.error)}</div>`; return; } LN = r; renderLn(); }
-function renderLn(){
-  const add = LN.basicId ? `https://line.me/R/ti/p/${encodeURIComponent(LN.basicId)}` : "";
-  $("lnBody").innerHTML = `<div class="card"><h2>公式 LINE「${esc(LN.botName||"洋食オリオン")}」 <small>${LN.lineReady?"つながっています":"未設定"}</small></h2>
-    ${LN.lineReady ? `<div class="mini">オーナーにはこの公式アカウントを友だち追加してもらい、下の登録コードを「登録 123456」の形で送ってもらいます${add?`。友だち追加：<a href="${add}" target="_blank">${esc(LN.basicId)}</a>`:""}</div>` : `<div class="msg warn">LINE のチャネルアクセストークン（LINE_TOKEN）がまだ Apps Script に入っていません。松尾さんがスクリプト プロパティに貼ると使えるようになります。Webhook の URL も分析の Apps Script のデプロイ URL にしてください</div>`}
-    <div class="mini" style="margin-top:6px">配信：日次＝営業日の16時（その日の売上・食数・出来事・口コミ・やること）／週次＝月曜8時（先週のまとめ）／即時＝星2以下の口コミ。オーナーが「今日」「今週」と送ると、その場で返します。プッシュは LINE の無料枠（月200通）を数えます</div></div>
-    <div class="card"><h2>配信先 <button class="btn sec" style="padding:6px 10px;font-size:12px" onclick="addOwner()">＋ 足す</button></h2>
-    ${LN.list.length ? LN.list.map(o=>`<div style="border-top:1px solid var(--line);padding:10px 0">
-      <div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(o.name)}</b><span class="tag ${o.status==="有効"?"ok":o.status==="停止"?"no":"st"}">${esc(o.status)}</span></div>
-      ${o.status==="招待中" ? `<div class="mini">LINE で「登録 ${esc(o.code)}」と送ってもらう（${esc(o.codeUntil)}まで）</div><div class="code">${esc(o.code)}</div>` : `<div class="mini">${o.linked?"LINE 登録済み（…"+esc(o.lineTail)+"）":""}${o.last?"・最後に送った "+esc(o.last):""}</div>`}
-      <div class="sw" style="margin-top:6px">${[["daily","日次"],["weekly","週次"],["instant","即時"]].map(([k,l])=>`<button class="${o[k]?"on":""}" onclick="setOwner('${o.id}',{${k}:${!o[k]}})">${l}</button>`).join("")}</div>
-      <div class="row">${o.linked?`<button class="btn line" onclick="testOwner('${o.id}')">テスト送信</button>`:""}${o.status==="有効"?`<button class="btn red" onclick="setOwner('${o.id}',{status:'停止'})">止める</button>`:o.status==="停止"&&o.linked?`<button class="btn sec" onclick="setOwner('${o.id}',{status:'有効'})">再開</button>`:""}<button class="btn sec" onclick="newCode('${o.id}')">コードを出し直す</button></div></div>`).join("") : `<div class="mini">まだありません。「＋ 足す」でオーナーを登録します</div>`}</div>
-    <div class="card"><h2>中身を見る</h2><div class="row"><button class="btn sec" onclick="preview('日次')">今日の日次</button><button class="btn sec" onclick="preview('週次')">先週の週次</button></div><div id="pv"></div></div>`;
-}
-async function addOwner(){ const name = prompt("配信先の名前（例：長下さん）"); if (!name) return; const r = await post("os_owner_add", {name}); if (r.error){ toast(r.error); return; } toast("登録コード " + r.code + " を出しました"); loadLn(); }
-async function setOwner(id, b){ const r = await post("os_owner_set", Object.assign({id}, b)); if (r.error){ toast(r.error); return; } loadLn(); }
-async function newCode(id){ if (!confirm("新しい登録コードを出します。今の LINE の登録は外れます。よろしいですか？")) return; const r = await post("os_owner_code", {id}); if (r.error){ toast(r.error); return; } loadLn(); }
-async function testOwner(id){ const r = await post("os_owner_test", {id}); toast(r.error ? r.error : "送りました"); }
-async function preview(kind){ $("pv").innerHTML = `<div class="mini" style="margin-top:8px">作っています…</div>`; const r = await get("os_owner_preview", {kind});
-  $("pv").innerHTML = r.error ? `<div class="msg err">${esc(r.error)}</div>` : `<pre style="margin-top:8px">${esc(r.text)}</pre><button class="btn line full" onclick="sendNow('${kind}',this)">いま${kind}を有効な配信先に送る</button>`; }
-async function sendNow(kind, b){ if (!confirm(kind + "のまとめを、" + kind + "を受け取る配信先に今すぐ送りますか？")) return; b.disabled = true; const r = await post("os_owner_send", {kind}); b.disabled = false; toast(r.error ? r.error : r.sent + "件に送りました"); loadLn(); }
-
 if (!TOKEN) msg("管理者アプリでログインしてから開いてください。<a href='kanri.html'>管理者アプリへ</a>");
-else { let t = "rv"; try{ t = localStorage.getItem("kc-tab") || "rv"; }catch(e){} tab(t); get("os_gbp_profile").then(r=>{ if (r && r.ok){ PF = r; if (CUR==="pf") renderPf(); const n = (r.holidays||[]).length; $("bdPf").textContent = n; $("bdPf").classList.toggle("hide", !n); } }); }
+else { let t = "rv"; try{ t = localStorage.getItem("kc-tab") || "rv"; }catch(e){} if (!["rv","pf","pm"].includes(t)) t = "rv"; tab(t); get("os_gbp_profile").then(r=>{ if (r && r.ok){ PF = r; if (CUR==="pf") renderPf(); const n = (r.holidays||[]).length; $("bdPf").textContent = n; $("bdPf").classList.toggle("hide", !n); } }); }
 </script>
 </body>
 </html>
