@@ -718,7 +718,9 @@ function moodBlock(){
     ${FQ.map(q=>`<div class="mq"><div class="t">${q.t}</div><div class="mo" id="mo_${q.k}">${q.o.map(o=>`<button onclick="moodPick('${q.k}',${o.v},this)"><i>${o.i}</i>${o.l}</button>`).join("")}</div>
       <div id="why_${q.k}" class="hide" style="margin-top:6px"><div class="mini">どこが近い？（任意・いくつでも）</div><div class="chips whyc">${q.why.map(w=>`<button class="chip" style="text-align:left" onclick="whyPick('${q.k}',this)">${w}</button>`).join("")}</div></div></div>`).join("")}
     <div class="mq"><div class="t">次のシフトで一つ変えるとしたら？</div><div class="chips c3" id="nextChips">${Q4.map(n=>`<button class="chip" onclick="nextPick('${n}',this)">${n}</button>`).join("")}</div>
-      <input type="text" id="moodNote" maxlength="120" placeholder="一言（任意）例: 14時台に皿が足りなくなった" style="margin-top:4px"></div>
+</div>
+    <div class="mq"><div class="t">今日のひとこと（任意）</div><div class="mini" style="margin-bottom:4px">今日のお客様の入り方や、忙しかった時間帯を中心に、気づいたこと・困ったこと・良かったことなどを自由に書いてください。</div>
+      <textarea id="moodNote" maxlength="120" rows="2" placeholder="例：11:30までは静か。12時から13:30まで混雑。途中でお皿が不足した。" style="resize:none;line-height:1.5"></textarea></div>
   </div>`;
 }
 function moodPick(k, v, btn){ MOOD[k]=v; [...btn.parentNode.children].forEach(b=>b.classList.remove("on")); btn.classList.add("on"); const w=$("why_"+k); if(w){ w.classList.toggle("hide", v===3); if(v===3){ MOOD.why[k]=[]; w.querySelectorAll(".chip").forEach(b=>b.classList.remove("on")); } } hygValidate(); }
