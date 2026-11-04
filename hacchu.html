@@ -177,13 +177,13 @@ const FROM_STAFF = /[?&]from=staff/.test(location.search);
 function enterApp(h){ $("vBoot").classList.add("hide"); $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); applyHome(h);
   const hk = (location.hash||"").slice(1);
   loadPreps();
-  if (hk==="chef"){ OWNER="シェフ"; go("home"); setTimeout(()=>{ const c = $("prepCard"); if (c) c.scrollIntoView({behavior:"smooth"}); }, 200); } else if (hk==="hall"){ OWNER="ホール"; go("stock"); } else if (hk==="report"){ go("report"); } else { go("home"); if (hk==="recv") setTimeout(()=>{ const c = document.querySelectorAll("#pHome .card")[2]; if (c) c.scrollIntoView({behavior:"smooth"}); }, 200); } loadPrices().then(()=>{ if(PAGE==="master") renderMaster(); }); }
+  if (hk==="chef" && !FLOOR){ OWNER="シェフ"; go("home"); setTimeout(()=>{ const c = $("prepCard"); if (c) c.scrollIntoView({behavior:"smooth"}); }, 200); } else if (hk==="hall"){ OWNER="ホール"; go("stock"); } else if (hk==="report"){ go("report"); } else { go("home"); if (hk==="recv") setTimeout(()=>{ const c = $("ordCard"); if (c) c.scrollIntoView({behavior:"smooth"}); }, 200); } autoRecv(); loadPrices().then(()=>{ if(PAGE==="master") renderMaster(); }); }
 const TITLES = {home:"発 注", stock:"棚卸し（在庫を数える）", order:"発 注", report:"不足・破損の報告", master:"品目と価格"};
 function go(p){ if(p==="order") p="home"; PAGE = p; ["home","stock","order","report","master"].forEach(x=>{ $("p"+x[0].toUpperCase()+x.slice(1)).classList.toggle("hide", x!==p); }); showMsg(""); closeOv();
   $("hTitle").textContent = TITLES[p]||"発 注"; $("hBack").classList.toggle("hide", p==="home" && !FROM_STAFF); $("hBack").textContent = (FROM_STAFF && (p==="home" || /chef|hall|report/.test(location.hash))) ? "‹ 勤怠" : "‹ 戻る";
   if(p==="home") renderHome(); if(p==="stock") renderStock(); if(p==="report") renderReport(); if(p==="master"){ renderMaster(); if(!PRICES.length) loadPrices().then(renderMaster); } $("main").scrollTo(0,0); }
 async function loadHome(reload){ const r = await get("inv_home"); if(!r.error) saveHomeCache(r); if(r.error){ if(r.error==="auth"){ TOKEN=""; localStorage.removeItem("os-token"); showLogin("ログインし直してください"); } else showMsg(r.error); return; } applyHome(r); if(reload) toast("更新しました"); go(PAGE); }
-function applyHome(h){ HOME = h; ME = h.me; MASTER = h.items||[]; CHEF = h.chefNames||[]; $("hName").textContent = ME.name + (ME.role==="admin"?"（管理者）":""); OWNER = CHEF.includes(ME.name) ? "シェフ" : (ME.role==="admin" ? "シェフ" : "ホール");
+function applyHome(h){ HOME = h; ME = h.me; MASTER = h.items||[]; CHEF = h.chefNames||[]; $("hName").textContent = ME.name + (ME.role==="admin"?"（管理者）":""); OWNER = CHEF.includes(ME.name) ? "シェフ" : (ME.role==="admin" ? "シェフ" : "ホール"); FLOOR = !CHEF.includes(ME.name) && ME.role!=="admin";
   h.suggest = (h.suggest||[]).filter(x=>!x.plan).concat(buildPlan());
 }
 
@@ -359,6 +359,12 @@ function prepCard(){
 async function savePrep(){ const items = {}; PREP_DEF.forEach(def=>{ const v = $("pp_"+def.key).value.trim(); items[def.key] = v===""? "" : Number(v); });
   const r = await post("prep_save", { date: dayKey(new Date()), items }); if (r.error){ showMsg(r.error); return; } toast("仕込み数を記録しました"); loadPreps(); }
 // ───── ホーム：今日やること ─────
+let FLOOR = false, AUTO_RECV = false;
+// 11/4: 「届いたら受け取る」は使っていないので、納品予定日の営業終了（14時）を過ぎた発注済みは届いたものとして自動で在庫に入れる（予定日がなければ発注日の翌日）
+async function autoRecv(){ if (AUTO_RECV || !HOME) return; AUTO_RECV = true; const now = new Date();
+  const due = (HOME.orders||[]).filter(o=>o.status==="発注済").filter(o=>{ const e = pDate(String(o.eta||"").replace(/-/g,"/")); let t = e ? atTime(e, CLOSE) : null; if (!t){ const od = pDate(String(o.orderedAt||o.at||"").replace(/-/g,"/")); if (!od) return false; t = atTime(addD(od,1), CLOSE); } return now >= t; });
+  if (!due.length) return; let n = 0; for (const o of due){ const r = await post("inv_order_update", {order_id:o.id, status:"納品済", note:(o.note?o.note+" / ":"")+"自動で受け取り（納品予定日を過ぎた）"}); if (!r.error) n++; }
+  if (n){ const r = await get("inv_home"); if (!r.error){ saveHomeCache(r); applyHome(r); if (PAGE==="home") renderHome(); } } }
 function dueItems(owner){
   return MASTER.filter(it=>it.owner===owner).filter(it=>{ const ago = daysAgo(it.stockAt); if(it.freq==="毎日") return ago===null || ago>=STOCKTAKE_DAYS; if(it.freq==="週次") return ago===null || ago>=7; return false; });
 }
@@ -370,18 +376,18 @@ function renderHome(){
   const prepTodo = isOpen(new Date()) && PREPS && PREP_DEF.some(d=>prepOn(d.key, dayKey(new Date()))===null) ? 1 : 0;
   const n1 = chefDue.length + hallDue.length + prepTodo, n2 = sug.length + cand.length, n3 = open.length;
   const nextTake = lc["シェフ"] && lc["シェフ"].date ? fmtD(dayKey(addD(pDate(String(lc["シェフ"].date).replace(/-/g,"/")) || new Date(), STOCKTAKE_DAYS))) : "—";
-  const stepHead = (no, title, n, doneMsg) => `<div class="stp"><span class="no ${n?"on":"ok"}">${n?no:"✓"}</span><b>${title}</b><span class="cnt">${n?n+"件":doneMsg}</span></div>`;
+  const stepHead = (no, title, n, doneMsg) => `<div class="stp">${no?`<span class="no ${n?"on":"ok"}">${n?no:"✓"}</span>`:""}<b>${title}</b><span class="cnt">${n?n+"件":doneMsg}</span></div>`;
   $("pHome").innerHTML = `
-    <div class="flowbar"><span class="${n1?"on":""}">① 仕込み・在庫 ${n1||"✓"}</span><i>›</i><span class="${n2?"on":""}">② 発注 ${n2||"✓"}</span><i>›</i><span class="${n3?"on":""}">③ 届く ${n3||"✓"}</span></div>
+    ${FLOOR?"":`<div class="flowbar"><span class="${n1?"on":""}">① 仕込み・在庫 ${n1||"✓"}</span><i>›</i><span class="${n2?"on":""}">② 発注 ${n2||"✓"}</span></div>`}
 
-    <div class="card" id="prepCard">${stepHead("①","仕込みと在庫", n1, "今日の分は済み")}
+    ${FLOOR?`<div class="card"><button class="todo ${hallDue.length?"urgent":""}" onclick="OWNER='ホール';go('stock')"><span class="ic">🥤</span><span class="tt"><b>備品・飲料を数える（週1）</b><small>${hallDue.length?hallDue.length+"品目 未入力":"入力済み"}・前回 ${lc["ホール"]?fmtD(lc["ホール"].date)+" "+esc(lc["ホール"].by):"—"}</small></span><span class="ar">›</span></button></div>`:`<div class="card" id="prepCard">${stepHead("①","仕込みと在庫", n1, "今日の分は済み")}
       ${prepCard()}
       <div class="mini" style="margin:12px 0 6px">在庫は売上と仕込みから計算しています。ずれを直すため、食材は2週に1回だけ全部数えます（棚卸し）</div>
       <button class="todo ${chefDue.length?"urgent":""}" onclick="OWNER='シェフ';go('stock')"><span class="ic">🍳</span><span class="tt"><b>食材の棚卸し（厨房・2週に1回）</b><small>${chefDue.length?chefDue.length+"品目 数える時期です":"次は "+nextTake+" ごろ"}・前回 ${lc["シェフ"]?fmtD(lc["シェフ"].date)+" "+esc(lc["シェフ"].by):"—"}</small></span><span class="ar">›</span></button>
       <button class="todo ${hallDue.length?"urgent":""}" onclick="OWNER='ホール';go('stock')"><span class="ic">🥤</span><span class="tt"><b>備品・飲料（ホール・週1）</b><small>${hallDue.length?hallDue.length+"品目 未入力":"入力済み"}・前回 ${lc["ホール"]?fmtD(lc["ホール"].date)+" "+esc(lc["ホール"].by):"—"}</small></span><span class="ar">›</span></button>
-    </div>
+    </div>`}
 
-    <div class="card">${stepHead("②","発注する", n2, "今は必要なし")}
+    <div class="card" id="ordCard">${stepHead(FLOOR?"":"②","発注する", n2, "今は必要なし")}
       <div class="mini" style="margin:6px 0 4px"><b>見込み食数</b>（同じ曜日の直近の実績から自動。増える日はタップして足す）</div>
       <div class="mstrip">${mealsStrip()}</div>
       <div class="mini" style="margin:0 0 6px">納品は営業終了（14時）以降に届くので、届いた日の昼には使わない前提で計算しています。祝日は休みとして計算します。</div>
@@ -392,16 +398,8 @@ function renderHome(){
       ${cand.length?`<div class="sup"><div class="suph">保留中</div>${cand.map(o=>`<div class="row"><span class="l">${esc(o.supplier)}｜${esc(o.name)} ×${o.qty}${esc(o.unit)}</span><button class="btn sm" onclick="ordUpd('${o.id}','発注済')">発注した</button></div>`).join("")}</div>`:""}
       ${!n2?`<div class="mini">足りない物はありません</div>`:""}
       <button class="lnk" onclick="manualOrder()">＋ 一覧にない物・追加分を発注として記録</button>
-    </div>
-
-    <div class="card">${stepHead("③","届いたら受け取る", n3, "届く予定なし")}
-      <div class="mini" style="margin:2px 0 8px">納品書と数を確認して「届いた」。数が違うときは品目をタップして数を直す</div>
-      ${Object.keys(openBySup).map(sup=>{ const list = openBySup[sup]; const eta = list.map(o=>o.eta).filter(Boolean).sort()[0];
-        return `<div class="sup"><div class="suph">${esc(sup)} <small>${eta?"納品予定 "+fmtD(eta):"納品日未定"}・発注 ${esc(list[0].by||"")}</small></div>
-        ${list.map(o=>`<div class="row" onclick="recvSheet('${o.id}')" style="cursor:pointer"><span class="l">${esc(o.name)}<small>×${o.qty}${esc(o.unit)}・発注 ${fmtD(o.orderedAt)}</small></span><span class="ar">›</span></div>`).join("")}
-        <div style="display:flex;gap:8px;margin-top:8px"><button class="btn sm" style="flex:2" onclick="recvSup('${esc(sup)}')">全部届いた</button><button class="btn sm sec" style="flex:1" onclick="cancelSup('${esc(sup)}')">取消</button></div></div>`; }).join("")}
-      ${!n3?`<div class="mini">届く予定の物はありません</div>`:""}
       <button class="btn sm sec" style="width:100%;margin-top:10px" onclick="buySheet()">🛒 お店で買ってきた物を在庫に入れる</button>
+      <div class="mini" style="margin-top:6px">「発注した」物は、納品予定日の営業終了（14時）を過ぎると自動で在庫に入ります。数が違ったときは「不足・破損の報告」へ。</div>
     </div>
 
     <div class="links">
@@ -414,10 +412,11 @@ function renderHome(){
 // ───── 在庫入力 ─────
 let STK = {};
 function renderStock(){
+  if (FLOOR) OWNER = "ホール";
   const items = MASTER.filter(it=>it.owner===OWNER); const groups = {}; items.forEach(it=>{ (groups[it.cat]=groups[it.cat]||[]).push(it); });
   const isChef = OWNER==="シェフ"; // STK（入力途中の数）は保存に成功するまで残す。切替・更新で消さない
   $("pStock").innerHTML = `
-    <div class="seg"><button class="${isChef?"on":""}" onclick="OWNER='シェフ';renderStock()">食材（厨房）</button><button class="${!isChef?"on":""}" onclick="OWNER='ホール';renderStock()">備品・飲料（ホール）</button></div>
+    ${FLOOR?"":`<div class="seg"><button class="${isChef?"on":""}" onclick="OWNER='シェフ';renderStock()">食材（厨房）</button><button class="${!isChef?"on":""}" onclick="OWNER='ホール';renderStock()">備品・飲料（ホール）</button></div>`}
     <div class="mini" style="margin:0 4px 8px">${isChef?"残っている量を入れてください。± で直すか、数字をタップして入力。":"週1回、3択でタップ。「少」「無」は発注候補・買い出しリストに載ります。"}</div>
     ${Object.keys(groups).map(cat=>`<div class="sec">${esc(cat)}</div><div class="card">${groups[cat].map(it=>{
       const due = (it.freq==="毎日" && (daysAgo(it.stockAt)===null||daysAgo(it.stockAt)>=STOCKTAKE_DAYS)) || (it.freq==="週次" && (daysAgo(it.stockAt)===null||daysAgo(it.stockAt)>=7));

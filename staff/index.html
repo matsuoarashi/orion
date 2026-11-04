@@ -604,7 +604,7 @@ let SHOP_MORE = false;
 const SHOP = {
   chef:   ["🍳","仕込み数・棚卸し","仕込みは毎日入力・食材の棚卸しは2週に1回","openShop('chef')"],
   hall:   ["🥤","備品・飲料を数える","ホール・週1・十分／少／無で","openShop('hall')"],
-  recv:   ["📦","届いた物を受け取る・発注","納品書と数を確認","openShop('recv')"],
+  recv:   ["📦","発注・買ってきた物","足りない物の発注と、お店で買った物の記録","openShop('recv')"],
   shime:  ["💴","締め（閉店後）","現金・PayPay・注文票を数えて記録","location.href='../shime.html'"],
   report: ["!","不足・破損を報告","備品が壊れた・足りない","openShop('report')"],
   learn:  ["📘","覚えること","手順を見る・自分の習熟度をつける","location.href='../learn.html'"],
@@ -618,7 +618,7 @@ function renderShop(){
   let main, more, title;
   if (admin){ main = ["chef","hall","recv","shime","report","ev","learn"]; more = []; title = "店の仕事"; }
   else if (kitchen){ main = ["chef","recv","report","ev","learn"]; more = ["hall","shime"]; title = "店の仕事（厨房）"; }
-  else { main = ["hall","shime","ev","recv","report","learn"]; more = ["chef"]; title = "店の仕事（ホール）"; }
+  else { main = ["hall","shime","ev","recv","report","learn"]; more = []; title = "店の仕事（ホール）"; }
   $("shopTitle").textContent = title;
   $("shopMain").innerHTML = main.map(shopBtn).join("");
   $("shopMoreWrap").classList.toggle("hide", !more.length);
