@@ -213,6 +213,7 @@ function osGbpLog_(me, what){ try { invAppend_(osSheet_(OS_DEC, OS_DEC_COLS), { 
 
 // ---------- 今朝の確認・17時のまとめ ----------
 function gbpAlerts_(){
+  if (!gbpReady_()){ var rs = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(GBP_REV); if (!rs || rs.getLastRow() < 2) return []; }   // Google とつながる前で口コミが1件もなければ読まない
   var out = [], lim = Utilities.formatDate(new Date(Date.now() - 48*3600000), "Asia/Tokyo", "yyyy/MM/dd HH:mm");
   var wait = invRows_(osSheet_(GBP_REV, GBP_REV_COLS)).map(gbpRevOut_).filter(function(x){ return x.status === "新着" || x.status === "下書き済"; });
   if (wait.length){ var old = wait.filter(function(x){ return x.at && x.at <= lim; });

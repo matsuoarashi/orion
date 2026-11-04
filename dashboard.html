@@ -671,7 +671,10 @@ async function shortDays(call){
   return out;
 }
 let SHORT = [];
-async function loadShort(){ const tk = (()=>{ try{ return localStorage.getItem("os-admin-token")||TOKEN; }catch(e){ return TOKEN; } })(); if(!tk) return;
+// 11/4：開いた直後に画面の組み立てとログイン確認の両方から呼ばれるので、通信中なら同じ結果を待つ（重い「今朝の確認」を2本走らせない）
+let _shortP = null, _shortAt = 0;
+function loadShort(force){ if (_shortP) return _shortP; if (!force && Date.now() - _shortAt < 10000) return Promise.resolve(); _shortAt = Date.now(); _shortP = loadShortRun().finally(()=>{ _shortP = null; }); return _shortP; }
+async function loadShortRun(){ const tk = (()=>{ try{ return localStorage.getItem("os-admin-token")||TOKEN; }catch(e){ return TOKEN; } })(); if(!tk) return;
   const call = (action, b)=>fetch(STAFF_API,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify(Object.assign({action, token:tk}, b||{})), busy:false}).then(r=>r.json()).catch(()=>null);
   // 先出し通知（GAS ops_alerts：人手不足・年収の壁・発注締切・衛生記録・締め）。読めないときは人手不足だけ自分で数える
   try{ const r = await fetch(SHEET_URL + "?mode=ops_alerts&token=" + encodeURIComponent(tk) + "&t=" + Date.now(), {cache:"no-store", busy:false}).then(r=>r.json());
@@ -709,7 +712,16 @@ let TOKEN = "", ME = null;
 function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2400); }
 function closeOv(){ $("ov").innerHTML=""; }
 function sheet(html){ $("ov").innerHTML = `<div class="ovl" onclick="if(event.target===this)closeOv()"><div class="sheet"><div class="grab"></div>${html}</div></div>`; }
-async function fxGet(mode, params){ const q = Object.assign({mode, token:TOKEN, t:Date.now()}, params||{}); const u = SHEET_URL+"?"+Object.keys(q).map(k=>k+"="+encodeURIComponent(q[k])).join("&"); try{ const r = await fetch(u, {cache:"no-store"}); return await r.json(); }catch(e){ return {error:"通信エラー"}; } }
+// 11/4：ログイン直後の読み込み（質問・メール候補・借入・やること・出来事）は1本の通信（os_bundle）にまとめ、各画面はその結果を1回だけ使う
+let BUNDLE = null;
+function primeBundle(){ const to = (DATA && DATA.todayKey) || new Date(Date.now()+9*3600e3).toISOString().slice(0,10).replace(/-/g,"/"), from = dateAdd(to, -62);
+  const modes = ["os_home","os_mail","os_loan_get","os_todo_list","os_ev_list"]; const used = {};
+  const q = {mode:"os_bundle", modes:modes.join(","), token:TOKEN, from, to, t:Date.now()};
+  const p = fetch(SHEET_URL+"?"+Object.keys(q).map(k=>k+"="+encodeURIComponent(q[k])).join("&"), {cache:"no-store"}).then(r=>r.json()).then(j=>j && j.bundle ? j.bundle : null).catch(()=>null);
+  BUNDLE = {modes, used, p}; }
+async function fxGet(mode, params){
+  if (BUNDLE && BUNDLE.modes.includes(mode) && !BUNDLE.used[mode]){ BUNDLE.used[mode] = 1; const b = await BUNDLE.p; if (b && b[mode] && !b[mode].error) return b[mode]; }
+  const q = Object.assign({mode, token:TOKEN, t:Date.now()}, params||{}); const u = SHEET_URL+"?"+Object.keys(q).map(k=>k+"="+encodeURIComponent(q[k])).join("&"); try{ const r = await fetch(u, {cache:"no-store"}); return await r.json(); }catch(e){ return {error:"通信エラー"}; } }
 // ───── 借入と返済（GAS loan.gs の os_loan_get・管理者のみ）。読めないときは従来どおり固定費の「公庫返済」行を使う ─────
 let LOAN = null;
 async function loadLoan(){ if (!ME || ME.role !== "admin") return; const r = await fxGet("os_loan_get"); if (r && !r.error && r.contracts && r.contracts.length){ LOAN = r; try{ if (DATA) renderPnl(); }catch(e){} } }
@@ -737,7 +749,7 @@ async function loanConfirm(id, pay){
 async function fxPost(type, body){ try{ const r = await fetch(SHEET_URL, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(Object.assign({type, token:TOKEN}, body||{}))}); return await r.json(); }catch(e){ return {error:"通信エラー"}; } }
 async function bootAuth(){
   const cands = []; try{ [localStorage.getItem("os-admin-token"), localStorage.getItem("os-token")].forEach(t=>{ if(t) cands.push(t); }); }catch(e){}
-  for (const tk of cands){ TOKEN = tk; const r = await fxGet("fx_me"); if(!r.error){ ME = r.me; renderWho(); if(DATA) renderAlerts(); renderOsQ(); renderOsM(); loadShort(); loadLoan(); tdLoad(); evLoad(); return; } }
+  for (const tk of cands){ TOKEN = tk; const r = await fxGet("fx_me"); if(!r.error){ ME = r.me; renderWho(); if(DATA) renderAlerts(); primeBundle(); renderOsQ(); renderOsM(); loadShort(); loadLoan(); tdLoad(); evLoad(); return; } }
   TOKEN = ""; ME = null; renderWho();
 }
 function renderWho(){ $("who").style.display = (ME && /embed=1/.test(location.search)) ? "none" : ""; // 管理者アプリの中ではログイン中の名前・ログアウトは上の帯にあるので出さない
@@ -1778,11 +1790,11 @@ async function tdSave(id, src, srcId){
   const body = { id, text, whoIds: ck.map(c=>c.value), whoNames: ck.map(c=>c.dataset.n), due: $("tdDue").value.replace(/-/g,"/"), repeat: rk ? rk+":"+$("tdRn").value : "", memo: $("tdMemo").value.trim(), src, srcId };
   if (body.repeat && !body.due){ $("tdMsg").textContent = "繰り返すときは最初の期限も入れてください"; return; }
   $("tdGo").disabled = true; const r = await fxPost("os_todo_save", body); $("tdGo").disabled = false;
-  if (r.error){ $("tdMsg").textContent = r.error; return; } closeOv(); toast(id?"直しました":"足しました"); tdLoad(); loadShort();
+  if (r.error){ $("tdMsg").textContent = r.error; return; } closeOv(); toast(id?"直しました":"足しました"); tdLoad(); loadShort(true);
 }
-async function tdDone(id){ const r = await fxPost("os_todo_done", {id}); if (r.error){ alert(r.error); return; } toast(r.next?"済にしました（次の回を作りました）":"済にしました"); tdLoad(); loadShort(); }
-async function tdUndo(id, st){ const r = st==="済" ? await fxPost("os_todo_done", {id, undo:true}) : await fxPost("os_todo_status", {id, status:"未"}); if (r.error){ alert(r.error); return; } tdLoad(); loadShort(); }
-async function tdSkip(id){ if (!confirm("このやることを見送りにしますか？")) return; const r = await fxPost("os_todo_status", {id, status:"見送り"}); if (r.error){ alert(r.error); return; } closeOv(); tdLoad(); loadShort(); }
+async function tdDone(id){ const r = await fxPost("os_todo_done", {id}); if (r.error){ alert(r.error); return; } toast(r.next?"済にしました（次の回を作りました）":"済にしました"); tdLoad(); loadShort(true); }
+async function tdUndo(id, st){ const r = st==="済" ? await fxPost("os_todo_done", {id, undo:true}) : await fxPost("os_todo_status", {id, status:"未"}); if (r.error){ alert(r.error); return; } tdLoad(); loadShort(true); }
+async function tdSkip(id){ if (!confirm("このやることを見送りにしますか？")) return; const r = await fxPost("os_todo_status", {id, status:"見送り"}); if (r.error){ alert(r.error); return; } closeOv(); tdLoad(); loadShort(true); }
 
 async function evLoad(){ if (!ME){ $("evCard").classList.add("hide"); return; } $("evCard").classList.remove("hide");
   const to = tdToday(), from = dateAdd(to, -62); const r = await fxGet("os_ev_list", {from, to}); if (r && r.ok){ EV = r.list; evRenderDay(); try{ renderWeekList(); }catch(e){} } else $("evList").innerHTML = `<div class="sub">読み込めませんでした</div>`; }

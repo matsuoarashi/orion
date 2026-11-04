@@ -22,6 +22,11 @@ function osRows_(name, cols){ return invRows_(osSheet_(name, cols)); }
 function handleOsGet(e){
   var p = e.parameter; var me = invAuth_(p); if (!me) return invOut_({ error: "auth" });
   var mode = String(p.mode||"");
+  if (mode === "os_bundle"){ // 11/4：分析を開いたときの読み込みを1本にまとめる（modes=os_home,os_mail,…。各 mode の結果をそのまま返す）
+    var outB = {}; String(p.modes||"").split(",").filter(function(m){ return /^os_[a-z_]+$/.test(m) && m !== "os_bundle"; }).slice(0, 8).forEach(function(m){
+      try { var q = {}; Object.keys(p).forEach(function(k){ q[k] = p[k]; }); q.mode = m; outB[m] = JSON.parse(handleOsGet({ parameter: q }).getContent()); } catch(err){ outB[m] = { error: String(err) }; } });
+    return invOut_({ ok:true, bundle: outB });
+  }
   if (mode === "os_home"){
     var facts = osRows_(OS_FACTS, OS_FACTS_COLS).filter(function(r){ return r["状態"] !== "superseded" && r["状態"] !== "rejected"; });
     var know = osRows_(OS_KNOW, OS_KNOW_COLS).filter(function(r){ return r["状態"] === "approved" && osCanSee_(me, String(r["対象"])); });
