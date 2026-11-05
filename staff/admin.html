@@ -486,9 +486,11 @@ async function loadShift(){ if(!$("pShift").dataset.loaded) $("pShift").innerHTM
   const [s, w] = await Promise.all([api("admin.shifts_month",{month:SM}), api("admin.wishes_month",{month:SM})]);
   if(!s.ok){ showMsg(s.error); return; } SD = {s, w};
   if (!window._noShift){ try{ const st = await api("admin.settings_get"); const row = (st.settings||[]).find(x=>x.key==="no_shift_ids"); window._noShift = new Set(String(row&&row.value||"").split(",").map(x=>x.trim()).filter(Boolean));
-      const kr = (st.settings||[]).find(x=>x.key==="kitchen_ids"); window._kitchen = new Set(String(kr&&kr.value||"").split(",").map(x=>x.trim()).filter(Boolean)); }catch(e){ window._noShift = new Set(); window._kitchen = new Set(); } }
+      const kr = (st.settings||[]).find(x=>x.key==="kitchen_ids"); window._kitchen = new Set(String(kr&&kr.value||"").split(",").map(x=>x.trim()).filter(Boolean));
+      const od = (st.settings||[]).find(x=>x.key==="shift_order"); window._order = String(od&&od.value||"").split(/[,、\s]+/).map(x=>x.trim()).filter(Boolean); }catch(e){ window._noShift = new Set(); window._kitchen = new Set(); window._order = []; } }
   // no_shift_ids（設定）のメンバーはシフト表に出さない（出勤対象外の管理者など）
-  const staff = s.staff.filter(x=>x.status==="active" && !window._noShift.has(x.staff_id)); const n = staff.length;
+  const ORD = window._order || []; const rank = x => { const i = ORD.indexOf(x.name); return i < 0 ? 999 : i; };   // 11/5：シフト表の並び（設定 shift_order・名前をカンマ区切り）
+  const staff = s.staff.filter(x=>x.status==="active" && !window._noShift.has(x.staff_id)).sort((a,b)=>rank(a)-rank(b)); const n = staff.length;
   const byDate = {}; s.shifts.forEach(x=>{ (byDate[x.date]=byDate[x.date]||{})[x.staff_id]=x; });
   const wishBy = {}; (w.wishes||[]).forEach(x=>{ (wishBy[x.date]=wishBy[x.date]||{})[x.staff_id]=x; });
   const drafts = s.shifts.filter(x=>x.status==="draft").length;
