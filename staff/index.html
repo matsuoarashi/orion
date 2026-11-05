@@ -547,7 +547,7 @@ function renderTodo(){
   const chefD = daysSince(last["シェフ"] && (last["シェフ"].date || last["シェフ"].at)), hallD = daysSince(last["ホール"] && (last["ホール"].date || last["ホール"].at));
   const T = [];
   T.push({ k:"in", t:"出勤", s: inDone ? `${a.in}` : "上の「出勤する」から", done: inDone, go:"$('punchArea').scrollIntoView({behavior:'smooth'})" });
-  if (kitchen || admin) T.push({ k:"chef", t:"食材を数える", s: chefD===0 ? `済（${esc((last["シェフ"]||{}).by||"")}）` : "厨房・毎日", done: chefD===0, go:"openShop('chef')" });
+  if (kitchen || admin) T.push({ k:"chef", t:"仕込んだら今ある数を入れる", s: chefD===0 ? `済（${esc((last["シェフ"]||{}).by||"")}）` : "厨房・仕込んだ日だけ", done: chefD===0, go:"openShop('chef')" });
   if (!kitchen || admin) T.push({ k:"hall", t:"備品・飲料を数える", s: hallD!==null && hallD<7 ? `今週は済（${hallD===0?"今日":hallD+"日前"}）` : "ホール・週1回", done: hallD!==null && hallD<7, go:"openShop('hall')" });
   if (!kitchen || admin) T.push({ k:"shime", t:"締め（閉店後）", s: x.shime ? `済 ${esc(x.shime.time||"")}${x.shime.by?"（"+esc(x.shime.by)+"）":""}` : "現金・PayPay・注文票", done: !!x.shime, go:"location.href='../shime.html'" });
   T.push({ k:"out", t:"退勤", s: outDone ? `${a.out}` : "上の「退勤する」から", done: outDone, go:"$('punchArea').scrollIntoView({behavior:'smooth'})" });
@@ -602,7 +602,7 @@ async function evGo(){ const kinds = [...document.querySelectorAll("#evK .chip.o
 // 店の仕事：担当（厨房／ホール）ごとに並べ替える。厨房担当は管理画面の設定 kitchen_ids で決まる（COMM.kitchen）。管理者は全部
 let SHOP_MORE = false;
 const SHOP = {
-  chef:   ["🍳","仕込み数・棚卸し","仕込みは毎日入力・食材の棚卸しは2週に1回","openShop('chef')"],
+  chef:   ["🍳","仕込み・棚卸し","仕込んだときに今ある数を入れる・棚卸しは2週に1回","openShop('chef')"],
   hall:   ["🥤","備品・飲料を数える","ホール・週1・十分／少／無で","openShop('hall')"],
   recv:   ["📦","発注・買ってきた物","足りない物の発注と、お店で買った物の記録","openShop('recv')"],
   shime:  ["💴","締め（閉店後）","現金・PayPay・注文票を数えて記録","location.href='../shime.html'"],

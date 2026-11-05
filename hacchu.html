@@ -97,6 +97,17 @@ div.sec{font-size:11px;letter-spacing:2px;color:var(--mute);margin:14px 4px 6px}
 .mday b{font-size:16px}
 .mday i{position:absolute;top:-6px;right:-4px;background:var(--amber,#b7791f);color:#fff;font-style:normal;font-size:10px;border-radius:999px;padding:0 5px;line-height:16px}
 .mday.plus{border-color:var(--amber,#b7791f)}
+.prow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px dashed var(--line)}
+.prow:first-of-type{border-top:0}
+.big{font-size:20px;font-weight:bold;color:var(--g)}
+.hint{background:var(--amber-l);color:var(--amber);border-radius:8px;padding:6px 10px;margin-top:6px;font-size:13px}
+.hint.red{background:var(--red-l);color:var(--red)}
+.dl{font-size:12px;font-weight:bold;border-radius:999px;padding:2px 9px;white-space:nowrap}
+.dl.red{background:var(--red-l);color:var(--red)}.dl.amb{background:var(--amber-l);color:var(--amber)}.dl.ok{background:var(--g-l);color:var(--g)}
+.suph{display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap}
+.lbar{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:14px}
+.lbar .nm{width:120px;flex:none;line-height:1.3}.lbar .tr{flex:1;height:8px;background:#eee8dc;border-radius:4px;overflow:hidden}.lbar .tr i{display:block;height:100%}
+.lbar .d{width:96px;text-align:right;font-size:12px;flex:none}
 </style>
 </head>
 <body>
@@ -121,6 +132,7 @@ div.sec{font-size:11px;letter-spacing:2px;color:var(--mute);margin:14px 4px 6px}
       <div id="msg"></div>
       <section id="pHome"><div class="loading">読み込み中…</div></section>
       <section id="pStock" class="hide"></section>
+      <section id="pPrep" class="hide"></section>
       <section id="pOrder" class="hide"></section>
       <section id="pReport" class="hide"></section>
       <section id="pMaster" class="hide"></section>
@@ -177,11 +189,11 @@ const FROM_STAFF = /[?&]from=staff/.test(location.search);
 function enterApp(h){ $("vBoot").classList.add("hide"); $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); applyHome(h);
   const hk = (location.hash||"").slice(1);
   loadPreps();
-  if (hk==="chef" && !FLOOR){ OWNER="シェフ"; go("home"); setTimeout(()=>{ const c = $("prepCard"); if (c) c.scrollIntoView({behavior:"smooth"}); }, 200); } else if (hk==="hall"){ OWNER="ホール"; go("stock"); } else if (hk==="report"){ go("report"); } else { go("home"); if (hk==="recv") setTimeout(()=>{ const c = $("ordCard"); if (c) c.scrollIntoView({behavior:"smooth"}); }, 200); } autoRecv(); loadPrices().then(()=>{ if(PAGE==="master") renderMaster(); }); }
-const TITLES = {home:"発 注", stock:"棚卸し（在庫を数える）", order:"発 注", report:"不足・破損の報告", master:"品目と価格"};
-function go(p){ if(p==="order") p="home"; PAGE = p; ["home","stock","order","report","master"].forEach(x=>{ $("p"+x[0].toUpperCase()+x.slice(1)).classList.toggle("hide", x!==p); }); showMsg(""); closeOv();
+  if (hk==="chef"){ OWNER="シェフ"; go("prep"); } else if (hk==="hall"){ OWNER="ホール"; go("stock"); } else if (hk==="report"){ go("report"); } else { go("home"); if (hk==="recv") setTimeout(()=>{ const c = $("ordCard"); if (c) c.scrollIntoView({behavior:"smooth"}); }, 200); } autoRecv(); loadPrices().then(()=>{ if(PAGE==="master") renderMaster(); }); }
+const TITLES = {home:"発 注", prep:"仕込み", stock:"棚卸し（在庫を数える）", order:"発 注", report:"不足・破損の報告", master:"品目と価格"};
+function go(p){ if(p==="order") p="home"; PAGE = p; ["home","stock","order","report","master","prep"].forEach(x=>{ $("p"+x[0].toUpperCase()+x.slice(1)).classList.toggle("hide", x!==p); }); showMsg(""); closeOv();
   $("hTitle").textContent = TITLES[p]||"発 注"; $("hBack").classList.toggle("hide", p==="home" && !FROM_STAFF); $("hBack").textContent = (FROM_STAFF && (p==="home" || /chef|hall|report/.test(location.hash))) ? "‹ 勤怠" : "‹ 戻る";
-  if(p==="home") renderHome(); if(p==="stock") renderStock(); if(p==="report") renderReport(); if(p==="master"){ renderMaster(); if(!PRICES.length) loadPrices().then(renderMaster); } $("main").scrollTo(0,0); }
+  if(p==="home") renderHome(); if(p==="prep") renderPrep(); if(p==="stock") renderStock(); if(p==="report") renderReport(); if(p==="master"){ renderMaster(); if(!PRICES.length) loadPrices().then(renderMaster); } $("main").scrollTo(0,0); }
 async function loadHome(reload){ const r = await get("inv_home"); if(!r.error) saveHomeCache(r); if(r.error){ if(r.error==="auth"){ TOKEN=""; localStorage.removeItem("os-token"); showLogin("ログインし直してください"); } else showMsg(r.error); return; } applyHome(r); if(reload) toast("更新しました"); go(PAGE); }
 function applyHome(h){ HOME = h; ME = h.me; MASTER = h.items||[]; CHEF = h.chefNames||[]; $("hName").textContent = ME.name + (ME.role==="admin"?"（管理者）":""); OWNER = CHEF.includes(ME.name) ? "シェフ" : (ME.role==="admin" ? "シェフ" : "ホール"); FLOOR = !CHEF.includes(ME.name) && ME.role!=="admin";
   h.suggest = (h.suggest||[]).filter(x=>!x.plan).concat(buildPlan());
@@ -339,25 +351,12 @@ const PREP_DEF = [
   { key:"sauce",  name:"ナポリタンソース", unit:"人前", note:"フル1人前・ハーフ0.5人前", per:(name)=>/ハーフ/.test(name) ? 0.5 : 1 }
 ];
 let PREPS = null;
-async function loadPreps(){ const r = await get("prep_get"); if (r && r.ok){ PREPS = r.preps||[]; if (PAGE==="home") renderHome(); } }
+async function loadPreps(){ const r = await get("prep_get"); if (r && r.ok){ PREPS = r.preps||[]; if (PAGE==="home") renderHome(); if (PAGE==="prep") renderPrep(); } }
 // その日に売れた分（麺はハーフ個、ソースは人前）。オリオン・ナシナシ（持ち帰り含む）
 function soldOn(key, date){ const def = PREP_DEF.find(x=>x.key===key), x = DAILY && DAILY.find(z=>z.date===date); if (!x) return null;
   return Object.entries(x.items||{}).reduce((a,[n,c])=> a + (/オリオン|ナシナシ/.test(n) ? def.per(n)*c : 0), 0); }
 function prepOn(key, date){ const r = (PREPS||[]).find(p=>p.key===key && p.date===date); return r ? r.qty : null; }
-// 残り：最初に仕込みを入れた日から、毎日「前の残り＋仕込み−売れた分」（マイナスは0）
-function prepLeft(key, upto){ const ds = (PREPS||[]).filter(p=>p.key===key).map(p=>p.date).sort(); if (!ds.length) return null;
-  let left = 0; for (let k = ds[0]; k <= upto; k = dayKey(addD(pDate(k),1))){ const q = prepOn(key,k)||0, sold = soldOn(key,k)||0; left = Math.max(0, left + q - sold); } return left; }
 function perMeal(key){ if (!DAILY) return key==="noodle" ? 1.6 : 0.8; const r = DAILY.filter(x=>x.meals>0).slice(-10); const m = r.reduce((a,x)=>a+x.meals,0), u = r.reduce((a,x)=>a+(soldOn(key,x.date)||0),0); return m ? u/m : 1; }
-function prepCard(){
-  const today = dayKey(new Date()), y = dayKey(addD(new Date(),-1)), open = isOpen(new Date()), exp = Math.round(mealsOn(new Date()));
-  const rows = PREP_DEF.map(def=>{ const left = prepLeft(def.key, y), need = Math.ceil(exp*perMeal(def.key)), sug = Math.max(0, Math.ceil(need - (left||0))), q = prepOn(def.key, today), sold = soldOn(def.key, today);
-    return `<div class="row"><span class="l">${esc(def.name)}<small>${left===null?"昨日の残り —（最初の入力から計算します）":`昨日の残り ${Math.round(left*10)/10}${def.unit}`}・今日の見込み${exp}食で 約${need}${def.unit}${open?` → <b>仕込み 約${sug}${def.unit}</b>`:""}${q!==null&&sold!==null&&new Date()>=atTime(new Date(),CLOSE)?`<br>今日：仕込み ${q}・売れた ${Math.round(sold*10)/10} → 残り ${Math.round(Math.max(0,(left||0)+q-sold)*10)/10}${def.unit}`:""}</small></span>
-      <span style="display:flex;align-items:center;gap:4px"><input class="qty" type="number" inputmode="decimal" id="pp_${def.key}" value="${q===null?"":q}" placeholder="${open?sug:""}"><span class="mini">${esc(def.unit)}</span></span></div>`; }).join("");
-  return `<div class="mini" style="margin:2px 0 6px"><b>今日の仕込み</b>（仕込んだ数だけ入れる。食材の在庫は売上と仕込みから計算するので毎日は数えません）</div>${rows}
-    <button class="btn" style="margin-top:8px" onclick="savePrep()">仕込み数を記録</button>`;
-}
-async function savePrep(){ const items = {}; PREP_DEF.forEach(def=>{ const v = $("pp_"+def.key).value.trim(); items[def.key] = v===""? "" : Number(v); });
-  const r = await post("prep_save", { date: dayKey(new Date()), items }); if (r.error){ showMsg(r.error); return; } toast("仕込み数を記録しました"); loadPreps(); }
 // ───── ホーム：今日やること ─────
 let FLOOR = false, AUTO_RECV = false;
 // 11/4: 「届いたら受け取る」は使っていないので、納品予定日の営業終了（14時）を過ぎた発注済みは届いたものとして自動で在庫に入れる（予定日がなければ発注日の翌日）
@@ -368,48 +367,144 @@ async function autoRecv(){ if (AUTO_RECV || !HOME) return; AUTO_RECV = true; con
 function dueItems(owner){
   return MASTER.filter(it=>it.owner===owner).filter(it=>{ const ago = daysAgo(it.stockAt); if(it.freq==="毎日") return ago===null || ago>=STOCKTAKE_DAYS; if(it.freq==="週次") return ago===null || ago>=7; return false; });
 }
-function renderHome(){
-  const h = HOME; const chefDue = dueItems("シェフ"), hallDue = dueItems("ホール"); const lc = h.lastChecks||{};
-  const sug = h.suggest||[], rep = h.reports||[], open = (h.orders||[]).filter(o=>o.status==="発注済"), cand = (h.orders||[]).filter(o=>o.status==="候補");
-  const bySup = {}; sug.forEach(s=>{ const k = s.supplier||"（仕入先未設定）"; (bySup[k]=bySup[k]||[]).push(s); });
-  const openBySup = {}; open.forEach(o=>{ const k = o.supplier||"（仕入先未設定）"; (openBySup[k]=openBySup[k]||[]).push(o); });
-  const prepTodo = isOpen(new Date()) && PREPS && PREP_DEF.some(d=>prepOn(d.key, dayKey(new Date()))===null) ? 1 : 0;
-  const n1 = chefDue.length + hallDue.length + prepTodo, n2 = sug.length + cand.length, n3 = open.length;
+// ───── 仕込み（11/5〜）：仕込んだときだけ「冷蔵庫に今ある数（前の残り＋仕込んだ分）」を入れる。残り＝最後に入れた数 − その後に売れた分 ─────
+function prepTime(r){ const m = String(r.at||"").match(/(\d{1,2}):(\d{2})/); return m ? (+m[1])*60 + (+m[2]) : 24*60; }
+function prepLast(key){ const L = (PREPS||[]).filter(p=>p.key===key).sort((a,b)=> a.date===b.date ? prepTime(a)-prepTime(b) : (a.date < b.date ? -1 : 1)); return L.length ? L[L.length-1] : null; }
+function prepLeft(key){ const r = prepLast(key); if (!r) return null; let left = r.qty; const today = dayKey(new Date());
+  for (let k = r.date; k <= today; k = dayKey(addD(pDate(k),1))){ if (k === r.date && prepTime(r) >= 14*60) continue; left -= soldOn(key, k)||0; }
+  return Math.max(0, left); }
+// 残りで何日分もつか・次に仕込みが要る昼
+function prepRun(key){ const left = prepLeft(key); if (left === null) return null; const per = perMeal(key), now = new Date(); let L = left, days = 0, short = null;
+  let d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (isOpen(d) && now < atTime(d, CLOSE)){ const need = Math.max(0, mealsOn(d)*per - (soldOn(key, dayKey(d))||0)); if (L >= need){ L -= need; days += need ? Math.min(1, need/Math.max(1, mealsOn(d)*per)) : 0; } else { days += L/Math.max(1,need); short = new Date(d); L = 0; } }
+  if (!short){ d = addD(d,1); for (let i = 0; i < 21; i++, d = addD(d,1)){ if (!isOpen(d)) continue; const need = mealsOn(d)*per; if (L >= need){ L -= need; days += 1; } else { days += need ? L/need : 0; short = new Date(d); break; } } }
+  return { left, days, short, last: prepLast(key) }; }
+function prepSummary(){
+  if (!PREPS) return `<div class="mini">読み込み中…</div>`;
+  const rows = PREP_DEF.map(def=>{ const r = prepRun(def.key); if (!r) return `<div class="prow"><span><b>${esc(def.name)}</b><br><span class="mini">まだ入力がありません</span></span></div>`;
+    return `<div class="prow"><span><b>${esc(def.name)}</b><br><span class="mini">${fmtD(r.last.date)} ${esc(r.last.by||"")}さんが入力・そのとき ${r.last.qty}${def.unit}</span></span><span style="text-align:right"><span class="big">約${Math.round(r.days*10)/10}日分</span><br><span class="mini">残り約${Math.round(r.left)}${def.unit}</span></span></div>`; }).join("");
+  const sh = PREP_DEF.map(def=>prepRun(def.key)).filter(r=>r && r.short).map(r=>r.short).sort((a,b)=>a-b)[0];
+  return rows + (sh ? `<div class="hint">次の仕込みの目安：<b>${md(sh)}の昼の前</b>まで</div>` : "");
+}
+function renderPrep(){
+  const today = dayKey(new Date()); const lc = (HOME&&HOME.lastChecks)||{}; const chefDue = dueItems("シェフ"), hallDue = dueItems("ホール");
   const nextTake = lc["シェフ"] && lc["シェフ"].date ? fmtD(dayKey(addD(pDate(String(lc["シェフ"].date).replace(/-/g,"/")) || new Date(), STOCKTAKE_DAYS))) : "—";
-  const stepHead = (no, title, n, doneMsg) => `<div class="stp">${no?`<span class="no ${n?"on":"ok"}">${n?no:"✓"}</span>`:""}<b>${title}</b><span class="cnt">${n?n+"件":doneMsg}</span></div>`;
+  $("pPrep").innerHTML = `<div class="card"><div class="stp"><b>仕込んだときだけ入れる</b></div>
+    <div class="mini" style="margin:4px 0 6px">毎日でなくて大丈夫です。仕込み終わったら、<b>冷蔵庫に今ある数（前の残り＋今日仕込んだ分）</b>を入れてください</div>
+    ${PREP_DEF.map(def=>{ const r = prepRun(def.key);
+      return `<div class="row"><span class="l">${esc(def.name)}<small>${r ? `前回 ${fmtD(r.last.date)} ${esc(r.last.by||"")}さん ${r.last.qty}${def.unit} → 今の計算 約${Math.round(r.left)}${def.unit}` : "まだ入力がありません"}</small></span>
+      <span style="display:flex;align-items:center;gap:4px"><input class="qty" type="number" inputmode="decimal" id="pp_${def.key}" value="" placeholder="${r?Math.round(r.left):""}"><span class="mini">${esc(def.unit)}</span></span></div>`; }).join("")}
+    <button class="btn" style="margin-top:10px" onclick="savePrep()">今ある数を記録</button>
+    ${(()=>{ const sh = PREP_DEF.map(def=>prepRun(def.key)).filter(r=>r && r.short).map(r=>r.short).sort((a,b)=>a-b)[0]; return sh ? `<div class="hint">見込み：${md(sh)}の昼の前に仕込みが必要です</div>` : ""; })()}
+    <div class="mini" style="margin-top:8px">仕込んでいなくても、数がずれていると気づいたら、今ある数を入れれば直ります</div></div>
+    ${FLOOR?"":`<button class="todo ${chefDue.length?"urgent":""}" onclick="OWNER='シェフ';go('stock')"><span class="ic">🍳</span><span class="tt"><b>食材の棚卸し（2週に1回）</b><small>${chefDue.length?chefDue.length+"品目 数える時期です":"次は "+nextTake+" ごろ"}・前回 ${lc["シェフ"]?fmtD(lc["シェフ"].date)+" "+esc(lc["シェフ"].by):"—"}</small></span><span class="ar">›</span></button>`}`;
+}
+async function savePrep(){ const items = {}; PREP_DEF.forEach(def=>{ const v = $("pp_"+def.key).value.trim(); if (v !== "") items[def.key] = Number(v); });
+  if (!Object.keys(items).length){ toast("今ある数を入れてください"); return; }
+  const r = await post("prep_save", { date: dayKey(new Date()), items }); if (r.error){ showMsg(r.error); return; } toast("今ある数を記録しました"); await loadPreps(); if (PAGE==="prep") renderPrep(); }
+
+// ───── トーホー：月水金 14時着・締切は前日17時 ─────
+function tohoSlots(now, n){ const out = []; let d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  for (let i = 0; i < 21 && out.length < n; i++, d = addD(d,1)){ if (![1,3,5].includes(d.getDay()) || jpHoliday(d)) continue; const arr = atTime(d, "14:00"), co = atTime(addD(d,-1), "17:00"); if (arr <= now || co <= now) continue; out.push({ day:new Date(d), key:dayKey(d), co }); }
+  return out; }
+function isToho(it){ return /トーホー/.test(it.supplier||""); }
+function isShop(it){ return /店頭/.test(it.supplier||"") || it.cutoff==="店頭"; }
+// D1 着で D2 の昼までをまかなう量（planItem と同じ考え方）
+function coverQty(it, now, D1, D2){ const rate = it.usage60/60, p = PLAN[it.id]; if (!p || p.cur === undefined) return 0; const mult = it.mult||1, safetyQ = (it.safety||0)*rate*MEALS_DEF;
+  const arr1 = atTime(D1, it.time||"14:00"), end = atTime(D2, CLOSE); let s = p.cur, minS = Infinity;
+  for (const e of simulate(it, rate, now, end)){ s += e.q; if (e.k===0 && e.t > arr1) minS = Math.min(minS, s); }
+  if (minS === Infinity) return 0; const target = Math.max(0, -minS), safetyDef = Math.max(0, safetyQ - minS); let q = ceilTo(target, mult); if (q < safetyDef && safetyDef - q > mult/2) q += mult; return Math.max(q, 0); }
+function lastOkLunch(short){ let d = addD(short,-1); for (let i=0;i<10 && !isOpen(d);i++) d = addD(d,-1); return d; }
+function tohoPlan(now){ const slots = tohoSlots(now, 4); const by = {}; slots.forEach(s=>by[s.key] = { slot:s, items:[], ordered:[] }); const late = [];
+  MASTER.filter(isToho).forEach(it=>{ const p = PLAN[it.id]; if (!p || !p.short || it.usage60===null) return; const sd = new Date(p.short.getFullYear(), p.short.getMonth(), p.short.getDate());
+    let k = -1; slots.forEach((s,i)=>{ if (s.day < sd) k = i; });
+    if (k < 0){ late.push({ it, short:p.short }); return; } if (k >= 3) return;
+    const D2 = slots[k+1] ? slots[k+1].day : addD(slots[k].day, 2); const q = coverQty(it, now, slots[k].day, D2) || (it.mult||1);
+    by[slots[k].key].items.push({ it, qty:q, short:p.short }); });
+  (HOME.orders||[]).filter(o=>o.status==="発注済" && /トーホー/.test(o.supplier||"")).forEach(o=>{ const k = String(o.eta||"").replace(/-/g,"/").slice(0,10); if (by[k]) by[k].ordered.push(o); });
+  return { slots: slots.slice(0,3).map(s=>by[s.key]), late }; }
+function untilTxt(ms){ const m = Math.round(ms/60000); if (m < 60) return `あと${m}分`; const h = Math.floor(m/60); return h < 24 ? `あと${h}時間${m%60?m%60+"分":""}` : ""; }
+
+let SHOP_CK = {};
+function renderHome(){
+  const h = HOME, now = new Date(), lc = h.lastChecks||{}, rep = h.reports||[], hallDue = dueItems("ホール");
+  const sug = h.suggest||[];
+  const shopSug = sug.filter(s=>{ const it = MASTER.find(x=>x.id===s.id); return it && isShop(it); });
+  const otherSug = sug.filter(s=>{ const it = MASTER.find(x=>x.id===s.id); return !it || (!isShop(it) && !isToho(it)); });
+  const bySup = {}; otherSug.forEach(s=>{ const k = s.supplier||"（仕入先未設定）"; (bySup[k]=bySup[k]||[]).push(s); });
+  const cand = (h.orders||[]).filter(o=>o.status==="候補");
+  const shopShort = shopSug.map(s=>PLAN[s.id]&&PLAN[s.id].short).filter(Boolean).sort((a,b)=>a-b)[0];
+  const tomorrow = addD(new Date(now.getFullYear(), now.getMonth(), now.getDate()), 1);
+  const shopHtml = `<div class="sup"><div class="suph">店頭で買う（業務スーパー・ハナマサなど）${shopShort ? `<span class="dl ${shopShort <= addD(tomorrow,0) ? "red" : "amb"}">${md(shopShort)}の昼に不足あり</span>` : ""}</div>
+    ${shopSug.length ? shopSug.map(s=>{ const p = PLAN[s.id]||{}; const it = MASTER.find(x=>x.id===s.id)||{};
+      return `<div class="row"><label style="display:flex;align-items:center;gap:10px;flex:1;margin:0;font-size:15px;color:var(--ink)"><input type="checkbox" class="ck" id="ck_${s.id}" ${SHOP_CK[s.id]?"checked":""} onchange="SHOP_CK['${s.id}']=this.checked" style="width:22px;height:22px;flex:none"><span class="l">${esc(s.name)}<small>${esc(String(it.supplier||"").replace("店頭",""))}${p.short?"・"+md(p.short)+"の昼に不足":""}</small></span></label>
+        <span style="display:flex;align-items:center;gap:4px"><input class="qty" type="number" inputmode="numeric" id="sq_${s.id}" value="${s.qty}"><span class="mini">${esc(s.unit)}</span></span></div>`; }).join("") : `<div class="mini" style="padding:6px 0">今は買う物なし</div>`}
+    ${shopSug.length ? `<button class="btn sm" style="width:100%;margin-top:8px" onclick="shopDone()">チェックした物を買った（在庫に入れる）</button>` : ""}
+    <button class="lnk" onclick="buySheet()">リストにない物を買ったときはこちら</button></div>`;
+
+  if (FLOOR){
+    $("pHome").innerHTML = `<div class="card"><button class="todo ${hallDue.length?"urgent":""}" onclick="OWNER='ホール';go('stock')"><span class="ic">🥤</span><span class="tt"><b>備品・飲料を数える（週1）</b><small>${hallDue.length?hallDue.length+"品目 未入力":"入力済み"}・前回 ${lc["ホール"]?fmtD(lc["ホール"].date)+" "+esc(lc["ホール"].by):"—"}</small></span><span class="ar">›</span></button></div>
+      <div class="card"><div class="stp"><b>買い物</b></div>${shopHtml}</div>
+      <div class="links"><button onclick="go('report')"><b>不足・破損の報告</b><small>${rep.length?"未対応 "+rep.length+"件":"未対応なし"}</small></button><button onclick="supList()"><b>発注先一覧</b><small>注文方法・連絡先</small></button></div>`;
+    return;
+  }
+  const tp = tohoPlan(now);
+  const slotHtml = tp.slots.map((g,i)=>{ const s = g.slot, left = s.co - now, cls = i===0 && (g.items.length) ? "red" : (left < 24*3600000 ? "red" : (i<=1 ? "amb" : "ok"));
+    return `<div class="sup"><div class="suph">トーホー ${md(s.day)}着 <span class="dl ${cls}">締切 ${s.co.getDate()===now.getDate() && s.co.getMonth()===now.getMonth() ? "今日" : md(s.co)}17:00${untilTxt(left)?"・"+untilTxt(left):""}</span></div>
+      ${g.ordered.map(o=>`<div class="row"><span class="l">✓ ${esc(o.name)} ×${o.qty}${esc(o.unit||"")}<small>頼んだ（${esc(o.by||"")}）</small></span></div>`).join("")}
+      ${g.items.map(x=>`<div class="row"><span class="l">${esc(x.it.name)}<small>${md(x.short)}の昼に不足</small></span><span style="display:flex;align-items:center;gap:4px"><input class="qty" type="number" inputmode="numeric" id="tq_${s.key.replace(/\//g,"")}_${x.it.id}" value="${x.qty}"><span class="mini">${esc(x.it.unit)}</span></span></div>`).join("")}
+      ${g.items.length ? `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn sm sec" style="flex:1" onclick="tohoCopy('${s.key}')">内容をコピー</button><button class="btn sm" style="flex:1" onclick="tohoOrder('${s.key}')">TOHOで頼んだ</button></div>` : (g.ordered.length ? "" : `<div class="mini" style="padding:4px 0">今回は頼む物なし</div>`)}</div>`; }).join("");
+  const lateHtml = tp.late.length ? `<div class="hint red">${tp.late.map(x=>esc(x.it.name)).join("・")} は次のトーホー便でも間に合いません（${md(tp.late[0].short)}の昼に不足）。店頭などで補充を</div>` : "";
+  const otherHtml = Object.keys(bySup).map(sup=>`<div class="sup"><div class="suph">${esc(sup)} <small>${esc(bySup[sup][0].lead||"")}</small></div>
+    ${bySup[sup].map(s=>`<div class="row"><span class="l">${esc(s.name)}<small>${esc(s.reason)}</small></span><span style="display:flex;align-items:center;gap:4px"><input class="qty" type="number" inputmode="numeric" id="q_${s.id}" value="${s.qty}"><span class="mini">${esc(s.orderUnit||s.unit)}</span></span></div>`).join("")}
+    <div style="display:flex;gap:8px;margin-top:8px"><button class="btn sm sec" style="flex:1" onclick="copySup('${esc(sup)}')">内容をコピー</button><button class="btn sm" style="flex:1" onclick="orderSheet('${esc(sup)}')">発注した</button></div></div>`).join("")
+    + (cand.length?`<div class="sup"><div class="suph">保留中</div>${cand.map(o=>`<div class="row"><span class="l">${esc(o.supplier)}｜${esc(o.name)} ×${o.qty}${esc(o.unit)}</span><button class="btn sm" onclick="ordUpd('${o.id}','発注済')">発注した</button></div>`).join("")}</div>`:"");
+  // あと何日もつか
+  const life = MASTER.map(it=>({ it, p:PLAN[it.id] })).filter(x=>x.p && x.p.cur !== undefined);
+  const wk = addD(new Date(now.getFullYear(), now.getMonth(), now.getDate()), 7 - ((now.getDay()+6)%7)); // 来週の月曜
+  const near = life.filter(x=>x.p.short && x.p.short < addD(now, 14)).sort((a,b)=>a.p.short-b.p.short), far = life.filter(x=>!(x.p.short && x.p.short < addD(now, 14)));
+  const bar = x=>{ const s = x.p.short, ok = s ? lastOkLunch(s) : null, dd = s ? Math.max(0,(s-now)/86400000) : 28; const c = !s ? "var(--g)" : (s < wk ? "var(--red)" : (s < addD(wk,7) ? "var(--amber)" : "var(--g)"));
+    const txt = !s ? "4週間以上" : (ok < new Date(now.getFullYear(), now.getMonth(), now.getDate()) ? "もう足りません" : (dayKey(ok)===dayKey(now) ? "今日まで" : md(ok)+"まで"));
+    return `<div class="lbar"><span class="nm">${esc(x.it.name)}</span><span class="tr"><i style="width:${Math.max(3, Math.min(100, dd/28*100))}%;background:${c}"></i></span><span class="d" style="color:${c==="var(--g)"?"var(--ink)":c}">${txt}</span></div>`; };
+
   $("pHome").innerHTML = `
-    ${FLOOR?"":`<div class="flowbar"><span class="${n1?"on":""}">① 仕込み・在庫 ${n1||"✓"}</span><i>›</i><span class="${n2?"on":""}">② 発注 ${n2||"✓"}</span></div>`}
-
-    ${FLOOR?`<div class="card"><button class="todo ${hallDue.length?"urgent":""}" onclick="OWNER='ホール';go('stock')"><span class="ic">🥤</span><span class="tt"><b>備品・飲料を数える（週1）</b><small>${hallDue.length?hallDue.length+"品目 未入力":"入力済み"}・前回 ${lc["ホール"]?fmtD(lc["ホール"].date)+" "+esc(lc["ホール"].by):"—"}</small></span><span class="ar">›</span></button></div>`:`<div class="card" id="prepCard">${stepHead("①","仕込みと在庫", n1, "今日の分は済み")}
-      ${prepCard()}
-      <div class="mini" style="margin:12px 0 6px">在庫は売上と仕込みから計算しています。ずれを直すため、食材は2週に1回だけ全部数えます（棚卸し）</div>
-      <button class="todo ${chefDue.length?"urgent":""}" onclick="OWNER='シェフ';go('stock')"><span class="ic">🍳</span><span class="tt"><b>食材の棚卸し（厨房・2週に1回）</b><small>${chefDue.length?chefDue.length+"品目 数える時期です":"次は "+nextTake+" ごろ"}・前回 ${lc["シェフ"]?fmtD(lc["シェフ"].date)+" "+esc(lc["シェフ"].by):"—"}</small></span><span class="ar">›</span></button>
-      <button class="todo ${hallDue.length?"urgent":""}" onclick="OWNER='ホール';go('stock')"><span class="ic">🥤</span><span class="tt"><b>備品・飲料（ホール・週1）</b><small>${hallDue.length?hallDue.length+"品目 未入力":"入力済み"}・前回 ${lc["ホール"]?fmtD(lc["ホール"].date)+" "+esc(lc["ホール"].by):"—"}</small></span><span class="ar">›</span></button>
-    </div>`}
-
-    <div class="card" id="ordCard">${stepHead(FLOOR?"":"②","発注する", n2, "今は必要なし")}
-      <div class="mini" style="margin:6px 0 4px"><b>見込み食数</b>（同じ曜日の直近の実績から自動。増える日はタップして足す）</div>
-      <div class="mstrip">${mealsStrip()}</div>
-      <div class="mini" style="margin:0 0 6px">納品は営業終了（14時）以降に届くので、届いた日の昼には使わない前提で計算しています。祝日は休みとして計算します。</div>
-      <div class="mini" style="margin:2px 0 8px">仕入先ごとに数量を確認 → 「内容をコピー」で LINE・メール・Order Pro に貼る → 発注したら「発注した」。発注した人として <b>${esc(ME.name)}</b> が記録されます</div>
-      ${Object.keys(bySup).map(sup=>`<div class="sup"><div class="suph">${esc(sup)} <small>${esc(bySup[sup][0].lead||"")}</small></div>
-        ${bySup[sup].map(s=>`<div class="row"><span class="l">${esc(s.name)}<small>${esc(s.reason)}</small></span><span style="display:flex;align-items:center;gap:4px"><input class="qty" type="number" inputmode="numeric" id="q_${s.id}" value="${s.qty}"><span class="mini">${esc(s.orderUnit||s.unit)}</span></span></div>`).join("")}
-        <div style="display:flex;gap:8px;margin-top:8px"><button class="btn sm sec" style="flex:1" onclick="copySup('${esc(sup)}')">内容をコピー</button><button class="btn sm" style="flex:1" onclick="orderSheet('${esc(sup)}')">発注した</button></div></div>`).join("")}
-      ${cand.length?`<div class="sup"><div class="suph">保留中</div>${cand.map(o=>`<div class="row"><span class="l">${esc(o.supplier)}｜${esc(o.name)} ×${o.qty}${esc(o.unit)}</span><button class="btn sm" onclick="ordUpd('${o.id}','発注済')">発注した</button></div>`).join("")}</div>`:""}
-      ${!n2?`<div class="mini">足りない物はありません</div>`:""}
+    <div class="card"><div class="stp"><b>次に頼む・買う物</b><span class="cnt">${md(now)} ${now.getHours()}:${String(now.getMinutes()).padStart(2,"0")}</span></div>
+      <div class="mini">あと何日もつかと納品日から、いつ・何を頼むかを出しています。頼んだ物は、納品日の14時を過ぎると自動で在庫に入ります</div>
+      ${lateHtml}${slotHtml}${otherHtml}${shopHtml}
       <button class="lnk" onclick="manualOrder()">＋ 一覧にない物・追加分を発注として記録</button>
-      <button class="btn sm sec" style="width:100%;margin-top:10px" onclick="buySheet()">🛒 お店で買ってきた物を在庫に入れる</button>
-      <div class="mini" style="margin-top:6px">「発注した」物は、納品予定日の営業終了（14時）を過ぎると自動で在庫に入ります。数が違ったときは「不足・破損の報告」へ。</div>
+      <details style="margin-top:8px"><summary class="mini" style="cursor:pointer">見込み食数（増える日はタップして足す）</summary><div class="mstrip" style="margin-top:6px">${mealsStrip()}</div></details>
     </div>
-
+    <div class="card"><div class="stp"><b>仕込み</b><span class="cnt">厨房が勤怠アプリで入力</span></div>${prepSummary()}
+      <button class="lnk" onclick="go('prep')">今ある数を入れる・直す</button></div>
+    <div class="card"><div class="stp"><b>あと何日もつか</b><span class="cnt">売上から計算</span></div>
+      ${near.length ? near.map(bar).join("") : `<div class="mini">2週間以内に足りなくなる物はありません</div>`}
+      ${far.length ? `<details><summary class="mini" style="text-align:center;cursor:pointer;margin-top:6px">ほか${far.length}品目は2週間以上もちます</summary>${far.map(bar).join("")}</details>` : ""}
+    </div>
+    <div class="card"><div class="stp"><b>現場から</b><span class="cnt">不足・破損の報告</span></div>
+      ${rep.length ? rep.slice(0,5).map(r=>`<div class="row" onclick="go('report')" style="cursor:pointer"><span class="l">${esc(r.name)} <span class="pill ${r.kind==="不足"?"amber":"red"}">${esc(r.kind)}</span><small>${fmtD(r.at)} ${esc(r.by||"")}${r.memo?"・"+esc(r.memo):""}</small></span><span class="ar">›</span></div>`).join("") : `<div class="mini">未対応の報告はありません</div>`}</div>
     <div class="links">
-      <button onclick="go('report')"><b>不足・破損の報告</b><small>${rep.length?"未対応 "+rep.length+"件":"未対応なし"}</small></button>
+      <button onclick="go('prep')"><b>仕込み・棚卸し</b><small>${(()=>{ const c = lc["シェフ"]; return c && c.date ? "次の棚卸し "+fmtD(dayKey(addD(pDate(String(c.date).replace(/-/g,"/"))||now, STOCKTAKE_DAYS)))+"ごろ" : "2週に1回"; })()}</small></button>
       <button onclick="orderHistory()"><b>発注・納品の履歴</b><small>過去の記録</small></button>
       <button onclick="go('master')"><b>品目と価格</b><small>${MASTER.length}品目${ME.role==="admin"?"・編集":""}</small></button>
       <button onclick="supList()"><b>発注先一覧</b><small>注文方法・連絡先</small></button>
+      <button onclick="OWNER='ホール';go('stock')"><b>備品・飲料（週1）</b><small>${hallDue.length?hallDue.length+"品目 未入力":"入力済み"}</small></button>
+      <button onclick="go('report')"><b>不足・破損の報告</b><small>${rep.length?"未対応 "+rep.length+"件":"未対応なし"}</small></button>
     </div>`;
 }
-// ───── 在庫入力 ─────
+function tohoItems(key){ const g = tohoPlan(new Date()).slots.find(x=>x.slot.key===key); if (!g) return []; return g.items.map(x=>{ const el = $("tq_"+key.replace(/\//g,"")+"_"+x.it.id); const q = el && el.value !== "" ? Math.max(0, Number(el.value)||0) : x.qty; return { item_id:x.it.id, qty:q, name:x.it.name, unit:x.it.unit, eta:key }; }).filter(x=>x.qty>0); }
+function tohoCopy(key){ const items = tohoItems(key); const txt = `【洋食オリオン 発注】トーホー ${fmtD(key)}着\n` + items.map(x=>`・${x.name} ×${x.qty}${x.unit}`).join("\n"); navigator.clipboard.writeText(txt).then(()=>toast("発注内容をコピーしました")).catch(()=>toast(txt)); }
+async function tohoOrder(key){ const items = tohoItems(key); if (!items.length){ toast("数量が0です"); return; }
+  if (!confirm(`トーホー ${fmtD(key)}着で\n${items.map(x=>"・"+x.name+" ×"+x.qty+x.unit).join("\n")}\nを頼んだとして記録しますか？`)) return;
+  const note = "TOHOオーダーで発注（"+ME.name+"）"; items.forEach(x=>x.note=note);
+  const r = await post("inv_order_create", { items, supplier:"トーホー", status:"発注済", eta:key }); if (r.error){ showMsg(r.error); return; } toast("頼んだ物を記録しました"); loadHome(); }
+async function shopDone(){ const ids = Object.keys(SHOP_CK).filter(id=>SHOP_CK[id]); if (!ids.length){ toast("買った物にチェックを入れてください"); return; }
+  const items = ids.map(id=>{ const it = MASTER.find(x=>x.id===id)||{}; return { item_id:id, qty: Math.max(0, Number(($("sq_"+id)||{}).value)||0), supplier: it.supplier, unit: it.unit, note:"店頭で購入" }; }).filter(x=>x.qty>0);
+  if (!items.length){ toast("数を入れてください"); return; }
+  if (!confirm(items.map(x=>"・"+(MASTER.find(m=>m.id===x.item_id)||{}).name+" ×"+x.qty+(x.unit||"")).join("\n")+"\nを在庫に入れますか？")) return;
+  const c = await post("inv_order_create", { items, supplier: items[0].supplier||"店頭", status:"発注済", eta:"", note:"店頭で購入" }); if (c.error){ showMsg(c.error); return; }
+  let done = 0; for (let i=0;i<(c.ids||[]).length;i++){ const r = await post("inv_order_update", { order_id:c.ids[i], status:"納品済", received:items[i].qty, perUnit:1, note:"店頭で購入（買い物リスト）" }); if (!r.error) done++; }
+  SHOP_CK = {}; toast(`${done}品目を在庫に入れました`); loadHome(); }
+
 let STK = {};
 function renderStock(){
   if (FLOOR) OWNER = "ホール";
