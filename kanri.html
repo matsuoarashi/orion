@@ -20,6 +20,8 @@ header{background:var(--g-d);color:#fff;padding:calc(6px + var(--sat)) 10px 4px;
 .top{display:flex;align-items:center;gap:8px;padding:2px 2px 6px}
 .top .t{font-size:11px;letter-spacing:3px;opacity:.75;flex:none}
 .top .n{font-size:17px;font-weight:bold;flex:1;letter-spacing:1px}
+.top .logo{height:24px;width:auto;display:block;margin-right:auto}
+.top button.rl{width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:50%}
 .top button{background:rgba(255,255,255,.14);border:0;color:#fff;border-radius:8px;padding:6px 10px;font-size:12px}
 /* 下のタブ（スタッフアプリ・経費と同じ形）。ホームバーにかからないよう下に余白 */
 nav{flex:none;display:flex;background:#fff;border-top:1px solid var(--line);padding-bottom:max(var(--sab), 6px)}
@@ -67,7 +69,7 @@ select,input{width:100%;padding:12px;border:1px solid var(--line);border-radius:
 
 <div id="vApp" class="app hide">
   <header>
-    <div class="top"><div class="t">管理者</div><div class="n" id="secTitle">-</div><button onclick="reloadCur()">更新</button></div>
+    <div class="top"><img class="logo" src="logo-mark.png" alt="オリオン"><span class="n" id="secTitle" hidden></span><button class="rl" onclick="reloadCur()" aria-label="更新" title="更新"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg></button></div>
   </header>
   <div id="frames"></div>
   <nav id="nav"></nav>
@@ -78,7 +80,7 @@ select,input{width:100%;padding:12px;border:1px solid var(--line);border-radius:
 // 管理者アプリ：1 つの入口。中身は既存の画面を順に移していく（段階統合の第1段）
 const STAFF_API = "https://script.google.com/macros/s/AKfycbwgGW6rXzAW2rHVicdoCMdHOT_E3egrXPsaEJerX-_brZr0mYF6Qo_tRorX8PgLc7c/exec";
 // 中の画面を更新したら V を変える（スマホに残った古い画面を読み直させるため）
-const V = "1105e";
+const V = "1105f";
 const SECTIONS = [
   { id:"shime", label:"分析", ic:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20v-5M10 20v-9M15 20v-6M20 20V7"/></svg>', src:"dashboard.html?embed=1&v="+V },
   { id:"hacchu", label:"発注", ic:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8l8-4 8 4v8.5L12 21l-8-4.5z"/><path d="M4 8l8 4.3L20 8M12 12.3V21"/></svg>', src:"hacchu.html?embed=1&v="+V },
