@@ -212,7 +212,7 @@ try{ EXTRA = JSON.parse(localStorage.getItem("inv-extra")||"{}") || {}; }catch(e
 function loadDaily(){ try{ const c = JSON.parse(localStorage.getItem("dash-data")||"null"); if (c && c.daily) DAILY = c.daily; }catch(e){} }
 loadDaily();
 // 分析と同じ売上データ（日別の食数）を裏で取り直す。画面は待たない
-async function refreshDaily(){ try{ const r = await fetch(SHEET_URL+"?t="+Date.now(), {cache:"no-store", busy:false}); const j = JSON.parse(await r.text()); if (j && j.daily){ DAILY = j.daily; Object.keys(MEAL_MEMO).forEach(k=>delete MEAL_MEMO[k]); try{ localStorage.setItem("dash-data", JSON.stringify(j)); }catch(e){} if (HOME){ applyHome(HOME); if (PAGE==="home") renderHome(); } } }catch(e){} }
+async function refreshDaily(){ try{ const r = await fetch(SHEET_URL+"?t="+Date.now()+"&token="+encodeURIComponent(TOKEN||""), {cache:"no-store", busy:false}); const j = JSON.parse(await r.text()); if (j && j.daily){ DAILY = j.daily; Object.keys(MEAL_MEMO).forEach(k=>delete MEAL_MEMO[k]); try{ localStorage.setItem("dash-data", JSON.stringify(j)); }catch(e){} if (HOME){ applyHome(HOME); if (PAGE==="home") renderHome(); } } }catch(e){} }
 // 日本の祝日（振替休日・国民の休日を含む）
 function jpHoliday(d){
   const y = d.getFullYear();

@@ -1732,8 +1732,9 @@ async function load(keep){
     $("err").style.display = "none";
     // 前回の内容を先に出す（初回のみ）。通信は20秒で打ち切り、失敗したら自動でもう1回
     if(!DATA && !keep){ try{ const c = JSON.parse(localStorage.getItem("dash-data")||"null"); if(c && c.daily){ DATA = c; renderAll(); $("ts").textContent = "前回の内容（" + c.updated + "）を表示中。更新しています…"; } }catch(e){} }
-    const once = async ()=>{ const ac = new AbortController(); const t = setTimeout(()=>ac.abort(), 20000); try{ const res = await fetch(SHEET_URL + "?t=" + Date.now(), {cache:"no-store", signal:ac.signal}); return JSON.parse(await res.text()); } finally{ clearTimeout(t); } };
+    const once = async ()=>{ const ac = new AbortController(); const t = setTimeout(()=>ac.abort(), 20000); try{ const res = await fetch(SHEET_URL + "?t=" + Date.now() + "&token=" + encodeURIComponent((TOKEN||localStorage.getItem("os-admin-token")||localStorage.getItem("os-token")||"")), {cache:"no-store", signal:ac.signal}); return JSON.parse(await res.text()); } finally{ clearTimeout(t); } };
     let j; try{ j = await once(); }catch(e){ await new Promise(r=>setTimeout(r,1500)); j = await once(); }
+    if(j && j.error === "auth"){ $("err").style.display = "block"; $("err").textContent = "売上を見るにはログインが必要です（勤怠アプリか管理者アプリでログインしてから開いてください）"; return; }
     if(!j || !j.daily) throw new Error("bad payload");
     DATA = j; try{ localStorage.setItem("dash-data", JSON.stringify(j)); }catch(e){}
     if(!keep){ viewDate = null; viewWeek = null; }

@@ -110,7 +110,7 @@ async function boot(){
   if (!TOKEN){ msg("勤怠アプリでログインしてから開いてください。<br><a href='staff/'>勤怠アプリへ</a>"); return; }
   msg("読み込み中…", "ok");
   // 売上の読み込みは本人確認と同時に始める（順番に待つと20秒近くかかるため）
-  DAYP = fetchJ(SHEET_URL + "?mode=day_lite&t=" + Date.now()).catch(e=>{ throw e; }); DAYP.catch(()=>{});
+  DAYP = fetchJ(SHEET_URL + "?mode=day_lite&t=" + Date.now() + "&token=" + encodeURIComponent(TOKEN)).catch(e=>{ throw e; }); DAYP.catch(()=>{});
   let h; try{ h = await fetchJ(STAFF_API, {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({action:"home", token:TOKEN})}); }catch(e){ msg("通信できません。電波を確認して「更新」を押してください"); return; }
   if (!h.ok && h.code !== "noauth"){ msg("読み込めませんでした（" + String(h.error||"").replace(/[<>&]/g,"") + "）。電波を確認して「更新」を押してください"); return; }
   if (!h.ok){ msg("ログインの期限が切れました。勤怠アプリでログインし直してください。<br><a href='staff/'>勤怠アプリへ</a>"); return; }
@@ -138,7 +138,7 @@ function usePPMail(){ const m = DAY && DAY.ppMail; if (!m) return; document.getE
 let DAYP = null;
 async function loadDay(manual){
   try{
-    const j = (!manual && DAYP) ? await DAYP : await fetchJ(SHEET_URL + "?mode=day_lite&t=" + Date.now()); DAYP = null;
+    const j = (!manual && DAYP) ? await DAYP : await fetchJ(SHEET_URL + "?mode=day_lite&t=" + Date.now() + "&token=" + encodeURIComponent(TOKEN)); DAYP = null;
     const t = (j.daily||[]).find(x=>x.date===j.todayKey) || { date:j.todayKey, count:0, sales:0, salesPaypay:0, items:{} };
     DAY = { count:t.count||0, sum:t.sales||0, paypay:t.salesPaypay||0, items:t.items||{}, updated:j.updated, date:j.todayKey };
     DAY.ppMail = j.ppMail || null; renderPPMail();

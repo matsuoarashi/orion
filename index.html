@@ -719,7 +719,7 @@ async function loadShimeDaily(){
   if(_srvDaily && Date.now() - _srvDaily.at < 60000) return _srvDaily.d;
   try{
     const ac = new AbortController(); const tm = setTimeout(()=>ac.abort(), 15000); // 締めが「読み込み中」で止まらないよう15秒で打ち切り、端末の記録で続ける
-    const r = await fetch(SHEET_URL + "?t=" + Date.now(), {cache:"no-store", signal:ac.signal}); clearTimeout(tm); const j = await r.json();
+    const r = await fetch(SHEET_URL + "?t=" + Date.now() + "&key=" + encodeURIComponent(oKey()), {cache:"no-store", signal:ac.signal}); clearTimeout(tm); const j = await r.json();
     const t = j.daily && j.daily.find(x=>x.date===j.todayKey);
     if(t){ const d = { count:t.count, sum:t.sales, paypay:t.salesPaypay||0, items:t.items||{}, src:"server", updated:j.updated }; _srvDaily = {at:Date.now(), d}; return d; }
   }catch(e){}
