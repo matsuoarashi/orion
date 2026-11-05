@@ -126,7 +126,7 @@ function handleInvGet(e){
         deliveriesToday: open.filter(function(o){ return o["状態"]==="発注済" && String(o["納品予定"]||"").slice(0,10)===today; }).map(invOrderOut_) };
     }
     else if (p.mode === "inv_orders"){ var sh = invSheet_(INV_ORDER_SHEET, INV_ORDER_COLS); var all = invRows_(sh); res = { orders: all.slice(-200).map(invOrderOut_) }; }
-    else if (p.mode === "inv_log"){ var lg = invRows_(invSheet_(INV_LOG_SHEET, INV_LOG_COLS)); var id = String(p.item_id||""); res = { log: lg.filter(function(r){ return !id || r.item_id===id; }).slice(-100).map(function(r){ return { at:r["日時"], id:r.item_id, name:r["品目"], kind:r["種別"], qty:r["数量"], state:r["状態"], by:r["記録者"] }; }) }; }
+    else if (p.mode === "inv_log"){ var lg = invRows_(invSheet_(INV_LOG_SHEET, INV_LOG_COLS)); var id = String(p.item_id||""); res = { log: lg.filter(function(r){ return !id || r.item_id===id; }).slice(-100).map(function(r){ return { at:r["日時"], id:r.item_id, name:r["品目"], kind:r["種別"], qty:r["数量"], state:r["状態"], by:r["記録者"], owner:r["担当"], note:r["備考"] }; }) }; }
     else if (p.mode === "inv_prices"){ res = { prices: prList_() }; } // 本番の GAS には入っている（控えに追記 11/1）
     else if (p.mode === "inv_reports"){ res = { reports: invRows_(invSheet_(INV_REPORT_SHEET, INV_REPORT_COLS)).slice(-100).map(invReportOut_) }; }
     else res = { error: "mode" };

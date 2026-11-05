@@ -259,6 +259,7 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
         </div>
         <div id="punchArea"></div>
         <div class="card hide" id="myTdCard"><h2>頼まれていること <small id="myTdN"></small></h2><div id="myTdList"></div></div>
+        <div class="hide" id="takeDue"></div>
         <div class="card hide" id="todoCard"><h2>今日やること <small id="todoN"></small></h2><div id="todoList"></div></div>
         <div class="card" id="shopCard">
           <h2 id="shopTitle">店の仕事</h2>
@@ -538,7 +539,7 @@ async function loadTodoExtra(){
   }catch(e){}
 }
 function renderTodo(){
-  const card = $("todoCard"); if (!card || !HOME) return;
+  const card = $("todoCard"); if (!card || !HOME) return; renderTakeDue();
   const a = HOME.att; const show = !!(HOME.todayShift || a);
   card.classList.toggle("hide", !show); if (!show) return;
   const x = TODOX || cget("todox") || {}; const last = x.last || {};
@@ -547,7 +548,7 @@ function renderTodo(){
   const chefD = daysSince(last["シェフ"] && (last["シェフ"].date || last["シェフ"].at)), hallD = daysSince(last["ホール"] && (last["ホール"].date || last["ホール"].at));
   const T = [];
   T.push({ k:"in", t:"出勤", s: inDone ? `${a.in}` : "上の「出勤する」から", done: inDone, go:"$('punchArea').scrollIntoView({behavior:'smooth'})" });
-  if (kitchen || admin) T.push({ k:"chef", t:"仕込んだら今ある数を入れる", s: chefD===0 ? `済（${esc((last["シェフ"]||{}).by||"")}）` : "厨房・仕込んだ日だけ", done: chefD===0, go:"openShop('chef')" });
+  if ((kitchen || admin) && (chefD===null || chefD===0 || chefD>=14)) T.push({ k:"take", t:"食材の棚卸し（2週に1回）", s: chefD===0 ? `済（${esc((last["シェフ"]||{}).by||"")}）` : (chefD===null ? "まだ一度も数えていません" : chefD===14 ? "今日が棚卸しの日" : `${chefD-14}日過ぎています`), done: chefD===0, go:"openShop('take')" });
   if (!kitchen || admin) T.push({ k:"hall", t:"備品・飲料を数える", s: hallD!==null && hallD<7 ? `今週は済（${hallD===0?"今日":hallD+"日前"}）` : "ホール・週1回", done: hallD!==null && hallD<7, go:"openShop('hall')" });
   if (!kitchen || admin) T.push({ k:"shime", t:"締め（閉店後）", s: x.shime ? `済 ${esc(x.shime.time||"")}${x.shime.by?"（"+esc(x.shime.by)+"）":""}` : "現金・PayPay・注文票", done: !!x.shime, go:"location.href='../shime.html'" });
   T.push({ k:"out", t:"退勤", s: outDone ? `${a.out}` : "上の「退勤する」から", done: outDone, go:"$('punchArea').scrollIntoView({behavior:'smooth'})" });
@@ -555,6 +556,18 @@ function renderTodo(){
   $("todoN").textContent = left ? `あと${left}つ` : "全部できました";
   $("todoList").innerHTML = T.map((t,i)=>`<button class="todo ${t.done?"done":""} ${i===nextI?"next":""}" onclick="${t.go}"><span class="ck">${t.done?"✓":""}</span><b>${t.t}<small>${t.s}</small></b>${t.done?"":"<i>›</i>"}</button>`).join("");
 }
+
+// 棚卸しの日（前回から14日目）に厨房の人の画面の一番上に出す。前日は予告（11/5）
+function renderTakeDue(){ const el = $("takeDue"); if (!el) return; const x = TODOX || cget("todox") || {}; const last = (x.last||{})["シェフ"];
+  const cm = COMM || cget("comm"); const kitchen = !!(cm && cm.kitchen); if (!kitchen || !x.last){ el.classList.add("hide"); return; }
+  const d = daysSince(last && (last.date || last.at)); const prev = last ? `前回 ${String(ymd(last.date||last.at)).slice(5).replace("/","/")} ${esc(last.by||"")}さん` : "";
+  if (d !== null && d < 13){ el.classList.add("hide"); return; }
+  el.classList.remove("hide");
+  el.innerHTML = d === 13 ? `<div class="card" style="font-size:14px">🗓 明日は食材の棚卸しの日です（2週に1回・${prev}）</div>`
+    : `<div class="card" style="background:#f7ebd3;border:2px solid #b7791f"><b style="font-size:16px;color:#b7791f">${d===null?"食材の棚卸しをお願いします":d===14?"今日は食材の棚卸しの日です":"食材の棚卸しがまだです（"+(d-14)+"日過ぎています）"}</b>
+      <div style="font-size:12px;color:#b7791f">2週に1回・${prev}・約15分</div>
+      <button class="btn" style="margin-top:10px" onclick="openShop('take')">棚卸しを始める</button>
+      <div style="font-size:12px;color:#b7791f;margin-top:6px">今日できなければ、明日以降もここに出続けます</div></div>`; }
 
 // ───── 頼まれていること（分析 GAS の os_todo_list：自分が担当のやること）と、今日の出来事（os_ev_save）11/4 ─────
 let MYTD = null, MYTD_AT = 0;
