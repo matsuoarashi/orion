@@ -69,6 +69,7 @@ td.r,th.r{text-align:right}
 .sg .cell .sync{position:absolute;top:2px;right:3px;font-size:9px}
 .sg .need{font-size:10px;color:var(--mute);text-align:right}
 .sg .need.short{color:var(--red);font-weight:bold}
+.sg .dt.sh{background:#f6e3df}.sg .cell.sh{background:#fdf1ee;border-color:#e8b9b0}
 .legend{font-size:11px;color:var(--mute);margin:6px 0}
 pre.copy{white-space:pre-wrap;background:var(--cream);border-radius:8px;padding:10px;font-size:13px;line-height:1.6}
 #bar{position:fixed;top:0;left:0;right:0;height:3px;z-index:20;background:linear-gradient(90deg,transparent 0%,#e9b949 40%,#e9b949 60%,transparent 100%);background-size:200% 100%;opacity:0;transition:opacity .2s;pointer-events:none}
@@ -455,7 +456,8 @@ async function loadShift(){ if(!$("pShift").dataset.loaded) $("pShift").innerHTM
   $("pShift").innerHTML = `<div class="mini">読み込み中…</div>`;
   const [s, w] = await Promise.all([api("admin.shifts_month",{month:SM}), api("admin.wishes_month",{month:SM})]);
   if(!s.ok){ showMsg(s.error); return; } SD = {s, w};
-  if (!window._noShift){ try{ const st = await api("admin.settings_get"); const row = (st.settings||[]).find(x=>x.key==="no_shift_ids"); window._noShift = new Set(String(row&&row.value||"").split(",").map(x=>x.trim()).filter(Boolean)); }catch(e){ window._noShift = new Set(); } }
+  if (!window._noShift){ try{ const st = await api("admin.settings_get"); const row = (st.settings||[]).find(x=>x.key==="no_shift_ids"); window._noShift = new Set(String(row&&row.value||"").split(",").map(x=>x.trim()).filter(Boolean));
+      const kr = (st.settings||[]).find(x=>x.key==="kitchen_ids"); window._kitchen = new Set(String(kr&&kr.value||"").split(",").map(x=>x.trim()).filter(Boolean)); }catch(e){ window._noShift = new Set(); window._kitchen = new Set(); } }
   // no_shift_ids（設定）のメンバーはシフト表に出さない（出勤対象外の管理者など）
   const staff = s.staff.filter(x=>x.status==="active" && !window._noShift.has(x.staff_id)); const n = staff.length;
   const byDate = {}; s.shifts.forEach(x=>{ (byDate[x.date]=byDate[x.date]||{})[x.staff_id]=x; });
@@ -464,12 +466,16 @@ async function loadShift(){ if(!$("pShift").dataset.loaded) $("pShift").innerHTM
   let grid = `<div class="sg" style="--n:${n}"><div class="hd"></div>${staff.map(x=>`<div class="hd">${esc(x.name)}</div>`).join("")}`;
   s.openDays.forEach(d=>{
     const nd = (s.need||{})[d.date]||{}; const open = nd.open===null||nd.open===undefined ? d.open : nd.open;
-    const dow = youbi(d.date); const cnt = Object.keys(byDate[d.date]||{}).length; const need = nd.need||"";
-    grid += `<div class="dt ${open?"":"closed"}" onclick="editDay('${d.date}')"><span class="${dow===0?"sun":dow===6?"sat":""}">${d.date.slice(8)}<span class="y">(${YO[dow]})</span></span>${open?`<div class="need ${need&&cnt<need?"short":""}">${cnt}${need?"/"+need:""}人</div>`:`<div class="need">休</div>`}</div>`;
+    const dow = youbi(d.date); const ids = Object.keys(byDate[d.date]||{}); const cnt = ids.length;
+    // 11/5：上の「人が足りない」と同じ決まり（必要人数 未設定は2人・厨房かホールがいない日）で、足りない日は行ごと赤くする。下書きも数に入れて「下書き込み」と出す
+    const need = Number(nd.need)||2, K = window._kitchen || new Set(); const hasK = !K.size || ids.some(id=>K.has(id)), hasH = ids.some(id=>!K.has(id));
+    const why = []; if (open){ if (cnt && K.size && !hasK) why.push("厨房なし"); if (cnt && !hasH) why.push("ホールなし"); }
+    const todayK = new Date(Date.now()+9*3600e3).toISOString().slice(0,10).replace(/-/g,"/"); const short = open && d.date >= todayK && (cnt < need || why.length); const hasDraft = ids.some(id=>byDate[d.date][id].status!=="confirmed");
+    grid += `<div class="dt ${open?"":"closed"} ${short?"sh":""}" onclick="editDay('${d.date}')"><span class="${dow===0?"sun":dow===6?"sat":""}">${d.date.slice(8)}<span class="y">(${YO[dow]})</span></span>${open?`<div class="need ${short?"short":""}">${cnt}/${need}人</div>${why.length?`<div class="need short">${why.join("・")}</div>`:""}${hasDraft&&cnt?`<div class="need" style="color:var(--amber)">下書き込み</div>`:""}`:`<div class="need">休</div>`}</div>`;
     staff.forEach(x=>{
       const sh = (byDate[d.date]||{})[x.staff_id]; const wi = (wishBy[d.date]||{})[x.staff_id];
       const wl = wi ? ({ok:"○可",ng:"×不可",time:"△"+wi.start+"-"+wi.end,off:"休希望"})[wi.kind] : "";
-      grid += `<div class="cell ${open?"":"closed"}" ${open?`onclick="editCell('${d.date}','${x.staff_id}')"`:""}>${sh?`<span class="s ${sh.status}">${sh.start}<br>${sh.end}</span>${sh.status==="confirmed"?`<span class="sync">${sh.sync==="synced"?"📅":sh.sync==="error"?"⚠":"…"}</span>`:""}`:""}${wi?`<span class="w ${wi.kind}">${wl}</span>`:""}</div>`;
+      grid += `<div class="cell ${open?"":"closed"} ${short?"sh":""}" ${open?`onclick="editCell('${d.date}','${x.staff_id}')"`:""}>${sh?`<span class="s ${sh.status}">${sh.start}<br>${sh.end}</span>${sh.status==="confirmed"?`<span class="sync">${sh.sync==="synced"?"📅":sh.sync==="error"?"⚠":"…"}</span>`:""}`:""}${wi?`<span class="w ${wi.kind}">${wl}</span>`:""}</div>`;
     });
   });
   grid += `</div>`;
@@ -477,7 +483,7 @@ async function loadShift(){ if(!$("pShift").dataset.loaded) $("pShift").innerHTM
   $("pShift").innerHTML = `
     <div class="monthnav"><button onclick="SM=ymAdd(SM,-1);loadShift()">◀</button><b>${ymLabel(SM)}</b><button onclick="SM=ymAdd(SM,1);loadShift()">▶</button></div>
     <div class="card"><h2>シフト表 <small>予定人件費 ${yen(s.plannedCost)}・下書き ${drafts}件</small></h2>
-      <div class="legend">マスをタップ→時間を選んで配置。<span style="color:var(--amber)">橙＝下書き</span>、<span style="color:var(--g)">緑＝確定</span>、📅同期済 / …同期待ち / ⚠エラー。小さい文字はスタッフの希望。日付をタップで必要人数・臨時休業。</div>
+      <div class="legend">マスをタップ→時間を選んで配置。<span style="color:var(--amber)">橙＝下書き</span>、<span style="color:var(--g)">緑＝確定</span>、<span style="color:var(--red)">赤い行＝人が足りない日（必要人数 未設定は2人・厨房かホールがいない日も）</span>、📅同期済 / …同期待ち / ⚠エラー。小さい文字はスタッフの希望。日付をタップで必要人数・臨時休業。</div>
       <div class="scroll">${grid}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
         <button class="btn" onclick="confirmAll()" ${drafts?"":"disabled"}>下書きを一括確定（${drafts}件）</button>
