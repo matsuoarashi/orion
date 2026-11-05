@@ -242,8 +242,8 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
   <!-- 本体 -->
   <div id="vApp" class="hide" style="display:flex;flex-direction:column;flex:1;min-height:0">
     <header>
-      <div><div class="t">ORION STAFF</div><div class="n" id="hName">-</div></div>
-      <div style="display:flex;gap:6px"><button id="hAdmin" class="hide" onclick="location.href='../kanri.html'">管理者</button><button onclick="doLogout()">ログアウト</button></div>
+      <div style="display:flex;align-items:center;gap:10px;min-width:0"><img src="../logo-mark.png" alt="オリオン" style="height:20px;width:auto;display:block"><div class="n" id="hName">-</div></div>
+      <div style="display:flex;gap:6px"><button id="hAdmin" class="hide" onclick="location.href='../kanri.html'">管理者アプリ</button></div>
     </header>
     <main id="main">
       <div id="msg"></div>
@@ -354,8 +354,8 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
           <div id="fixList"></div>
         </div>
         <div class="card">
-          <h2>パスコード</h2>
-          <button class="btn sec sm" onclick="openPass()">パスコードを変更する</button>
+          <h2>パスコード・ログアウト</h2>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec sm" onclick="openPass()">パスコードを変更する</button><button class="btn sec sm" onclick="doLogout()">ログアウト</button></div>
         </div>
       </section>
 
@@ -629,9 +629,9 @@ function renderShop(){
   const admin = ME && ME.role === "admin";
   const cm = COMM || cget("comm"); const kitchen = !!(cm && cm.kitchen);
   let main, more, title;
-  if (admin){ main = ["chef","hall","recv","shime","report","ev","learn"]; more = []; title = "店の仕事"; }
-  else if (kitchen){ main = ["chef","recv","report","ev","learn"]; more = ["hall","shime"]; title = "店の仕事（厨房）"; }
-  else { main = ["hall","shime","ev","recv","report","learn"]; more = []; title = "店の仕事（ホール）"; }
+  if (admin){ main = ["chef","hall","recv","shime","report","learn"]; more = []; title = "店の仕事"; }
+  else if (kitchen){ main = ["chef","recv","report","learn"]; more = ["hall","shime"]; title = "店の仕事（厨房）"; }
+  else { main = ["hall","shime","recv","report","learn"]; more = []; title = "店の仕事（ホール）"; }
   $("shopTitle").textContent = title;
   $("shopMain").innerHTML = main.map(shopBtn).join("");
   $("shopMoreWrap").classList.toggle("hide", !more.length);

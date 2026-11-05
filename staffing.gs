@@ -75,7 +75,8 @@ function stfTeamShifts_(me, month){
     if (String(r["状態"]) !== "confirmed") return; var d = dateKey_(r["日付"]); if (!d || d.slice(0,7) !== ym) return;
     (days[d] = days[d] || []).push({ name: names[r.staff_id] || "?", start: hm(r["開始"]), end: hm(r["終了"]), area: kitchen.indexOf(r.staff_id) >= 0 ? "厨房" : "ホール", me: r.staff_id === me.staff_id });
   });
-  return { ok: true, month: ym, days: Object.keys(days).sort().map(function(d){ return { date: d, list: days[d].sort(function(a,b){ return a.start < b.start ? -1 : a.start > b.start ? 1 : (a.area === "厨房" ? -1 : 1); }) }; }) };
+  var ord = String(stfSettings_(st).shift_order||"").split(/[,、\s]+/).filter(String); var rk = function(x){ var i = ord.indexOf(x.name); return i < 0 ? 999 : i; };   // 11/5：設定 shift_order の順（管理者アプリのシフト表と同じ）
+  return { ok: true, month: ym, days: Object.keys(days).sort().map(function(d){ return { date: d, list: days[d].sort(function(a,b){ return rk(a) - rk(b) || (a.start < b.start ? -1 : a.start > b.start ? 1 : 0); }) }; }) };
 }
 function stfSetupTrigger(){
   ScriptApp.getProjectTriggers().forEach(function(t){ if (t.getHandlerFunction() === "stfShortNotify") ScriptApp.deleteTrigger(t); });
