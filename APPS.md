@@ -32,6 +32,9 @@
 
 - 分析 GAS（レジ・分析・発注・経費・ORION OS）：1 ファイル（コード.gs）。デプロイ AKfycbzFNl4…OVUg
 - STAFF GAS（勤怠・スタッフ・シフト）：別プロジェクト。デプロイ AKfycbwgGW6…PLc7c
+  - 本物はスプレッドシート「ORION_STAFF」（1L4Y4tIF…）に紐づいた ORION STAFF（プロジェクト 1Rs_voBbe8Jo…）。開くときはシートの「拡張機能 → Apps Script」から。11/5 時点の公開版はバージョン31（10/27）で、エディタの中身と同じ。
+  - 毎日2:05のバックアップ（ドライブ「ORION_STAFF_backup」の ORION_STAFF_日付_0205）にもスクリプトが丸ごとコピーされるため、Apps Script の一覧に「ORION STAFF」が日付ごとに並ぶ。これは控えで、公開もトリガーもない。直さないこと（11/5 に1つ誤って開いて変更→元に戻した）。
+  - 分析 GAS は「無題のプロジェクト」（1xVVFn7…）。一覧にある別の「無題のプロジェクト」（1mgmDFB…）は le bois の日報で、オリオンとは関係ない。
 - 収集スクリプト（orion.napolitan@gmail.com）：collector.gs
 
 分析 GAS コード.gs の並び（上から）：
