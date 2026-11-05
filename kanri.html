@@ -18,8 +18,8 @@ body{font-family:-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu G
 .app{display:flex;flex-direction:column;height:100%}
 header{background:var(--g-d);color:#fff;padding:calc(6px + var(--sat)) 10px 4px;flex:none}
 .top{display:flex;align-items:center;gap:8px;padding:2px 2px 6px}
-.top .t{font-size:11px;letter-spacing:3px;opacity:.8}
-.top .n{font-size:14px;font-weight:bold;flex:1}
+.top .t{font-size:11px;letter-spacing:3px;opacity:.75;flex:none}
+.top .n{font-size:17px;font-weight:bold;flex:1;letter-spacing:1px}
 .top button{background:rgba(255,255,255,.14);border:0;color:#fff;border-radius:8px;padding:6px 10px;font-size:12px}
 /* 下のタブ（スタッフアプリ・経費と同じ形）。ホームバーにかからないよう下に余白 */
 nav{flex:none;display:flex;background:#fff;border-top:1px solid var(--line);padding-bottom:max(var(--sab), 6px)}
@@ -42,6 +42,16 @@ select,input{width:100%;padding:12px;border:1px solid var(--line);border-radius:
 .msg{background:var(--red-l);color:var(--red);padding:10px 12px;border-radius:10px;font-size:14px;margin-bottom:10px}
 .msg:empty{display:none}
 .note{font-size:12px;color:var(--mute);text-align:center;margin-top:16px;line-height:1.6}
+/* メニュー（11/5）：普段使わない画面・設定・勤怠・ログアウトはここに */
+#menuOv{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.35);display:flex;align-items:flex-end}
+#menuOv .sh{background:var(--cream);width:100%;border-radius:18px 18px 0 0;padding:14px 14px calc(14px + var(--sab));max-height:85%;overflow:auto}
+#menuOv .me{font-size:12px;color:var(--mute);margin:0 4px 10px}
+#menuOv .gr{font-size:11px;color:var(--mute);letter-spacing:2px;margin:12px 4px 6px}
+#menuOv .it{display:flex;align-items:center;gap:12px;width:100%;background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 14px;margin-bottom:8px;font-size:16px;color:var(--ink);text-align:left}
+#menuOv .it i{display:flex;width:24px;justify-content:center;color:var(--g);font-style:normal}
+#menuOv .it small{display:block;font-size:12px;color:var(--mute);margin-top:2px}
+#menuOv .it.on{border-color:var(--g);border-width:2px}
+#menuOv .cl{display:block;width:100%;border:0;background:none;color:var(--mute);padding:12px;font-size:15px}
 </style>
 </head>
 <body>
@@ -57,7 +67,7 @@ select,input{width:100%;padding:12px;border:1px solid var(--line);border-radius:
 
 <div id="vApp" class="app hide">
   <header>
-    <div class="top"><div><div class="t">管理者</div></div><div class="n" id="who">-</div><button onclick="reloadCur()">更新</button><button id="setBtn" onclick="show(CUR==='settei' ? (ls('kanri-prev')||'shime') : 'settei')">設定</button><button onclick="location.href='staff/'">勤怠</button><button onclick="logout()">ログアウト</button></div>
+    <div class="top"><div class="t">管理者</div><div class="n" id="secTitle">-</div><button onclick="reloadCur()">更新</button></div>
   </header>
   <div id="frames"></div>
   <nav id="nav"></nav>
@@ -68,16 +78,16 @@ select,input{width:100%;padding:12px;border:1px solid var(--line);border-radius:
 // 管理者アプリ：1 つの入口。中身は既存の画面を順に移していく（段階統合の第1段）
 const STAFF_API = "https://script.google.com/macros/s/AKfycbwgGW6rXzAW2rHVicdoCMdHOT_E3egrXPsaEJerX-_brZr0mYF6Qo_tRorX8PgLc7c/exec";
 // 中の画面を更新したら V を変える（スマホに残った古い画面を読み直させるため）
-const V = "1104c";
+const V = "1105a";
 const SECTIONS = [
   { id:"shime", label:"分析", ic:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20v-5M10 20v-9M15 20v-6M20 20V7"/></svg>', src:"dashboard.html?embed=1&v="+V },
   { id:"hacchu", label:"発注", ic:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8l8-4 8 4v8.5L12 21l-8-4.5z"/><path d="M4 8l8 4.3L20 8M12 12.3V21"/></svg>', src:"hacchu.html?embed=1&v="+V },
   { id:"keihi", label:"経費", ic:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5h12v17l-3-1.8-3 1.8-3-1.8-3 1.8z"/><path d="M9.2 8.5h5.6M9.2 12.5h5.6"/></svg>', src:"keihi.html?embed=1&v="+V },
   { id:"staff", label:"スタッフ", ic:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12.5" r="7.5"/><path d="M12 8.5v4.3l3 1.9"/></svg>', src:"staff/admin.html?embed=1&v="+V },
-  { id:"recruit", label:"採用", ic:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9.5" cy="8" r="3.3"/><path d="M3.5 20c0-3.5 2.7-6.2 6-6.2s6 2.7 6 6.2"/><path d="M18.5 8.5v6M15.5 11.5h6"/></svg>', src:"recruit.html?embed=1&v="+V },
-  { id:"google", label:"口コミ", ic:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16v10.5H10l-4.5 3.5V16H4z"/><path d="M12 7.8l1.1 2.2 2.4.3-1.8 1.6.5 2.4-2.2-1.2-2.2 1.2.5-2.4-1.8-1.6 2.4-.3z"/></svg>', src:"kuchikomi.html?embed=1&v="+V },
-  { id:"settei", label:"設定", hidden:true, src:"settei.html?embed=1&v="+V },   // 上の帯の「設定」から開く（下のタブには出さない）
-  { id:"start", label:"出店", ic:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 10h17l-1.8-5.5H5.3z"/><path d="M5 10v10h14V10"/><path d="M10 20v-5.2h4V20"/></svg>', src:"start.html?embed=1&v="+V },
+  { id:"recruit", menu:true, sub:"応募者・面接", label:"採用", ic:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9.5" cy="8" r="3.3"/><path d="M3.5 20c0-3.5 2.7-6.2 6-6.2s6 2.7 6 6.2"/><path d="M18.5 8.5v6M15.5 11.5h6"/></svg>', src:"recruit.html?embed=1&v="+V },
+  { id:"google", menu:true, sub:"口コミ返信・プロフィール", label:"口コミ", ic:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16v10.5H10l-4.5 3.5V16H4z"/><path d="M12 7.8l1.1 2.2 2.4.3-1.8 1.6.5 2.4-2.2-1.2-2.2 1.2.5-2.4-1.8-1.6 2.4-.3z"/></svg>', src:"kuchikomi.html?embed=1&v="+V },
+  { id:"settei", label:"設定", hidden:true, sub:"LINE配信・Google連携", src:"settei.html?embed=1&v="+V },   // 上の帯の「設定」から開く（下のタブには出さない）
+  { id:"start", menu:true, sub:"出店の案件・物件探し", label:"出店", ic:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 10h17l-1.8-5.5H5.3z"/><path d="M5 10v10h14V10"/><path d="M10 20v-5.2h4V20"/></svg>', src:"start.html?embed=1&v="+V },
 ];
 const $ = id => document.getElementById(id);
 const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -124,15 +134,16 @@ async function doLogin(){
 function enter(tok, me){
   // 中の画面は同じ場所のログイン情報を読むので、両方の鍵に入れておく
   ls("os-token", tok); ls("os-admin-token", tok); try{ ls("kanri-me", JSON.stringify({name:me.name, role:me.role, staff_id:me.staff_id})); }catch(e){}
-  $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); $("who").textContent = me.name + "（管理者）";
-  $("nav").innerHTML = SECTIONS.filter(s=>!s.hidden).map(s=>`<button id="nb_${s.id}" onclick="show('${s.id}')"><i>${s.ic||"•"}</i>${esc(s.label)}</button>`).join("");
+  $("vLogin").classList.add("hide"); $("vApp").classList.remove("hide"); ME_NAME = me.name;
+  $("nav").innerHTML = SECTIONS.filter(s=>!s.hidden && !s.menu).map(s=>`<button id="nb_${s.id}" onclick="show('${s.id}')"><i>${s.ic||"•"}</i>${esc(s.label)}</button>`).join("")
+    + `<button id="nb_menu" onclick="openMenu()"><i>${MENU_IC}</i>メニュー</button>`;
   const first = (location.hash||"").slice(1); show(SECTIONS.some(s=>s.id===first) ? first : (ls("kanri-tab")||"shime"));
 }
 // 画面は開いたときに初めて読み込み、以後は切り替えても保持（行き来しても入力が消えない）
 function show(id){
   if (LOCKED && CUR) return;
   const sec = SECTIONS.find(s=>s.id===id) || SECTIONS[0]; if (CUR && CUR !== "settei" && sec.id === "settei") ls("kanri-prev", CUR); CUR = sec.id; if (!sec.hidden) ls("kanri-tab", CUR); history.replaceState(null, "", "#"+CUR);
-  const sb = $("setBtn"); if (sb) sb.style.background = CUR==="settei" ? "rgba(255,255,255,.35)" : "";
+  closeMenu(); $("secTitle").textContent = sec.label; const nm = $("nb_menu"); if (nm) nm.classList.toggle("on", !!(sec.menu || sec.hidden));
   SECTIONS.forEach(s=>{ const nb = $("nb_"+s.id); if (nb) nb.classList.toggle("on", s.id===CUR); const f = $("fr_"+s.id); if (f) f.classList.toggle("hide", s.id!==CUR); });
   if (!$("fr_"+CUR)){ const f = document.createElement("iframe"); f.id = "fr_"+CUR; f.src = sec.src; f.title = sec.label; f.onload = ()=>tidy(f); $("frames").appendChild(f); }
 }
@@ -141,7 +152,7 @@ const HIDE_CSS = {
   shime: ".app > header{display:none!important}",
   keihi: "header{display:none!important} nav{order:-1;border-top:0!important;border-bottom:1px solid #d9d1bd;padding-bottom:0!important}",   // 経費の切り替えは上に（下は管理者アプリのタブ）
   staff: "header{display:none!important} .tabs{top:0!important}",
-  hacchu: "",
+  hacchu: "header:has(#hBack.hide){display:none!important}",   // 発注のトップでは見出しを出さない（品目・棚卸しなど中の画面では「戻る」があるので出す）
   recruit: "",
   start: "header{display:none!important} .tabs{top:0!important}",
   google: "header{display:none!important} .tabs{top:0!important}",
@@ -177,6 +188,20 @@ window.addEventListener("message", e=>{ if (e.origin !== location.origin) return
 window.addEventListener("beforeunload", e=>{ if (LOCKED){ e.preventDefault(); e.returnValue = "送信中です"; return "送信中です"; } });
 document.addEventListener("visibilitychange", ()=>{ if (document.visibilityState === "visible" && !LOCKED) checkUpdate(); });
 async function reloadCur(){ if (LOCKED) return; if (await checkUpdate()) return; const f = $("fr_"+CUR); if (f) f.contentWindow.location.reload(); }
+// メニュー：下のタブに置かない画面（採用・口コミ・出店・設定）と、勤怠・ログアウト
+let ME_NAME = "";
+const MENU_IC = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
+function openMenu(){ if (LOCKED) return; closeMenu();
+  const it = s=>`<button class="it ${s.id===CUR?"on":""}" onclick="show('${s.id}')"><i>${s.ic||"⚙︎"}</i><span>${esc(s.label)}<small>${esc(s.sub||"")}</small></span></button>`;
+  const ov = document.createElement("div"); ov.id = "menuOv"; ov.onclick = e=>{ if (e.target === ov) closeMenu(); };
+  ov.innerHTML = `<div class="sh"><div class="me">${esc(ME_NAME)}（管理者）でログイン中</div>
+    <div class="gr">ときどき使う</div>${SECTIONS.filter(s=>s.menu).map(it).join("")}
+    <div class="gr">設定・その他</div>${SECTIONS.filter(s=>s.id==="settei").map(it).join("")}
+    <button class="it" onclick="location.href='staff/'"><i>🕘</i><span>勤怠アプリへ<small>打刻・店の仕事</small></span></button>
+    <button class="it" onclick="logout()"><i>↩︎</i><span>ログアウト</span></button>
+    <button class="cl" onclick="closeMenu()">閉じる</button></div>`;
+  document.body.appendChild(ov); }
+function closeMenu(){ const o = $("menuOv"); if (o) o.remove(); }
 function logout(){ if (LOCKED) return; if(!confirm("ログアウトしますか？")) return; ls("os-admin-token", null); ls("os-token", null); ls("kanri-me", null); $("frames").innerHTML = ""; showLogin(); }
 boot(); checkUpdate();
 </script>
