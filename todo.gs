@@ -116,7 +116,7 @@ function todoFolder_(){
 // 出来事を書く（全員）。id があれば訂正（本人か管理者）
 function evSave_(d, me){
   var kinds = (d.kinds||[]).map(String).filter(function(k){ return EV_KINDS.indexOf(k) >= 0; });
-  var text = String(d.text||"").trim().slice(0, 100); if (!kinds.length && !text) return { error: "種類かひとことを入れてください" };
+  var text = String(d.text||"").trim().slice(0, String(d.src||"")==="退勤の報告" ? 200 : 100);   // 退勤の報告は200字まで（11/5） if (!kinds.length && !text) return { error: "種類かひとことを入れてください" };
   var date = String(d.date||invToday_()).replace(/-/g, "/"); if (!/^\d{4}\/\d{2}\/\d{2}$/.test(date)) return { error: "日付の形が違います" };
   var sh = evSheet_(), now = invNow_(), prev = "";
   if (d.id){ var r = invRows_(sh).filter(function(x){ return String(x.ev_id) === String(d.id); })[0]; if (!r) return { error: "見つかりません" };

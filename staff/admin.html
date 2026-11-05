@@ -69,6 +69,11 @@ td.r,th.r{text-align:right}
 .sg .cell .sync{position:absolute;top:2px;right:3px;font-size:9px}
 .sg .need{font-size:10px;color:var(--mute);text-align:right}
 .sg .need.short{color:var(--red);font-weight:bold}
+.vday{border-top:1px solid var(--line);padding:10px 0 4px}.vday:first-of-type{border-top:0}
+.vdh{display:flex;justify-content:space-between;font-weight:bold;font-size:14px}.vdh span{font-size:12px;color:var(--mute);font-weight:normal}
+.vv{font-size:14px;padding:3px 0 3px 10px;border-left:3px solid var(--line);margin:5px 0;white-space:pre-wrap}.vv small{display:block;font-size:11px;color:var(--mute);white-space:normal}
+.vv.ev{border-left-color:var(--amber)}.vv.note{border-left-color:var(--red)}.vv.note.done{border-left-color:var(--line);color:var(--mute)}
+.lnk{display:block;width:100%;background:none;border:0;color:var(--g);font-size:13px;text-decoration:underline;padding:8px;margin-top:4px;font-family:inherit}
 .sg .dt.sh{background:#f6e3df}.sg .cell.sh{background:#fdf1ee;border-color:#e8b9b0}
 .legend{font-size:11px;color:var(--mute);margin:6px 0}
 pre.copy{white-space:pre-wrap;background:var(--cream);border-radius:8px;padding:10px;font-size:13px;line-height:1.6}
@@ -199,25 +204,49 @@ function go(t){
 
 // ───── 連絡（お知らせ・引き継ぎ） ─────
 let NOTICES = [];
+// 11/5 作り直し：①まだ読んでいない人 ②現場の声（退勤の報告・今日の出来事・引き継ぎを日ごとに、その日の食数と並べて）③お知らせを出す。店の空気の評価表は外し、衛生記録は勤怠タブへ
+const OS_URL = "https://script.google.com/macros/s/AKfycbzFNl4UM3fkoANru-agWmuOox-h3cS1yJmx4UZxpGFemEBnAUv45Gdp1VOvtCqOVUg/exec";
+async function osList(mode, params){ try{ const tok = localStorage.getItem("os-admin-token") || localStorage.getItem("os-token") || ""; const q = new URLSearchParams(Object.assign({mode, token:tok, t:Date.now()}, params||{}));
+  return await fetch(OS_URL+"?"+q.toString(), {cache:"no-store"}).then(r=>r.json()); }catch(e){ return null; } }
+function mealsByDay(){ try{ const c = JSON.parse(localStorage.getItem("dash-data")||"null"); const o = {}; ((c&&c.daily)||[]).forEach(d=>o[d.date]=d.meals); return o; }catch(e){ return {}; } }
+let VOICE_DAYS = 7;
 async function loadComm(){ if(!$("pComm").dataset.loaded) $("pComm").innerHTML = loadingHtml(); $("pComm").dataset.loaded="1";
-  const [r, k, m, h] = await Promise.all([api("admin.notices"), api("comm"), api("admin.mood_month", {ym: MOODYM}), api("admin.hyg_month", {ym: MOODYM})]); if(!r.ok){ showMsg(r.error); return; }
+  const jst = new Date(Date.now()+9*3600e3), ds = d => d.toISOString().slice(0,10).replace(/-/g,"/"); const to = ds(jst), from = ds(new Date(jst.getTime()-(VOICE_DAYS-1)*86400e3));
+  const [r, k, ev] = await Promise.all([api("admin.notices"), api("comm"), osList("os_ev_list", {from, to})]); if(!r.ok){ showMsg(r.error); return; }
   NOTICES = r.notices; const total = r.staff.length;
   const act = r.notices.filter(n=>n.status==="active"), arc = r.notices.filter(n=>n.status!=="active");
+  const unread = act.filter(n=>n.unreadNames.length);
   const row = n => `<div class="row" style="align-items:flex-start;gap:8px"><div style="flex:1;min-width:0">
       <b>${n.important?'<span class="pill red" style="margin-right:4px">重要</span>':""}${esc(n.title)}</b><div class="mini">${n.at.slice(0,10)}　${esc(n.by)}　既読 ${n.readIds.length}/${total}${n.unreadNames.length?`　<span style="color:var(--amber)">未読: ${esc(n.unreadNames.join("・"))}</span>`:""}</div>
       <div class="mini" style="white-space:pre-wrap;max-height:3.2em;overflow:hidden;margin-top:4px;color:var(--ink)">${esc(n.body)}</div></div>
       <div style="display:flex;flex-direction:column;gap:4px">${n.status==="active" ? `<button class="btn sec" style="padding:6px 10px;font-size:13px" onclick="noticeEdit('${n.notice_id}')">編集</button><button class="btn sec" style="padding:6px 10px;font-size:13px" onclick="noticeArchive('${n.notice_id}',false)">取り下げ</button>` : `<button class="btn sec" style="padding:6px 10px;font-size:13px" onclick="noticeArchive('${n.notice_id}',true)">再掲</button>`}</div></div>`;
-  const notes = (k.ok ? k.notes : []).map(n=>`<div class="row" style="align-items:flex-start"><div style="flex:1"><div style="white-space:pre-wrap;font-size:14px${n.status==="open"?"":";color:var(--mute);text-decoration:line-through"}">${esc(n.body)}</div><div class="mini">${n.at.slice(5)}　${esc(n.by)}${n.status==="open"?"":`　→ ${esc(n.doneBy)} 対応済`}</div></div></div>`).join("");
+  // 現場の声：日ごと
+  const days = {}; const add = (d, x) => { (days[d] = days[d] || []).push(x); };
+  ((ev && ev.ok && ev.list) || []).forEach(e=>add(e.date, { t: e.time||"", kind: e.src==="退勤の報告" ? "rep" : "ev", text: e.text, kinds: e.kinds||[], by: e.by }));
+  ((k.ok ? k.notes : [])||[]).forEach(n=>{ const d = String(n.at||"").slice(0,10); if (n.status==="open" || (d >= from)) add(d, { t: String(n.at||"").slice(11,16), kind: "note", text: n.body, by: n.by, open: n.status==="open", id: n.note_id, doneBy: n.doneBy }); });
+  const meals = mealsByDay();
+  const label = { rep:"退勤の報告", ev:"今日の出来事", note:"引き継ぎノート" };
+  const dayHtml = Object.keys(days).sort().reverse().map(d=>{ const L = days[d].sort((a,b)=>({rep:0,ev:1,note:2})[a.kind]-({rep:0,ev:1,note:2})[b.kind] || (a.t<b.t?-1:1));
+    return `<div class="vday"><div class="vdh">${d.slice(5)}（${YO[youbi(d)]}）<span>${meals[d]!=null?meals[d]+"食":""}</span></div>
+      ${L.map(x=>`<div class="vv ${x.kind}${x.kind==="note"&&!x.open?" done":""}">${x.kinds&&x.kinds.length?`<span class="pill amber" style="margin-right:4px">${esc(x.kinds.join("・"))}</span>`:""}${esc(x.text)}${x.kind==="note"&&x.open?` <span class="pill red">未対応</span>`:""}
+        <small>${label[x.kind]}・${esc(x.by||"")}${x.t?" "+x.t:""}${x.kind==="note"&&!x.open&&x.doneBy?"・"+esc(x.doneBy)+" 対応済":""}</small>
+        ${x.kind==="note"&&x.open?`<button class="btn sec sm" style="margin-top:4px" onclick="noteDoneAdm('${x.id}')">対応済みにする</button>`:""}</div>`).join("")}</div>`; }).join("");
   $("pComm").innerHTML = `
-    ${moodCard(m)}
-    ${hygCard(h)}
-    <div class="card"><h2>運営からのお知らせ <small>掲載中 ${act.length}件</small></h2>
-      <div class="mini" style="margin-bottom:8px">スタッフアプリの「連絡」タブとホームに表示されます。スタッフが「確認しました」を押すと既読になります。</div>
+    ${unread.length?`<div class="card"><h2>まだ読んでいない人 <small>掲載中のお知らせ ${act.length}件</small></h2>
+      ${unread.map(n=>`<div class="row" style="display:block"><b>${esc(n.title)}</b><div class="mini">既読 ${n.readIds.length}/${total}・<span style="color:var(--amber)">未読：${esc(n.unreadNames.join("・"))}</span></div></div>`).join("")}
+      <button class="btn sec" style="margin-top:8px" onclick="copyUnread()">未読の人へのLINE文をコピー</button></div>`:""}
+    <div class="card"><h2>現場の声 <small>直近${VOICE_DAYS}日・退勤の報告・今日の出来事・引き継ぎ</small></h2>
+      ${dayHtml||'<div class="mini">まだ書き込みはありません。退勤時の「今日の報告」がここに日ごとに並びます</div>'}
+      <button class="lnk" onclick="VOICE_DAYS+=14;loadComm()">もっと前の日を見る</button></div>
+    <div class="card"><h2>お知らせを出す <small>スタッフアプリの連絡とホームに出る</small></h2>
       <button class="btn" onclick="noticeEdit('')">＋ 新しいお知らせ</button>
-      <div style="margin-top:8px">${act.map(row).join("")||'<div class="mini">掲載中のお知らせはありません</div>'}</div></div>
-    ${arc.length?`<div class="card"><h2>取り下げ済み</h2>${arc.map(row).join("")}</div>`:""}
-    <div class="card"><h2>引き継ぎノート <small>未対応 ${k.ok?k.openCount:"-"}件</small></h2>${notes||'<div class="mini">書き込みはありません</div>'}</div>`;
+      <details style="margin-top:8px"><summary class="mini" style="cursor:pointer">掲載中 ${act.length}件</summary>${act.map(row).join("")||'<div class="mini">掲載中のお知らせはありません</div>'}</details>
+      ${arc.length?`<details style="margin-top:6px"><summary class="mini" style="cursor:pointer">取り下げ済み ${arc.length}件</summary>${arc.map(row).join("")}</details>`:""}</div>`;
 }
+function copyUnread(){ const act = NOTICES.filter(n=>n.status==="active" && n.unreadNames.length); const names = [...new Set(act.flatMap(n=>n.unreadNames))];
+  const txt = `お疲れさまです。勤怠アプリの「連絡」に、まだ確認していないお知らせがあります。\n${act.map(n=>"・"+n.title).join("\n")}\n読んだら「確認しました」を押してください。（${names.join("さん・")}さん）`;
+  navigator.clipboard.writeText(txt).then(()=>toast("コピーしました。LINEに貼ってください")).catch(()=>alert(txt)); }
+async function noteDoneAdm(id){ const r = await api("note_done", {note_id:id}); if(!r.ok){ toast(r.error); return; } toast("対応済みにしました"); loadComm(); }
 // 店の空気（退勤時レポート）
 let MOODYM = (()=>{ const d=new Date(); return d.getFullYear()+"/"+String(d.getMonth()+1).padStart(2,"0"); })();
 function moodMove(n){ let [y,mo]=MOODYM.split("/").map(Number); mo+=n; if(mo>12){mo=1;y++;} if(mo<1){mo=12;y--;} MOODYM = y+"/"+String(mo).padStart(2,"0"); loadComm(); }
@@ -299,7 +328,7 @@ function hygReview(){
     <label>内容・改善すること</label><textarea id="rvNote" style="min-height:120px" placeholder="例: 10/14 冷凍庫−12℃（扉の閉め忘れ）→ 扉にパッキン点検の張り紙。記録漏れ1日（10/20 客席）→ 退勤時の声かけを徹底">${esc(rv.note||"")}</textarea>
     <div style="display:flex;gap:8px;margin-top:14px"><button class="btn sec" style="flex:1" onclick="closeOv()">キャンセル</button><button class="btn" style="flex:2" onclick="hygReviewSave()">保存</button></div>`);
 }
-async function hygReviewSave(){ const r = await api("admin.hyg_review_save", {ym:HYGM.ym, result:$("rvRes").value, note:$("rvNote").value.trim()}); if(!r.ok){ toast(r.error); return; } closeOv(); toast("振り返りを保存しました"); loadComm(); }
+async function hygReviewSave(){ const r = await api("admin.hyg_review_save", {ym:HYGM.ym, result:$("rvRes").value, note:$("rvNote").value.trim()}); if(!r.ok){ toast(r.error); return; } closeOv(); if (!$("pAtt").classList.contains("hide")) loadAtt(); else loadComm(); toast("振り返りを保存しました"); }
 function hygCsv(){ const h = HYGM; if(!h) return; const K=h.items.kitchen.map(x=>x[1]), H=h.items.hall.map(x=>x[1]);
   const lines=[["日付","健康チェック","冷蔵庫℃","冷凍庫℃","冷蔵冷凍庫(冷蔵)℃","冷蔵冷凍庫(冷凍)℃",...K.map(x=>"厨房:"+x),...H.map(x=>"客席:"+x),"基準外の対応"].join(",")];
   h.days.slice().reverse().forEach(d=>{ const t=d.temps||{}; lines.push([d.date, d.health.map(x=>x.name+(x.ok?"OK":"要確認")).join(" "), t.fridge??"", t.freezer??"", t.combo_r??"", t.combo_f??"", ...K.map(x=>d.kitchen==null?"":(d.kitchenItems.includes(x)?"○":"×")), ...H.map(x=>d.hall==null?"":(d.hallItems.includes(x)?"○":"×")), '"'+d.actions.join(" / ").replace(/"/g,'""')+'"'].join(",")); });
@@ -637,13 +666,14 @@ async function saveProxy(staff_id){
 let AM = thisMonth();
 async function loadAtt(){ if(!$("pAtt").dataset.loaded) $("pAtt").innerHTML = loadingHtml(); $("pAtt").dataset.loaded="1";
   $("pAtt").innerHTML = `<div class="mini">読み込み中…</div>`;
-  const r = await api("admin.att_month",{month:AM}); if(!r.ok){ showMsg(r.error); return; }
+  const [r, h] = await Promise.all([api("admin.att_month",{month:AM}), api("admin.hyg_month", {ym: AM})]); if(!r.ok){ showMsg(r.error); return; }
   const fx = r.pendingFixes.map(f=>`<div class="row"><span><b>${esc(f.name)}</b> ${f.date.slice(5)} ${f.field}：${f.current?esc(f.current):"未打刻"} → <b>${esc(f.wanted)}</b><br><span class="mini">${esc(f.reason)}（${f.requested}）</span></span><span style="white-space:nowrap"><button class="btn sm" onclick="decide('${f.req_id}',true)">承認</button> <button class="btn sec sm" onclick="decide('${f.req_id}',false)">却下</button></span></div>`).join("");
   const rows = r.list.slice().reverse().map(a=>`<tr><td>${a.date.slice(5)}(${YO[youbi(a.date)]})</td><td>${esc(a.name)}</td><td>${a.in||"-"}</td><td>${a.out||`<span class="pill red">未退勤</span>`}</td><td class="r">${a.breakMin||0}</td><td class="r">${a.status==="done"?fmtMin(a.workMin):"-"}</td><td class="r">${a.transport||0}</td><td><button class="btn sec sm" onclick='editAtt(${JSON.stringify(a).replace(/'/g,"&#39;")})'>修正</button></td></tr>`).join("");
   $("pAtt").innerHTML = `
     <div class="card"><h2>修正申請 <small>${r.pendingFixes.length}件</small></h2>${fx||`<div class="mini">承認待ちはありません</div>`}</div>
     <div class="monthnav"><button onclick="AM=ymAdd(AM,-1);loadAtt()">◀</button><b>${ymLabel(AM)}</b><button onclick="AM=ymAdd(AM,1);loadAtt()">▶</button></div>
-    <div class="card"><h2>勤怠記録 <small><button class="btn sec sm" onclick="editAtt(null)">手入力で追加</button></small></h2><div class="scroll"><table><tr><th>日</th><th>名前</th><th>出勤</th><th>退勤</th><th class="r">休憩</th><th class="r">実労働</th><th class="r">交通費</th><th></th></tr>${rows||`<tr><td colspan="8" class="mini">記録がありません</td></tr>`}</table></div></div>`;
+    <div class="card"><h2>勤怠記録 <small><button class="btn sec sm" onclick="editAtt(null)">手入力で追加</button></small></h2><div class="scroll"><table><tr><th>日</th><th>名前</th><th>出勤</th><th>退勤</th><th class="r">休憩</th><th class="r">実労働</th><th class="r">交通費</th><th></th></tr>${rows||`<tr><td colspan="8" class="mini">記録がありません</td></tr>`}</table></div></div>
+    ${hygCard(h)}`;
 }
 async function decide(req_id, approve){ if(!confirm(approve?"この修正を承認して勤怠に反映します":"この申請を却下します")) return; const r = await api("admin.fix_decide",{req_id, approve}); if(!r.ok){ showMsg(r.error); return; } toast(approve?"承認しました":"却下しました"); loadAtt(); }
 function editAtt(a){

@@ -270,7 +270,7 @@ body.lock .btn,body.lock .chip,body.lock .cal .d,body.lock .modes button,body.lo
           <div class="row"><span class="l">次回の勤務</span><b id="hNext">-</b></div>
           <div class="row" id="hWishRow"><span class="l">来月の希望</span><b id="hWish"></b></div>
         </div>
-        <div class="card mood-nudge hide" id="hMoodCard"><div class="row"><span class="l">今日のふりかえりが未送信です<br><span class="mini">10秒で終わります</span></span><button class="btn sm" style="width:auto;padding:10px 16px" onclick="openMood()">答える</button></div></div>
+        <div class="card mood-nudge hide" id="hMoodCard"><div class="row"><span class="l">今日の報告が未送信です<br><span class="mini">一言で大丈夫です</span></span><button class="btn sm" style="width:auto;padding:10px 16px" onclick="openMood()">書く</button></div></div>
         <div class="card thx hide" id="hThx"><div class="tl mini">届いた「ありがとう」</div><div class="tb" id="hThxBody"></div></div>
         <div class="card" id="hCommCard"><h2>連絡 <small id="hCommSub"></small></h2>
           <div class="hcomm"><button onclick="go('comm')"><span class="k">運営からのお知らせ</span><span class="v" id="hNotice">-</span></button><button onclick="go('comm','notes')"><span class="k">引き継ぎノート</span><span class="v" id="hNotes">-</span></button></div>
@@ -692,7 +692,7 @@ function renderCommHome(k){
   $("hNotes").innerHTML = k.openCount>0 ? `<span class="red">${k.openCount}件 未対応</span>` : "なし";
   $("hCommSub").textContent = k.unread>0 ? "未読のお知らせがあります" : "";
   const th = []; $("hThx").classList.toggle("hide", !th.length); if (th.length) $("hThxBody").innerHTML = th.map(t=>`${esc(t.from)}さんから「ありがとう」<span class="mini">（${t.date.slice(5)}）</span>`).join("<br>");
-  const a = HOME && HOME.att; $("hMoodCard").classList.toggle("hide", !(k.pilot && a && a.status==="done" && k.moodToday===false));
+  const a = HOME && HOME.att; $("hMoodCard").classList.toggle("hide", !(k.pilot && a && a.status==="done" && k.moodToday===false && !cget(reportKey())));
   $("bdComm").classList.toggle("hide", !(k.unread>0 || k.openCount>0)); $("bdComm").textContent = k.unread>0 ? k.unread : "!";
 }
 async function loadComm(sub){
@@ -723,31 +723,32 @@ const FQ = [
 ];
 const Q4 = ["準備・仕込み","役割分担","声かけ・確認","備品・道具","特になし"];
 let MOOD = {};
+// 11/5〜：退勤時は「今日の報告」だけ（必須）。選択式4問はなくした。保存先は分析 GAS の「出来事」（元＝退勤の報告）
 function moodBlock(){
-  MOOD = {why:{customer:[], staff:[], ops:[]}, next:""};
+  MOOD = {why:{customer:[], staff:[], ops:[]}, next:"", note:""};
   return `<div class="hyg mood" id="moodBox">
-    <div class="hh"><span>今日のふりかえり <span class="cnt" id="moodCnt">0/4</span></span><span class="mini" style="letter-spacing:0">運営だけが見ます</span></div>
-    <div class="motto-l" style="margin:0 0 8px"><span class="nb">愛嬌よく、明るく。</span><span class="nb">お店もお客様も、朗らかに。</span></div>
-    ${FQ.map(q=>`<div class="mq"><div class="t">${q.t}</div><div class="mo" id="mo_${q.k}">${q.o.map(o=>`<button onclick="moodPick('${q.k}',${o.v},this)"><i>${o.i}</i>${o.l}</button>`).join("")}</div>
-      <div id="why_${q.k}" class="hide" style="margin-top:6px"><div class="mini">どこが近い？（任意・いくつでも）</div><div class="chips whyc">${q.why.map(w=>`<button class="chip" style="text-align:left" onclick="whyPick('${q.k}',this)">${w}</button>`).join("")}</div></div></div>`).join("")}
-    <div class="mq"><div class="t">次のシフトで一つ変えるとしたら？</div><div class="chips c3" id="nextChips">${Q4.map(n=>`<button class="chip" onclick="nextPick('${n}',this)">${n}</button>`).join("")}</div>
-</div>
-    <div class="mq"><div class="t">今日のひとこと（任意）</div><div class="mini" style="margin-bottom:4px">今日のお客様の入り方や、忙しかった時間帯を中心に、気づいたこと・困ったこと・良かったことなどを自由に書いてください。</div>
-      <textarea id="moodNote" maxlength="120" rows="2" placeholder="例：11:30までは静か。12時から13:30まで混雑。途中でお皿が不足した。" style="resize:none;line-height:1.5"></textarea></div>
+    <div class="hh"><span>今日の報告 <span class="cnt" id="moodCnt">必須</span></span><span class="mini" style="letter-spacing:0">運営だけが見ます</span></div>
+    <div class="mini" style="margin:2px 0 6px;color:var(--ink)">今日の様子を一言で。たとえば
+      <div style="margin:4px 0 0 2px;line-height:1.7">・お客様の入り方（何時ごろから混んだ・落ち着いた）<br>・困ったこと・足りなかった物<br>・次の人に伝えたいこと</div></div>
+    <textarea id="moodNote" maxlength="200" rows="4" oninput="hygValidate()" placeholder="例：11:30までは静か。12時から13:30まで混雑。途中でお皿が不足した。" style="resize:none;line-height:1.5"></textarea>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><button class="chip" type="button" onclick="$('moodNote').value='特になし';hygValidate()">特になし</button><span class="mini" id="moodLen"></span></div>
   </div>`;
 }
 function moodPick(k, v, btn){ MOOD[k]=v; [...btn.parentNode.children].forEach(b=>b.classList.remove("on")); btn.classList.add("on"); const w=$("why_"+k); if(w){ w.classList.toggle("hide", v===3); if(v===3){ MOOD.why[k]=[]; w.querySelectorAll(".chip").forEach(b=>b.classList.remove("on")); } } hygValidate(); }
 function whyPick(k, btn){ btn.classList.toggle("on"); MOOD.why[k] = [...$("why_"+k).querySelectorAll(".chip.on")].map(b=>b.textContent.split("（")[0]); }
 function nextPick(n, btn){ document.querySelectorAll("#nextChips .chip").forEach(b=>b.classList.remove("on")); btn.classList.add("on"); MOOD.next=n; hygValidate(); }
-function moodReady(){ return !!(MOOD.customer && MOOD.staff && MOOD.ops && MOOD.next); }
+function moodReady(){ const el = $("moodNote"); const v = (el ? el.value : MOOD.note||"").trim(); return !!v; }
+function reportKey(){ const d = new Date(); return "report_" + d.getFullYear() + "/" + (d.getMonth()+1) + "/" + d.getDate(); }
 async function moodSaveAfterOut(){
-  const r = await api("mood_save", {customer:MOOD.customer, staff:MOOD.staff, ops:MOOD.ops, whyCustomer:MOOD.why.customer.join("・"), why:MOOD.why.staff.join("・"), whyOps:MOOD.why.ops.join("・"), next:MOOD.next, toOps:MOOD.note||""});
-  if(!r.ok){ toast("ふりかえりの保存に失敗: "+r.error); return; }
+  const text = String(MOOD.note||"").trim(); if (!text) return;
+  const r = await osPost({type:"os_ev_save", kinds:[], text, src:"退勤の報告"});
+  if(!r || !r.ok){ toast("今日の報告を送れませんでした。ホームからもう一度送れます"); return; }
+  cset(reportKey(), 1);
   cset("comm", Object.assign(cget("comm")||{}, {moodToday:true}));
 }
 // 退勤後に未回答だった場合（通信エラー等）だけ、ホームから答えられる
 function openMood(){
-  sheet(`<h3 style="text-align:center;color:var(--g)">今日のふりかえり</h3>${moodBlock()}<button class="btn" id="punchGo" disabled onclick="MOOD.note=($('moodNote')||{}).value||'';moodSaveAfterOut().then(()=>{closeOv();toast('ありがとうございます。お疲れさまでした');loadHome();})">送る</button><button class="btn sec" style="margin-top:8px" onclick="closeOv()">閉じる</button>`);
+  sheet(`<h3 style="text-align:center;color:var(--g)">今日の報告</h3>${moodBlock()}<button class="btn" id="punchGo" disabled onclick="MOOD.note=(($('moodNote')||{}).value||'').trim();moodSaveAfterOut().then(()=>{closeOv();toast('ありがとうございます。お疲れさまでした');loadHome();})">送る</button><button class="btn sec" style="margin-top:8px" onclick="closeOv()">閉じる</button>`);
 }
 function ntcToggle(id){ const el = $("ntc_"+id); if(!el) return; el.classList.toggle("open"); }
 async function noticeRead(id){ const r = await api("notice_read", {notice_id:id}); if(!r.ok){ toast(r.error); return; } toast("確認を記録しました"); loadComm(); }
@@ -858,7 +859,7 @@ function punchSheet(type){
     <input type="hidden" id="brk" value="0">`}
     <div style="height:12px"></div>
     <button class="btn ${isIn?"":"out"}" id="punchGo" ${isPilot()?"disabled":""} onclick="var b=Number(($('brk')||{}).value)||0;var t=$('pt').value;var c=[...document.querySelectorAll('#gChips .chip.on, #hygBox .hi.on[data-g=groom]')].map(x=>x.dataset.k||x.textContent);var h=hygCollect();if($('moodNote'))MOOD.note=$('moodNote').value.trim();punch('${type}', b, t, c, h)">${isIn?"出勤":"退勤"}を記録する</button>
-    ${isPilot()?`<div class="mini center" id="punchHint" style="margin-top:6px">${isIn?"出勤チェック":"衛生チェックとふりかえり"}がすべて済むと押せます</div>`:""}
+    ${isPilot()?`<div class="mini center" id="punchHint" style="margin-top:6px">${isIn?"出勤チェック":"衛生チェックと今日の報告"}がすべて済むと押せます</div>`:""}
     <button class="btn sec" style="margin-top:10px" onclick="closeOv()">やめる</button>`);
   hygValidate();
 }
@@ -906,7 +907,7 @@ function hygValidate(){
   let anyBad = false;
   (hb||box).querySelectorAll("[id^=tp_]").forEach(i=>{ const v = i.value.trim(); const max = Number(i.dataset.max); const bad = v!=="" && Number(v) > max; if (bad) anyBad = true; i.classList.toggle("ng", bad); i.classList.toggle("set", v!=="" && !bad); if (v==="") okAll = false; });
   const act = $("hygAct"); if (act){ act.classList.toggle("hide", !anyBad); if (anyBad && $("hygActIn").value.trim().length < 4) okAll = false; }
-  const mb = $("moodBox"); if (mb){ const n = ["customer","staff","ops","next"].filter(k=>MOOD[k]).length; const c=$("moodCnt"); if(c){ c.textContent=n+"/4"; c.classList.toggle("ok", n===4); } if (n<4) okAll = false; }
+  const mb = $("moodBox"); if (mb){ const v = ($("moodNote")||{}).value||""; const okR = !!v.trim(); const c=$("moodCnt"); if(c){ c.textContent = okR ? "OK" : "必須"; c.classList.toggle("ok", okR); } const ln=$("moodLen"); if(ln) ln.textContent = v.length ? v.length+"/200" : ""; if (!okR) okAll = false; }
   go.disabled = !okAll;
   const hint = $("punchHint"); if (hint) hint.style.display = okAll ? "none" : "";
 }
