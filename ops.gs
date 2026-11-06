@@ -24,8 +24,8 @@ function buildOpsPayload_(){
   try { var pp = {}; invRows_(invSheet_("PayPay取引", ["取引番号","決済日時","日付","時刻","金額","端末ID","店舗","種類","メールID","登録日時"])).forEach(function(r){ var d = dateKey_(r["日付"]); if (!d) return; var a = Number(r["金額"])||0; if (String(r["種類"]) === "返金") a = -a; pp[d] = (pp[d]||0) + a; }); out.ppMail = pp; } catch(e){ out.ppMailError = String(e); }
   // 確認済み（要確認から外したもの）・取消された会計の数
   try { out.acks = fxAcks_(); } catch(e){ out.acks = []; }
-  // その他収入：固定費シートで科目に「収入」を含む行。メモの yyyy/MM 以降の月に適用
-  try { var fsh = fixedSheet_(); if (fsh.getLastRow() > 1){ fsh.getRange(2,1,fsh.getLastRow()-1,3).getValues().forEach(function(r){ if (!r[0] || String(r[0]).indexOf("収入") < 0) return; var m = String(r[2]||"").match(/(\d{4})\/(\d{1,2})/); out.income.push({ name:String(r[0]), amount:Number(r[1])||0, from: m ? m[1] + "/" + ("0"+m[2]).slice(-2) : "" }); }); } } catch(e){ out.incomeError = String(e); }
+  // その他収入：固定費シートで科目に「収入」を含む行（incomeRows_）。from〜to の月に適用
+  try { out.income = incomeRows_(true); } catch(e){ out.incomeError = String(e); }
   return out;
 }
 
@@ -37,3 +37,15 @@ function opsSeedIncome20261029(){
   sh.insertRowBefore(at); sh.getRange(at,1,1,3).setValues([["夜間貸出（収入）", 0 /* 金額は非公開・実行済み */, "2026/11〜 貸出。科目に「収入」を含む行は固定費に足さず、収入として扱う"]]);
   return "added";
 }
+
+// ===== その他収入（11/6）=====
+// 固定費シートで科目に「収入」を含む行。メモの日付で期間を決める：「yyyy/MM〜」その月から以降ずっと／「yyyy/MMのみ」その月だけ／「yyyy/MM〜yyyy/MM」期間
+// 損益分岐（月次損益の「損益分岐 食数/日」・分析の「この日の損益分岐」）は、固定費からこの収入を差し引いて出す。営業利益には入れない（手残りで足す）
+// rebuildPnl の bep：Math.ceil((fixedM - otherIncome_(ym) + m.labor / ... ）。金額は固定費シートだけ（ここには書かない）
+function incomeRows_(raise){ var out = [];
+  try { var fsh = fixedSheet_(); if (fsh.getLastRow() > 1) fsh.getRange(2,1,fsh.getLastRow()-1,3).getValues().forEach(function(r){ if (!r[0] || String(r[0]).indexOf("収入") < 0) return;
+    var memo = String(r[2]||""), ds = memo.match(/\d{4}\/\d{1,2}/g) || [], f = function(s){ var x = s.split("/"); return x[0] + "/" + ("0" + x[1]).slice(-2); };
+    var from = ds[0] ? f(ds[0]) : "", to = /のみ/.test(memo) ? from : (ds[1] ? f(ds[1]) : "");
+    out.push({ name: String(r[0]), amount: Number(r[1])||0, from: from, to: to }); }); } catch(e){ if (raise) throw e; }
+  return out; }
+function otherIncome_(ym){ return incomeRows_().filter(function(i){ return (!i.from || i.from <= ym) && (!i.to || i.to >= ym); }).reduce(function(a, i){ return a + i.amount; }, 0); }
