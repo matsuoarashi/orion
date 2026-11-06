@@ -97,6 +97,10 @@
   .wd .h .dt{width:62px;font-weight:bold;flex:none}
   .wd .h .m{flex:1;font-size:13px;color:var(--mute)}
   .wd .h .m b{font-size:17px;color:var(--ink);margin-right:6px}
+  .lrow{padding:8px 0;border-bottom:1px dashed var(--line)}.lrow:last-of-type{border-bottom:0}
+  .lrow .lh{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:2px}
+  .lrow .tg{font-size:11px;border-radius:999px;padding:1px 8px;font-weight:bold;white-space:nowrap}
+  .lrow .tg.p{background:#e4eee7;color:var(--midori)}.lrow .tg.n{background:#f6e3df;color:var(--enji)}.lrow .tg.w{background:#f7ebd3;color:#b7791f}
   .wd .h .tg{font-size:11px;border-radius:999px;padding:1px 8px;font-weight:bold;white-space:nowrap}
   .wd .h .tg.p{background:#e4eee7;color:var(--midori)}.wd .h .tg.n{background:#f6e3df;color:var(--enji)}
   .wd .h .ar{color:var(--mute);font-size:12px}
@@ -342,10 +346,8 @@
       <div class="card wide" id="beCard"><h2>この日の損益分岐 <span class="r">固定費・人件費・原価から</span></h2>
         <div class="fc" id="beGrid"></div><div class="sub" id="beNote"></div></div>
 
-      <div class="card wide"><h2 id="paceTitle">今日のペース</h2>
-        <div class="pnlGrid" id="paceGrid"></div>
-        <table id="paceTable" style="margin-top:8px"></table>
-        <div class="sub" id="paceNote"></div></div>
+      <div class="card wide" id="leftCard"><h2>今日の残り <span class="r">麺・ソース（仕込みの記録と売上から）</span></h2>
+        <div id="leftBody"><div class="sub">読み込み中…</div></div></div>
 
 
       <div class="card wide"><h2>商品ミックス <span class="r">（ ）内は過去平均との差</span></h2>
@@ -967,7 +969,7 @@ function renderBE(d){
   $("beGrid").innerHTML = [
     ["損益分岐", `約${beM}食`, `売上 ${num(Math.round(be/100)*100)}円（客単価 ${num(Math.round(tk))}円）`],
     [done ? "結果" : "今", d.meals ? (gap>=0 ? `<span class="pos">+${gap}食</span>` : `<span class="neg">あと${-gap}食</span>`) : "—",
-      d.sales ? `${done?"":"今の"}利益 ${signed(d.sales*(1-cr) - fixD - lab.v)}` : "まだ会計がありません"]
+      d.sales ? `${done?"":"今の"}利益 ${signed(d.sales*(1-cr) - fixD - lab.v)}${(()=>{ const a = done ? null : paceAvgAt(d); return a===null ? "" : `<br>同じ時刻の平均より ${d.meals>=a?"+":""}${Math.round((d.meals-a)*10)/10}食`; })()}` : "まだ会計がありません"]
   ].map(c=>`<div class="w"><small>${c[0]}</small><b>${c[1]}</b><i>${c[2]}</i></div>`).join("");
   $("beNote").innerHTML = `固定費 ${num(Math.round(fixD))}円/日（月 ${num(fixM)}円${incM?` − 収入 ${num(incM)}円`:""} ÷ 営業 ${open}日）＋ 人件費 ${num(Math.round(lab.v))}円${lab.est?"（退勤前なので直近の平均で仮置き）":`（勤怠から${p.laborDaily[dt]?`・${p.laborDaily[dt].staff}人`:""}）`}、原価率 ${pct(cr)}。`
     + (loan ? `公庫の返済（${+mk.slice(5)}月 ${num(loan)}円・元金と利息）まで含めると 約${Math.ceil(beL/tk)}食。` : "") + (fx.some(f=>!f.amount && !isLoanFixed(f)) ?" ※固定費に0円の項目があるので、実際の分岐はもう少し上です。" : "");
@@ -1032,7 +1034,7 @@ function renderDay(){
     return `<div class="${r.dt===viewDate?"today":(r.off&&!r.meals?"off":"")}" style="height:${h}%" title="${r.dt}: ${r.meals}食">${r.meals?`<b>${r.meals}</b>`:""}<span>${+r.dt.slice(8)}<br>${youbi(r.dt)}</span></div>`;
   }).join("");
 
-  renderPace(d);
+  renderLeft(d);
   renderSplit(d);
   try{ renderHourly(d); }catch(e){ console.error(e); }
   renderVisits(d);
@@ -1056,59 +1058,57 @@ function renderSplit(d){
   $("splitSub").textContent = `客単価 店内 ${d.mealsEatin?yen(Math.round((d.salesEatin||0)/d.mealsEatin)):"-"} / 持ち帰り ${d.mealsTogo?yen(Math.round((d.salesTogo||0)/d.mealsTogo)):"-"}`;
 }
 
-// ===== 今日のペース =====
+// ===== 同じ時刻の平均（11/6〜：表はやめて、損益分岐の欄に1行だけ出す）=====
 function cumByHour(day){
   const src = day.hoursMeals || day.hours || {};
   const out = {}; let acc = 0;
   for (let h=10; h<=15; h++){ acc += Number(src[String(h)]||0); out[h] = acc; }
   return out;
 }
-function renderPace(d){
-  const isToday = viewDate === DATA.todayKey;
-  const past = DATA.daily.filter(x=>x.count>0 && x.date!==viewDate && x.date<viewDate);
-  $("paceTitle").textContent = isToday ? "今日のペース" : "この日の時間帯の進み方";
-  if(!past.length){ $("paceGrid").innerHTML=""; $("paceTable").innerHTML=""; $("paceNote").textContent="比較できる過去の営業日がまだありません"; return; }
-  const cums = past.map(x=>({date:x.date, cum:cumByHour(x), total:(x.hoursMeals?x.meals:x.count)||0, meals:x.meals}));
-  const share = {}; for (let h=10; h<=15; h++) share[h] = cums.reduce((a,c)=>a+(c.total?c.cum[h]/c.total:0),0)/cums.length;
-  const mine = cumByHour(d);
-  const now = new Date(); const H = now.getHours(), M = now.getMinutes();
-  let proj = null, pos = null;
-  if(isToday && H>=11 && H<=15 && d.count>0){
-    const prev = H-1>=10 ? share[H-1] : 0; const cur = share[Math.min(H,15)];
-    const f = Math.min(0.999, prev + (M/60)*(cur-prev));
-    const nowCum = d.hoursMeals ? d.meals : d.count; const mealsPerUnit = d.hoursMeals ? 1 : d.meals/d.count;
-    proj = Math.round(nowCum/f*mealsPerUnit);
-    const avgAt = cums.reduce((a,c)=>{ const pv = H-1>=10 ? c.cum[H-1] : 0; const cv = c.cum[Math.min(H,15)]; return a + (pv + (M/60)*(cv-pv))*(c.total?c.meals/c.total:1); },0)/cums.length;
-    const rank = cums.filter(c=>{ const pv = H-1>=10 ? c.cum[H-1] : 0; const cv = c.cum[Math.min(H,15)]; return (pv + (M/60)*(cv-pv))*(c.total?c.meals/c.total:1) > d.meals; }).length + 1;
-    pos = {avgAt: Math.round(avgAt*10)/10, rank, n: cums.length+1};
-  }
-  const avgTotal = cums.reduce((a,c)=>a+c.meals,0)/cums.length;
-  const sameDow = past.filter(x=>dow(x.date)===dow(viewDate));
-  const avgDow = sameDow.length ? sameDow.reduce((a,x)=>a+x.meals,0)/sameDow.length : null;
-  $("paceGrid").innerHTML = (isToday ? [
-      ["現在の食数", d.meals+"食", pos?`同時刻の平均 ${pos.avgAt}食（${d.meals>=pos.avgAt?"+":""}${Math.round((d.meals-pos.avgAt)*10)/10}）`:""],
-      ["過去の平均", Math.round(avgTotal)+"食/日", `営業${cums.length}日${avgDow!==null?`・${youbi(viewDate)}曜は ${Math.round(avgDow)}食`:""}`],
-    ] : (()=>{
-      const all = DATA.daily.filter(x=>x.count>0 && x.date<DATA.todayKey);
-      const rank = all.filter(x=>x.meals>d.meals).length + 1;
-      const best = all.slice().sort((a,b)=>b.meals-a.meals)[0];
-      const avgAll = all.length ? all.reduce((a,x)=>a+x.meals,0)/all.length : 0;
-      return [
-        ["この日の食数", d.meals+"食", `平均との差 ${d.meals-Math.round(avgAll)>=0?"+":""}${d.meals-Math.round(avgAll)}食`],
-        ["全営業日の平均", Math.round(avgAll)+"食/日", `営業${all.length}日${avgDow!==null?`・${youbi(viewDate)}曜は ${Math.round(avgDow)}食`:""}`],
-        ["この日の順位", `${all.length}日中 ${rank}位`, "食数で比較"],
-        ["最高の日", best?`${best.meals}食`:"-", best?`${best.date.slice(5)}(${youbi(best.date)})`:""]
-      ];
-    })()).map(a=>cell(...a)).join("");
-  const hs = [11,12,13,14];
-  const avgCum = {}; hs.forEach(h=>{ avgCum[h] = cums.reduce((a,c)=>a+c.cum[h],0)/cums.length; });
-  const best = {}; hs.forEach(h=>{ best[h] = Math.max(...cums.map(c=>c.cum[h])); });
-  $("paceTable").innerHTML = "<tr><th></th>" + hs.map(h=>`<th>${h}時まで</th>`).join("") + "</tr>"
-    + `<tr><td>${isToday?"今日":"この日"}</td>` + hs.map(h=>`<td><b>${mine[h]}</b></td>`).join("") + "</tr>"
-    + `<tr><td>平均</td>` + hs.map(h=>`<td>${Math.round(avgCum[h])}</td>`).join("") + "</tr>"
-    + `<tr><td>最高</td>` + hs.map(h=>`<td>${best[h]}</td>`).join("") + "</tr>";
-  $("paceNote").textContent = "数字はその時刻までの食数の累計";
+// 今日、今の時刻までの過去の平均食数（その時刻までの累計を、時間の中は直線でならす）
+function paceAvgAt(d){
+  if (viewDate !== DATA.todayKey) return null;
+  const now = new Date(), H = now.getHours(), M = now.getMinutes(); if (H < 11 || H > 14) return null;
+  const past = DATA.daily.filter(x=>x.count>0 && x.date<viewDate); if (!past.length) return null;
+  const v = past.map(x=>{ const c = cumByHour(x), total = (x.hoursMeals?x.meals:x.count)||0; const pv = c[H-1]||0, cv = c[H]||0; return (pv + (M/60)*(cv-pv))*(total?x.meals/total:1); });
+  return Math.round(v.reduce((a,b)=>a+b,0)/v.length*10)/10;
 }
+
+// ===== 今日の残り（麺・ソース）=====
+// 発注ページと同じ考え方：最後に入れた「今ある数」− その後に売れた分。今日あと出る見込み（いつもの食数 − 今の食数）と次の営業日の分で足りるか
+const LEFT_DEF = [
+  { key:"noodle", name:"麺の小分け", unit:"個", per:(n)=>/ハーフ/.test(n) ? 1 : 2 },
+  { key:"sauce",  name:"ナポリタンソース", unit:"人前", per:(n)=>/ハーフ/.test(n) ? 0.5 : 1 }
+];
+let PREPS_D = null, PREPS_AT = 0;
+function soldOnD(def, date){ const x = dayByDate(date); if (!x || !x.items) return 0; return Object.entries(x.items).reduce((a,[n,c])=> a + (/オリオン|ナシナシ/.test(n) ? def.per(n)*c : 0), 0); }
+function prepMin(r){ const m = String(r.at||"").match(/(\d{1,2}):(\d{2})/); return m ? (+m[1])*60 + (+m[2]) : 24*60; }
+async function renderLeft(d){
+  const card = $("leftCard"); if (!card) return;
+  if (viewDate !== DATA.todayKey){ card.classList.add("hide"); return; } card.classList.remove("hide");
+  if (!TOKEN){ $("leftBody").innerHTML = `<div class="sub">ログインすると表示します</div>`; return; }
+  if (!PREPS_D || Date.now() - PREPS_AT > 10*60000){ const r = await fxGet("prep_get"); if (r && r.ok){ PREPS_D = r.preps||[]; PREPS_AT = Date.now(); } }
+  if (!PREPS_D){ $("leftBody").innerHTML = `<div class="sub">仕込みの記録を読めませんでした</div>`; return; }
+  const today = DATA.todayKey, now = new Date(), open = now.getHours() < 14;
+  let next = dateAdd(today,1); for (let i=0; i<10 && !isOpenDay(next); i++) next = dateAdd(next,1);
+  const expT = expectMeals(today), expN = expectMeals(next);
+  const leftMeals = open && expT ? Math.max(0, expT.v - d.meals) : 0;
+  const recent = DATA.daily.filter(x=>x.meals>0 && x.date<today).slice(-10);
+  const rows = LEFT_DEF.map(def=>{
+    const L = PREPS_D.filter(p=>p.key===def.key).sort((a,b)=> a.date===b.date ? prepMin(a)-prepMin(b) : (a.date<b.date?-1:1)); const r = L[L.length-1];
+    if (!r) return `<div class="lrow"><b>${def.name}</b><div class="sub">まだ仕込みの記録がありません</div></div>`;
+    let left = Number(r.qty)||0; for (let k = r.date; k <= today; k = dateAdd(k,1)){ if (k === r.date && prepMin(r) >= 14*60) continue; left -= soldOnD(def, k); } left = Math.max(0, left);
+    const m = recent.reduce((a,x)=>a+x.meals,0), u = recent.reduce((a,x)=>a+soldOnD(def,x.date),0), per = m ? u/m : (def.key==="noodle"?1.5:0.75);
+    const needT = leftMeals*per, needN = expN ? expN.v*per : 0, after = left - needT;
+    const nx = `${+next.slice(5,7)}/${+next.slice(8)}（${youbi(next)}）`;
+    const st = after < 0 ? ["n","今日の営業中に足りなくなりそう"] : (after < needN ? ["w",`${nx}の分は足りない → 営業後に仕込み`] : ["p",`${nx}の分まで足りる`]);
+    const u1 = def.unit;
+    return `<div class="lrow"><div class="lh"><b>${def.name}</b><span class="tg ${st[0]}">${st[1]}</span></div>
+      <div class="sub">今 約${Math.round(left)}${u1}（${+r.date.slice(5,7)}/${+r.date.slice(8)} ${esc(r.by||"")}さんの入力 ${r.qty}${u1} から計算）${open&&expT?`・今日あと約${leftMeals}食で約${Math.round(needT)}${u1}`:""}${expN?`・${nx} 約${expN.v}食で約${Math.round(needN)}${u1}`:""}</div></div>`;
+  });
+  $("leftBody").innerHTML = rows.join("") + `<div class="sub" style="margin-top:6px">「今ある数」は仕込んだときに入れた数から、その後の売上で減らした計算です。ずれていたら発注ページの仕込みで今ある数を入れ直してください</div>`;
+}
+
 // ===== 15分ごとの食数 =====
 function slotKeys(){ const ks=[]; for(let h=10;h<=14;h++) for(let m=0;m<60;m+=15) ks.push(String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")); ks.push("15:00"); return ks; }
 function slotSvg(ks, vals, lines, opts){ // vals: 棒, lines: [{v:[], color, dash}]
