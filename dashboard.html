@@ -953,7 +953,7 @@ function renderBE(d){
   const p = pnlData(), dt = viewDate, mk = dt.slice(0,7);
   const fx = p.fixed.filter(f=>!/収入/.test(f.name)), fixM = fx.filter(f=>!isLoanFixed(f)).reduce((a,f)=>a+f.amount,0), loan = loanMonth(mk).payment;
   let open = 0; for (let x = mk+"/01"; x.slice(0,7)===mk; x = dateAdd(x,1)) if (isOpenDay(x)) open++;
-  const fixD = open ? fixM/open : 0;
+  const incM = incomeFor(mk), fixD = open ? (fixM - incM)/open : 0;   // 11/6：夜間貸出などの収入は固定費から差し引いて損益分岐を出す
   const recent = DATA.daily.filter(x=>x.count>0 && x.date<dt).slice(-10);
   const avgLab = (()=>{ const ls = recent.map(x=>p.laborDaily[x.date]).filter(Boolean).slice(-5); return ls.length ? ls.reduce((a,l)=>a+l.cost,0)/ls.length : 0; })();
   // 今日は営業中（15時前）だけ直近の平均で仮置き。15時を過ぎたら勤怠の実績（1人の日は1人分）
@@ -969,7 +969,7 @@ function renderBE(d){
     [done ? "結果" : "今", d.meals ? (gap>=0 ? `<span class="pos">+${gap}食</span>` : `<span class="neg">あと${-gap}食</span>`) : "—",
       d.sales ? `${done?"":"今の"}利益 ${signed(d.sales*(1-cr) - fixD - lab.v)}` : "まだ会計がありません"]
   ].map(c=>`<div class="w"><small>${c[0]}</small><b>${c[1]}</b><i>${c[2]}</i></div>`).join("");
-  $("beNote").innerHTML = `固定費 ${num(Math.round(fixD))}円/日（月 ${num(fixM)}円 ÷ 営業 ${open}日）＋ 人件費 ${num(Math.round(lab.v))}円${lab.est?"（退勤前なので直近の平均で仮置き）":`（勤怠から${p.laborDaily[dt]?`・${p.laborDaily[dt].staff}人`:""}）`}、原価率 ${pct(cr)}。`
+  $("beNote").innerHTML = `固定費 ${num(Math.round(fixD))}円/日（月 ${num(fixM)}円${incM?` − 収入 ${num(incM)}円`:""} ÷ 営業 ${open}日）＋ 人件費 ${num(Math.round(lab.v))}円${lab.est?"（退勤前なので直近の平均で仮置き）":`（勤怠から${p.laborDaily[dt]?`・${p.laborDaily[dt].staff}人`:""}）`}、原価率 ${pct(cr)}。`
     + (loan ? `公庫の返済（${+mk.slice(5)}月 ${num(loan)}円・元金と利息）まで含めると 約${Math.ceil(beL/tk)}食。` : "") + (fx.some(f=>!f.amount && !isLoanFixed(f)) ?" ※固定費に0円の項目があるので、実際の分岐はもう少し上です。" : "");
 }
 
@@ -1246,7 +1246,7 @@ function initFolds(){ document.querySelectorAll(".fold").forEach((c,i)=>{ const 
 function dayEcon(dt, d){
   const p = pnlData(), mk = dt.slice(0,7), fx = p.fixed.filter(f=>!/収入/.test(f.name) && !/公庫|返済/.test(f.name)), fixM = fx.reduce((a,f)=>a+f.amount,0);
   let open = 0; for (let x = mk+"/01"; x.slice(0,7)===mk; x = dateAdd(x,1)) if (isOpenDay(x)) open++;
-  const fixD = open ? fixM/open : 0, l = p.laborDaily[dt], lab = l ? l.cost : 0, cost = p.costDaily[dt] || 0, cr = d.sales ? cost/d.sales : 0.3, tk = d.meals ? d.sales/d.meals : 1000;
+  const fixD = open ? (fixM - incomeFor(mk))/open : 0, l = p.laborDaily[dt], lab = l ? l.cost : 0, cost = p.costDaily[dt] || 0, cr = d.sales ? cost/d.sales : 0.3, tk = d.meals ? d.sales/d.meals : 1000;
   const be = (fixD + lab)/(1 - cr), beM = Math.ceil(be/tk);
   return { fixD, lab, l, cost, cr, beM, profit: d.sales - cost - lab - fixD, gp: d.sales - cost - lab };
 }
@@ -1500,7 +1500,9 @@ function renderMonthBars(){ const k = viewMonth(), cur = k===thisMonth(), lab = 
   document.querySelectorAll(".mJump").forEach(e=>e.innerHTML = cur ? `<span class="now">今月</span>` : `<button class="jump" onclick="goThisMonth()">今月へ戻る</button>`);
   ["P","H"].forEach(s=>{ $("mPrev"+s).disabled = k<=firstMonth(); $("mNext"+s).disabled = cur; }); }
 function pnlData(){ return (DATA && DATA.pnl) || {months:[], fixed:[], laborDaily:{}, costDaily:{}, expenses:[]}; }
-function incomeFor(key){ return ops().income.filter(i=>!i.from || i.from<=key).reduce((a,i)=>a+i.amount,0); }
+// その他収入（夜間貸出など）：固定費シートで科目に「収入」を含む行。from〜to の月だけ（to が空なら以降ずっと）
+function incomeOn(i, key){ return (!i.from || i.from<=key) && (!i.to || i.to>=key); }
+function incomeFor(key){ return ops().income.filter(i=>incomeOn(i, key)).reduce((a,i)=>a+i.amount,0); }
 function renderDayPnl(d){
   const p = pnlData(); const cost = p.costDaily[viewDate] || 0; const lab = p.laborDaily[viewDate] || null;
   const gp = d.sales - cost - (lab?lab.cost:0);
@@ -1551,7 +1553,7 @@ function renderPnl(){
       line("− 変動経費","j",-cur.exp,"消耗品など（仕入れ除く）") +
       line("− 固定費", fixedZero?"k":"j", -cur.fixed, `月額満額${fixedZero?`・${fixedZero}項目が0円のまま`:""}`) +
       `<div class="pl total"><span>営業利益</span>${signed(cur.profit)}</div>` +
-      (inc ? line("＋ その他収入","j",inc, ops().income.map(i=>i.name).join("・")) : (incNext.length?`<div class="pl"><span class="n">${incNext.map(i=>`${i.name} ${num(i.amount)}円は ${i.from.replace("/","年")}月から算入`).join("、")}</span></div>`:"")) +
+      (inc ? line("＋ その他収入","j",inc, ops().income.filter(i=>incomeOn(i, curKey)).map(i=>i.name).join("・")) : (incNext.length?`<div class="pl"><span class="n">${incNext.map(i=>`${i.name} ${num(i.amount)}円は ${i.from.replace("/","年")}月から算入`).join("、")}</span></div>`:"")) +
       loanLines +
       ((inc||loanAmt) ? `<div class="pl total"><span>最終の手残り</span>${signed(net)}</div>` : "") +
       (lm.split && loanInFixed ? `<div class="pl neg"><span>固定費シートに「公庫返済」の行（月 ${num(loanInFixed)}円）が残っています。返済は返済予定表から引くので、固定費シートのこの行は0円にしてください（二重計上になります）</span></div>` : "");
@@ -1603,7 +1605,7 @@ function renderInit(p, hist, fc, inc, loanAmt){
   const it = p.initial;
   if(!it){ $("initTop").innerHTML = ""; $("initNote").textContent = "開業費データがまだありません"; $("initCat").innerHTML=""; $("initFund").innerHTML=""; $("initItems").innerHTML=""; return; }
   const cum = hist.reduce((a,m)=>a+(m.profit||0)+incomeFor(m.key),0);
-  const pace = (fc ? fc.profit : (hist[0] ? hist[0].profit : 0)) + (ops().income.reduce((a,i)=>a+i.amount,0));
+  const pace = (fc ? fc.profit : (hist[0] ? hist[0].profit : 0)) + incomeFor("9999/12");   // 期限のない収入（来月以降もずっと入る分）
   const remain = it.total - cum;
   const rate = it.total ? cum/it.total : 0;
   const back = pace>0 ? Math.ceil(remain/pace) : null;
