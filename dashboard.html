@@ -354,11 +354,6 @@
         <div class="camGrid" id="mixGrid"></div>
         <div class="sub" id="mixNote"></div></div>
 
-      <div class="card wide"><h2>時間帯ごとの人と食数 <span class="r">勤怠の出勤・退勤と会計から</span></h2>
-        <div class="pnlGrid" id="hrTop"></div>
-        <div class="scroll" style="margin-top:8px"><table class="daygrid" id="hrTable"></table></div>
-        <div class="fcmsg" id="hrMsg"></div>
-        <div class="sub" id="hrNote"></div></div>
 
 
       <div class="card wide"><h2>売上の内訳 <span class="r" id="splitSub"></span></h2>
@@ -983,31 +978,7 @@ function staffInHour(spans, h, paid){ return (spans||[]).filter(s=>(s[2]?1:0)===
 function mealsInHour(d, h){ const sl = d.slots||{}; return [0,15,30,45].reduce((a,m)=>a+Number(sl[String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")]||0),0); }
 function hourStats(x){ const l = pnlData().laborDaily[x.date]; if (!l || !l.spans || !x.slots) return null; return HRS.map(h=>({ h, meals: mealsInHour(x,h), ppl: staffInHour(l.spans,h,1), sup: staffInHour(l.spans,h,0) })); }
 function firstLast(x){ const ks = slotKeys().filter(k=>Number((x.slots||{})[k]||0)>0); return ks.length ? [ks[0], ks[ks.length-1]] : null; }
-function renderHourly(d){
-  const hist = DATA.daily.filter(x=>x.count>0 && x.date<viewDate).slice(-20).map(x=>({x, s:hourStats(x)})).filter(z=>z.s);
-  // 1人1時間で回せた食数の目安（実績の上位1割。人が0.5人時以上いた時間だけ）
-  const rates = []; hist.forEach(z=>z.s.forEach(r=>{ if (r.ppl+r.sup >= 0.5 && r.meals) rates.push(r.meals/(r.ppl+r.sup)); })); rates.sort((a,b)=>a-b);
-  const cap = rates.length >= 5 ? rates[Math.floor(rates.length*0.9)] : null;
-  const s = hourStats(d), fl = d.slots ? firstLast(d) : null;
-  const flHist = hist.map(z=>firstLast(z.x)).filter(Boolean), avgK = i => { const ms = flHist.map(f=>hm2m(f[i])); if (!ms.length) return null; const v = Math.round(ms.reduce((a,b)=>a+b,0)/ms.length); return `${Math.floor(v/60)}:${String(v%60).padStart(2,"0")}`; };
-  $("hrTop").innerHTML = [
-    ["最初と最後の会計", fl ? `${fl[0]}〜${fl[1]}` : "-", flHist.length ? `いつもは ${avgK(0)}〜${avgK(1)}（15分単位）` : ""],
-    ["1人1時間で回せた目安", cap ? `約${Math.round(cap)}食` : "-", cap ? `直近${hist.length}営業日の上位1割` : "データがたまると出ます"]
-  ].map(a=>cell(...a)).join("");
-  if (!s){ $("hrTable").innerHTML = ""; $("hrMsg").innerHTML = ""; $("hrNote").textContent = d.count ? "この日は勤怠か15分ごとの会計データがないので、時間帯ごとには出せません" : "この日の会計はありません"; return; }
-  const avg = HRS.map((h,i)=>{ const v = hist.map(z=>z.s[i]); return v.length ? { meals: v.reduce((a,r)=>a+r.meals,0)/v.length, ppl: v.reduce((a,r)=>a+r.ppl+r.sup,0)/v.length } : null; });
-  const inBiz = h => h>=11 && h<=13;   // 10時台は開店準備、14時台は片付けなので「人が多め」の判定から外す
-  const flag = r => { const pp = r.ppl + r.sup; if (!pp) return r.meals ? "neg" : ""; const pr = r.meals/pp; return cap && pr >= cap*0.9 ? "neg" : (inBiz(r.h) && pp >= 1.5 && pr < 3 ? "mid" : ""); };
-  $("hrTable").innerHTML = "<tr><th>時間</th><th>食数</th><th>人</th><th>1人あたり</th><th>いつも</th></tr>" + s.map((r,i)=>{ const pp = r.ppl + r.sup, f = flag(r);
-    return `<tr><td>${r.h}時台</td><td>${r.meals}</td><td>${pp ? (Math.round(pp*10)/10) : "0"}${r.sup>0.05?`<small>（うちサポート${Math.round(r.sup*10)/10}）</small>`:""}</td><td class="${f==="neg"?"neg":""}" style="${f==="mid"?"color:var(--gold)":""}">${pp ? (r.meals/pp).toFixed(1)+"食" : (r.meals ? "人なし" : "-")}</td><td>${avg[i] ? `${avg[i].meals.toFixed(0)}食・${avg[i].ppl.toFixed(1)}人` : "-"}</td></tr>`; }).join("");
-  // 気づき：人が多め／足りない時間帯（この日と、直近の平均の両方から）
-  const msg = [];
-  s.forEach(r=>{ const pp = r.ppl + r.sup; if (inBiz(r.h) && pp >= 1.5 && r.meals/pp < 3) msg.push(`${r.h}時台は ${Math.round(pp*10)/10}人で${r.meals}食。準備や片付けの時間でなければ、入りを遅らせる・早めに上がる余地があります`);
-    else if (cap && pp && r.meals/pp >= cap*0.9) msg.push(`${r.h}時台は 1人あたり${(r.meals/pp).toFixed(1)}食で、いつもの上限（約${Math.round(cap)}食）に近い。この時間だけ手伝いがあると取りこぼしが減ります`); });
-  if (!msg.length && avg.every(Boolean)){ const lo = avg.map((a,i)=>({h:HRS[i], r: a.ppl ? a.meals/a.ppl : 99, a})).filter(z=>z.a.ppl>=1.5 && inBiz(z.h)).sort((p,q)=>p.r-q.r)[0]; if (lo && lo.r < 3) msg.push(`直近では ${lo.h}時台が平均 ${lo.a.ppl.toFixed(1)}人で ${lo.a.meals.toFixed(0)}食。シフトの入り時間を見直す候補です`); }
-  $("hrMsg").innerHTML = msg.length ? `<ul style="margin:0;padding-left:1.2em">${msg.slice(0,3).map(m=>`<li>${m}</li>`).join("")}</ul>` : "";
-  $("hrNote").textContent = "人＝その1時間にいた人数（出勤・退勤の時刻から分単位で按分）。サポート＝時給0の管理者。1人あたり＝食数÷人。赤＝いつもの上限に近い、金＝人が多め（11〜13時台だけ判定。10時台は開店準備、14時台は片付け）。";
-}
+// 11/6：「時間帯ごとの人と食数」カードはやめた（松尾さん）。hourStats・firstLast は週の日別カードで使う
 function renderDay(){
   const d = dayByDate(viewDate) || {count:0,meals:0,drinks:0,sales:0,eatin:0,togo:0,
     salesEatin:0,salesTogo:0,mealsEatin:0,mealsTogo:0,items:{},hours:{},camera:null};
@@ -1036,7 +1007,6 @@ function renderDay(){
 
   renderLeft(d);
   renderSplit(d);
-  try{ renderHourly(d); }catch(e){ console.error(e); }
   renderVisits(d);
   renderMix(d);
 
