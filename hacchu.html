@@ -382,12 +382,31 @@ function prepRun(key){ const left = prepLeft(key); if (left === null) return nul
   if (isOpen(d) && now < atTime(d, CLOSE)){ const need = Math.max(0, mealsOn(d)*per - (soldOn(key, dayKey(d))||0)); if (L >= need){ L -= need; days += need ? Math.min(1, need/Math.max(1, mealsOn(d)*per)) : 0; } else { days += L/Math.max(1,need); short = new Date(d); L = 0; } }
   if (!short){ d = addD(d,1); for (let i = 0; i < 21; i++, d = addD(d,1)){ if (!isOpen(d)) continue; const need = mealsOn(d)*per; if (L >= need){ L -= need; days += 1; } else { days += need ? L/need : 0; short = new Date(d); break; } } }
   return { left, days, short, last: prepLast(key) }; }
+// 11/6〜：ソースは「今日仕込んだ回数」も入れる（1回＝ハーフ40人前＝20人前）。1回で実際に何食分になったかを測る
+// 実測 ＝（最後に入れた今ある数 − 起点の今ある数 ＋ その間に売れた分）÷ その間に仕込んだ回数。回数が増えるほど正確になる
+const SAUCE_BATCH = 20, YIELD_FROM = "2026/11/06";
+function prepBatches(date){ const r = (PREPS||[]).find(p=>p.key==="sauce_n" && p.date===date); return r ? Number(r.qty)||0 : 0; }
+function soldBetween(key, a, b){ let s = 0; for (let k = a.date; k <= b.date; k = dayKey(addD(pDate(k),1))){
+    if (k === a.date && prepTime(a) >= 14*60) continue; if (k === b.date && prepTime(b) < 14*60) continue; if (a.date === b.date && !(prepTime(a) < 14*60 && prepTime(b) >= 14*60)) continue;
+    const v = soldOn(key, k); if (v === null && isOpen(pDate(k))) return null; s += v||0; } return s; }
+function sauceYield(){ if (!PREPS || !DAILY) return null;
+  const L = PREPS.filter(p=>p.key==="sauce").sort((a,b)=> a.date===b.date ? prepTime(a)-prepTime(b) : (a.date < b.date ? -1 : 1));
+  let i0 = -1; for (let i = 0; i < L.length; i++){ if (L[i].date < YIELD_FROM) i0 = i; }
+  const base = L[i0 >= 0 ? i0 : 0], tail = L.slice(i0 >= 0 ? i0+1 : 1); if (!base || !tail.length) return { n:0 };
+  const n = tail.reduce((a,r)=>a+prepBatches(r.date),0); if (!n) return { n:0 };
+  const last = tail[tail.length-1], sold = soldBetween("sauce", base, last); if (sold === null) return { n, wait:true };
+  const per = (last.qty - base.qty + sold) / n; return { n, per, sold, from: base.date, to: last.date }; }
+function yieldHtml(){ const y = sauceYield(); if (!y) return "";
+  if (!y.n) return `<div class="mini" style="margin-top:6px">ソースを仕込んだ日は「仕込んだ回数」も入れると、1回で実際に何食分になるかを測れます（レシピではハーフ40食分）</div>`;
+  if (y.wait || !(y.per > 0)) return `<div class="mini" style="margin-top:6px">ソース1回の実測：売上の集計待ち（仕込み${y.n}回分）</div>`;
+  const h = Math.round(y.per*2), d = h - SAUCE_BATCH*2;
+  return `<div class="mini" style="margin-top:6px">ソース1回の実測：<b>ハーフ約${h}食分</b>（レシピ40・${d===0?"同じ":(d>0?"+":"")+d}）　${fmtD(y.from)}〜${fmtD(y.to)}・仕込み${y.n}回・売れた分 ${Math.round(y.sold)}人前から${y.n<3?"。回数が少ないのでまだ目安です":""}</div>`; }
 function prepSummary(){
   if (!PREPS) return `<div class="mini">読み込み中…</div>`;
   const rows = PREP_DEF.map(def=>{ const r = prepRun(def.key); if (!r) return `<div class="prow"><span><b>${esc(def.name)}</b><br><span class="mini">まだ入力がありません</span></span></div>`;
     return `<div class="prow"><span><b>${esc(def.name)}</b><br><span class="mini">${fmtD(r.last.date)} ${esc(r.last.by||"")}さんが入力・そのとき ${r.last.qty}${def.unit}</span></span><span style="text-align:right"><span class="big">約${Math.round(r.days*10)/10}日分</span><br><span class="mini">残り約${Math.round(r.left)}${def.unit}</span></span></div>`; }).join("");
   const sh = PREP_DEF.map(def=>prepRun(def.key)).filter(r=>r && r.short).map(r=>r.short).sort((a,b)=>a-b)[0];
-  return rows + (sh ? `<div class="hint">次の仕込みの目安：<b>${md(sh)}の昼の前</b>まで</div>` : "");
+  return rows + (sh ? `<div class="hint">次の仕込みの目安：<b>${md(sh)}の昼の前</b>まで</div>` : "") + yieldHtml();
 }
 function renderPrep(){
   const today = dayKey(new Date()); const lc = (HOME&&HOME.lastChecks)||{}; const chefDue = dueItems("シェフ"), hallDue = dueItems("ホール");
@@ -396,13 +415,17 @@ function renderPrep(){
     <div class="mini" style="margin:4px 0 6px">毎日でなくて大丈夫です。仕込み終わったら、<b>冷蔵庫に今ある数（前の残り＋今日仕込んだ分）</b>を入れてください</div>
     ${PREP_DEF.map(def=>{ const r = prepRun(def.key);
       return `<div class="row"><span class="l">${esc(def.name)}<small>${r ? `前回 ${fmtD(r.last.date)} ${esc(r.last.by||"")}さん ${r.last.qty}${def.unit} → 今の計算 約${Math.round(r.left)}${def.unit}` : "まだ入力がありません"}</small></span>
-      <span style="display:flex;align-items:center;gap:4px"><input class="qty" type="number" inputmode="decimal" id="pp_${def.key}" value="" placeholder="${r?Math.round(r.left):""}"><span class="mini">${esc(def.unit)}</span></span></div>`; }).join("")}
+      <span style="display:flex;align-items:center;gap:4px"><input class="qty" type="number" inputmode="decimal" id="pp_${def.key}" value="" placeholder="${r?Math.round(r.left):""}"><span class="mini">${esc(def.unit)}</span></span></div>${def.key==="sauce"?`<div class="row"><span class="l">今日ソースを仕込んだ回数<small>1回＝ハーフ40人前のレシピ。仕込んでいなければ空欄</small></span>
+      <span style="display:flex;align-items:center;gap:4px"><input class="qty" type="number" inputmode="numeric" id="pp_sauce_n" value="${prepBatches(today)||""}" placeholder=""><span class="mini">回</span></span></div>`:""}`; }).join("")}
     <button class="btn" style="margin-top:10px" onclick="savePrep()">今ある数を記録</button>
     ${(()=>{ const sh = PREP_DEF.map(def=>prepRun(def.key)).filter(r=>r && r.short).map(r=>r.short).sort((a,b)=>a-b)[0]; return sh ? `<div class="hint">見込み：${md(sh)}の昼の前に仕込みが必要です</div>` : ""; })()}
-    <div class="mini" style="margin-top:8px">仕込んでいなくても、数がずれていると気づいたら、今ある数を入れれば直ります</div></div>
+    <div class="mini" style="margin-top:8px">仕込んでいなくても、数がずれていると気づいたら、今ある数を入れれば直ります</div>${yieldHtml()}</div>
     ${FLOOR?"":`<button class="todo ${chefDue.length?"urgent":""}" onclick="OWNER='シェフ';go('stock')"><span class="ic">🍳</span><span class="tt"><b>食材の棚卸し（2週に1回）</b><small>${chefDue.length?chefDue.length+"品目 数える時期です":"次は "+nextTake+" ごろ"}・前回 ${lc["シェフ"]?fmtD(lc["シェフ"].date)+" "+esc(lc["シェフ"].by):"—"}</small></span><span class="ar">›</span></button>`}`;
 }
 async function savePrep(){ const items = {}; PREP_DEF.forEach(def=>{ const v = $("pp_"+def.key).value.trim(); if (v !== "") items[def.key] = Number(v); });
+  const bn = $("pp_sauce_n") ? $("pp_sauce_n").value.trim() : "";
+  if (bn !== "" && Number(bn) > 0 && !("sauce" in items)){ toast("仕込んだ回数と一緒に、ソースの今ある数も入れてください"); return; }
+  if (bn !== "") items.sauce_n = Math.max(0, Math.round(Number(bn)||0)); else if (prepBatches(dayKey(new Date())) && "sauce" in items) items.sauce_n = "";
   if (!Object.keys(items).length){ toast("今ある数を入れてください"); return; }
   const r = await post("prep_save", { date: dayKey(new Date()), items }); if (r.error){ showMsg(r.error); return; } toast("今ある数を記録しました"); await loadPreps(); if (PAGE==="prep") renderPrep(); }
 

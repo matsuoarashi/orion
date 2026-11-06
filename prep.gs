@@ -1,7 +1,8 @@
 // ===== 仕込み（毎日の仕込み数。在庫は売上から計算し、棚卸しは2週に1回）=====
 // 分析シートの「仕込み」タブ：日付・品目キー（noodle＝麺の小分け〔ハーフ単位〕／sauce＝ナポリタンソース〔人前〕）・数・入力者
 // 11/5〜：「数」は仕込んだ分ではなく「冷蔵庫に今ある数（前の残り＋仕込んだ分）」。残り＝最後に入れた数 − その後に売れた分（計算は hacchu.html）。更新日時（at）で14時前後を見分ける
-var PREP_SHEET = "仕込み", PREP_COLS = ["日付","品目","数","入力者","更新日時"], PREP_KEYS = ["noodle","sauce"];
+// 11/6〜：sauce_n＝その日にソースを仕込んだ回数（1回＝ハーフ40人前のレシピ）。発注ページで「1回で実際に何食分か」を測る
+var PREP_SHEET = "仕込み", PREP_COLS = ["日付","品目","数","入力者","更新日時"], PREP_KEYS = ["noodle","sauce","sauce_n"];
 function prepGet_(p){
   var me = null; try { me = invAuth_(p); } catch(e){} if (!me) return invOut_({ error: "auth" });
   var since = Utilities.formatDate(new Date(Date.now() - 60*86400000), "Asia/Tokyo", "yyyy/MM/dd");

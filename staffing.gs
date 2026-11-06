@@ -103,10 +103,22 @@ function opsOpenFn_(set){
 }
 
 // ---- 発注締切：今日が締切の納品で、その次の納品まで足りなくなる品目 ----
+// 11/6：見込み食数は発注ページと同じ考え方（過ぎた日＝実際の食数／先の日＝直近4週の同じ曜日の平均→直近10営業日の平均→55食）
+function opsMealsFn_(today){
+  var s = {}; try { s = ownSales_(opsAdd_(today, -35), today); } catch(e){}
+  var past = Object.keys(s).filter(function(k){ return k < today && s[k].meals > 0; }).sort(), memo = {};
+  var done = today < opsDay_(new Date()) || Utilities.formatDate(new Date(), OPS_TZ, "HH:mm") >= "14:00";   // 今日の分は営業が終わってから実績を使う
+  return function(key){ if (memo[key] !== undefined) return memo[key]; var v = OPS_MEALS;
+    if ((key < today || (key === today && done)) && s[key] && s[key].meals > 0) v = s[key].meals;
+    else { var same = past.filter(function(k){ return opsDow_(k) === opsDow_(key); }).slice(-4), r = past.slice(-10);
+      if (same.length >= 2) v = Math.round(same.reduce(function(a, k){ return a + s[k].meals; }, 0) / same.length);
+      else if (r.length >= 3) v = Math.round(r.reduce(function(a, k){ return a + s[k].meals; }, 0) / r.length); }
+    return memo[key] = v; };
+}
 function opsOrderAlerts_(tk, hm){
   var st = SpreadsheetApp.openById(INV_STAFF_SS); var isOpen = opsOpenFn_(stfSettings_(st));
   var now = new Date(), today = tk || opsDay_(now), nowHM = hm || Utilities.formatDate(now, OPS_TZ, "HH:mm");   // tk・hm は試験用
-  var items = invMaster_(), open = invOpenOrders_(), out = [], bySup = {};
+  var items = invMaster_(), open = invOpenOrders_(), out = [], bySup = {}, meals = opsMealsFn_(today);
   var sugMin = {}; try { invSuggest_().forEach(function(s){ sugMin[s.id] = s; }); } catch(e){}
   items.forEach(function(it){
     var days = String(it.days||"").split("").map(function(c){ return OPS_YO.indexOf(c); }).filter(function(i){ return i >= 0; });
@@ -114,19 +126,19 @@ function opsOrderAlerts_(tk, hm){
     var cut = ("0" + cm[1]).slice(-5);
     // 次の納品日 D1（締切がまだ来ていないもの）と、その次 D2
     var D1 = null, D2 = null;
-    for (var i = 1; i <= 14 && !D2; i++){ var k = opsAdd_(today, i); if (days.indexOf(opsDow_(k)) < 0) continue; var ck = opsAdd_(k, -1); if (ck < today || (ck === today && cut <= nowHM)) continue; if (!D1) D1 = k; else D2 = k; }
+    for (var i = 1; i <= 14 && !D2; i++){ var k = opsAdd_(today, i); if (days.indexOf(opsDow_(k)) < 0 || stfJpHoliday_(Number(k.slice(0,4)), Number(k.slice(5,7)), Number(k.slice(8,10)))) continue; var ck = opsAdd_(k, -1); if (ck < today || (ck === today && cut <= nowHM)) continue; if (!D1) D1 = k; else D2 = k; }
     if (!D1 || !D2 || opsAdd_(D1, -1) !== today) return;   // 今日が締切の納品だけ
     var pending = open.filter(function(o){ return o.item_id === it.id && o["状態"] === "発注済"; }).reduce(function(a, o){ return a + (Number(o["数量"])||0); }, 0);
     var reason = "";
     if (it.usage60 !== null && it.usage60 !== undefined && it.stock !== null && it.stockState !== "未計測"){
-      var daily = Number(it.usage60) * OPS_MEALS / 60; if (!(daily > 0)) return;
+      var rate = Number(it.usage60) / 60; if (!(rate > 0)) return;
       // 在庫を数えた日の翌日から今日までの営業日ぶん減らす（今日の昼は済み）
       var base = String(it.stockAt||"").slice(0,10).replace(/-/g, "/"); var cur = Number(it.stock);
-      if (/^\d{4}\/\d{2}\/\d{2}$/.test(base)){ for (var d = opsAdd_(base, 1); d <= today; d = opsAdd_(d, 1)) if (isOpen(d)) cur -= daily; }
+      if (/^\d{4}\/\d{2}\/\d{2}$/.test(base)){ for (var d = opsAdd_(base, 1); d <= today; d = opsAdd_(d, 1)) if (isOpen(d)) cur -= rate * meals(d); }
       // D1 の昼までの消費（D1 の到着は昼の後）→ 到着後に D2 の昼まで必要な量
-      var use1 = 0; for (var d1 = opsAdd_(today, 1); d1 <= D1; d1 = opsAdd_(d1, 1)) if (isOpen(d1)) use1 += daily;
-      var use2 = 0; for (var d2 = opsAdd_(D1, 1); d2 <= D2; d2 = opsAdd_(d2, 1)) if (isOpen(d2)) use2 += daily;
-      var safety = (Number(it.safety)||0) * daily;
+      var use1 = 0; for (var d1 = opsAdd_(today, 1); d1 <= D1; d1 = opsAdd_(d1, 1)) if (isOpen(d1)) use1 += rate * meals(d1);
+      var use2 = 0; for (var d2 = opsAdd_(D1, 1); d2 <= D2; d2 = opsAdd_(d2, 1)) if (isOpen(d2)) use2 += rate * meals(d2);
+      var safety = (Number(it.safety)||0) * rate * meals(D2);
       var left = cur - use1 + pending; var need = use2 + safety;
       if (left < need) reason = "今の見込み " + (Math.round(cur*10)/10) + it.unit + "・" + opsLabel_(D2) + "の昼までに約" + (Math.round((need-left)*10)/10) + it.unit + "足りない";
     } else if (sugMin[it.id]){
