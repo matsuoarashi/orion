@@ -350,7 +350,7 @@ function buildPlan(){
 // ───── 仕込み（毎日入れるのは仕込んだ数だけ。残り＝仕込み−売れた分。食材の在庫は売上から計算し、棚卸しは2週に1回）─────
 const STOCKTAKE_DAYS = 14;
 const PREP_DEF = [
-  { key:"noodle", name:"麺の小分け", unit:"個", note:"ハーフ1個分（乾麺 約94g）。フルは2個", per:(name)=>/ハーフ/.test(name) ? 1 : 2 },
+  { key:"noodle", name:"麺の小分け", unit:"個", note:"ハーフ1個分（乾麺100g）。レギュラーは2個（200g）", per:(name)=>/ハーフ/.test(name) ? 1 : 2 },
   { key:"sauce",  name:"ナポリタンソース", unit:"人前", note:"フル1人前・ハーフ0.5人前", per:(name)=>/ハーフ/.test(name) ? 0.5 : 1 }
 ];
 let PREPS = null;
